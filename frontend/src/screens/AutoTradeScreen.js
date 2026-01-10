@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import { View, StyleSheet, ScrollView, Dimensions, TouchableOpacity } from 'react-native';
 import { Button, Text, TextInput, Card, SegmentedButtons, useTheme, Surface, Divider, Avatar, Chip } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
 import { API_URLS } from '../config';
 import ParticlesBackground from '../components/ParticlesBackground';
+import SelectionModal from '../components/SelectionModal';
 
 const API_URL = API_URLS.AUTOTRADE;
 const { width } = Dimensions.get('window');
@@ -18,7 +19,7 @@ export default function AutoTradeScreen() {
   const [pair, setPair] = useState('EURUSD-OTC');
   const [amount, setAmount] = useState('1');
   const [timeframe, setTimeframe] = useState('1');
-
+  
   const otcPairs = ['EURUSD-OTC', 'GBPUSD-OTC', 'USDJPY-OTC', 'NZDUSD-OTC', 'AUDUSD-OTC'];
   const [strategy, setStrategy] = useState('RSI Reversal');
   const [stopLoss, setStopLoss] = useState('10');
@@ -28,6 +29,28 @@ export default function AutoTradeScreen() {
   
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Modal visibility states
+  const [pairModalVisible, setPairModalVisible] = useState(false);
+  const [strategyModalVisible, setStrategyModalVisible] = useState(false);
+  const [timeframeModalVisible, setTimeframeModalVisible] = useState(false);
+
+  // Options for modals
+  const pairOptions = otcPairs.map(p => ({ label: p, value: p, icon: 'currency-usd' }));
+  
+  const strategyOptions = [
+    { label: 'RSI Reversal', value: 'RSI Reversal', icon: 'chart-bell-curve-cumulative' },
+    { label: 'Bollinger Bands', value: 'Bollinger Bands', icon: 'chart-timeline-variant' },
+    { label: 'MACD Cross', value: 'MACD Cross', icon: 'chart-multiline' },
+    { label: 'MHI', value: 'MHI', icon: 'chart-sankey' },
+    { label: 'AGGRESIVE', value: 'AGGRESIVE', icon: 'flash' }
+  ];
+
+  const timeframeOptions = [
+    { label: '1 Minute', value: '1', icon: 'clock-outline' },
+    { label: '5 Minutes', value: '5', icon: 'clock-outline' },
+    { label: '15 Minutes', value: '15', icon: 'clock-outline' }
+  ];
 
   useEffect(() => {
     let interval;
@@ -187,23 +210,20 @@ export default function AutoTradeScreen() {
                 theme={{ colors: { secondaryContainer: theme.colors.secondary, onSecondaryContainer: '#000' } }}
               />
 
-              <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Select Asset (OTC)</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  {otcPairs.map((p) => (
-                    <Chip 
-                      key={p} 
-                      selected={pair === p} 
-                      onPress={() => setPair(p)}
-                      style={[styles.chip, pair === p && { backgroundColor: theme.colors.secondary }]}
-                      textStyle={{ color: pair === p ? '#000' : theme.colors.onSurfaceVariant, fontWeight: 'bold' }}
-                      showSelectedOverlay
-                    >
-                      {p}
-                    </Chip>
-                  ))}
+              {/* Pair Selector */}
+              <TouchableOpacity onPress={() => setPairModalVisible(true)} activeOpacity={0.7}>
+                <View pointerEvents="none">
+                  <TextInput
+                    label="Asset"
+                    value={pair}
+                    mode="outlined"
+                    style={styles.input}
+                    theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }}
+                    textColor={theme.colors.onSurface}
+                    right={<TextInput.Icon icon="chevron-down" />}
+                  />
                 </View>
-              </ScrollView>
+              </TouchableOpacity>
             </View>
            </LinearGradient>
         </Surface>
@@ -220,20 +240,41 @@ export default function AutoTradeScreen() {
 
             <View style={styles.inputGroup}>
               <View style={styles.row}>
-                <TextInput label="Amount ($)" value={amount} onChangeText={setAmount} mode="outlined" style={[styles.input, styles.half]} keyboardType="numeric" theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }} textColor={theme.colors.onSurface} />
-                <TextInput label="Timeframe (m)" value={timeframe} onChangeText={setTimeframe} mode="outlined" style={[styles.input, styles.half]} keyboardType="numeric" theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }} textColor={theme.colors.onSurface} />
+                <View style={styles.half}>
+                  <TextInput label="Amount ($)" value={amount} onChangeText={setAmount} mode="outlined" style={styles.input} keyboardType="numeric" theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }} textColor={theme.colors.onSurface} />
+                </View>
+                <View style={styles.half}>
+                  {/* Timeframe Selector */}
+                  <TouchableOpacity onPress={() => setTimeframeModalVisible(true)} activeOpacity={0.7}>
+                    <View pointerEvents="none">
+                      <TextInput
+                        label="Timeframe"
+                        value={timeframeOptions.find(t => t.value === timeframe)?.label || timeframe}
+                        mode="outlined"
+                        style={styles.input}
+                        theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }}
+                        textColor={theme.colors.onSurface}
+                        right={<TextInput.Icon icon="chevron-down" />}
+                      />
+                    </View>
+                  </TouchableOpacity>
+                </View>
               </View>
               
-              <TextInput 
-                label="Strategy" 
-                value={strategy} 
-                onChangeText={setStrategy} 
-                mode="outlined" 
-                style={styles.input} 
-                theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }}
-                textColor={theme.colors.onSurface}
-                right={<TextInput.Icon icon="chevron-down" />}
-              />
+              {/* Strategy Selector */}
+              <TouchableOpacity onPress={() => setStrategyModalVisible(true)} activeOpacity={0.7}>
+                <View pointerEvents="none">
+                  <TextInput 
+                    label="Strategy" 
+                    value={strategy} 
+                    mode="outlined" 
+                    style={styles.input} 
+                    theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }}
+                    textColor={theme.colors.onSurface}
+                    right={<TextInput.Icon icon="chevron-down" />}
+                  />
+                </View>
+              </TouchableOpacity>
               
               <Divider style={{ marginVertical: 12, backgroundColor: 'rgba(255,255,255,0.1)' }} />
               <Text variant="labelLarge" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12, fontWeight: 'bold' }}>RISK MANAGEMENT</Text>
@@ -280,6 +321,35 @@ export default function AutoTradeScreen() {
           )}
         </View>
       </View>
+
+      {/* Modals */}
+      <SelectionModal
+        visible={pairModalVisible}
+        onClose={() => setPairModalVisible(false)}
+        title="Select Asset"
+        options={pairOptions}
+        value={pair}
+        onSelect={setPair}
+        icon="currency-usd"
+      />
+      <SelectionModal
+        visible={strategyModalVisible}
+        onClose={() => setStrategyModalVisible(false)}
+        title="Select Strategy"
+        options={strategyOptions}
+        value={strategy}
+        onSelect={setStrategy}
+        icon="strategy"
+      />
+      <SelectionModal
+        visible={timeframeModalVisible}
+        onClose={() => setTimeframeModalVisible(false)}
+        title="Select Timeframe"
+        options={timeframeOptions}
+        value={timeframe}
+        onSelect={setTimeframe}
+        icon="clock-outline"
+      />
     </ScrollView>
   );
 }
@@ -364,9 +434,10 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: 12,
   },
   half: {
-    width: '48%',
+    flex: 1,
   },
   segmentButton: {
     marginBottom: 8,

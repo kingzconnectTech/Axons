@@ -1,0 +1,127 @@
+import React from 'react';
+import { View, ScrollView, StyleSheet, Modal, TouchableOpacity } from 'react-native';
+import { Text, Surface, Button, useTheme, Divider, RadioButton } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+
+export default function SelectionModal({ visible, onClose, title, options, value, onSelect, icon = "format-list-bulleted" }) {
+  const theme = useTheme();
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContainer}>
+          <Surface style={styles.modalContent} elevation={5}>
+            <LinearGradient
+              colors={['#252D40', '#1F2636']}
+              style={styles.gradient}
+            >
+              {/* Header */}
+              <View style={styles.header}>
+                <View style={[styles.iconBox, { backgroundColor: theme.colors.primaryContainer }]}>
+                  <MaterialCommunityIcons name={icon} size={24} color={theme.colors.primary} />
+                </View>
+                <Text variant="titleLarge" style={{ color: theme.colors.onSurface, fontWeight: 'bold', flex: 1, marginLeft: 12 }}>
+                  {title}
+                </Text>
+                <TouchableOpacity onPress={onClose}>
+                  <MaterialCommunityIcons name="close" size={24} color={theme.colors.onSurfaceVariant} />
+                </TouchableOpacity>
+              </View>
+
+              <Divider style={{ backgroundColor: 'rgba(255,255,255,0.1)', marginBottom: 16 }} />
+
+              {/* Options List */}
+              <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
+                {options.map((option) => {
+                  const isSelected = value === option.value;
+                  return (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={[
+                        styles.optionItem,
+                        isSelected && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: theme.colors.primary, borderWidth: 1 }
+                      ]}
+                      onPress={() => {
+                        onSelect(option.value);
+                        onClose();
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <RadioButton
+                          value={option.value}
+                          status={isSelected ? 'checked' : 'unchecked'}
+                          onPress={() => {
+                            onSelect(option.value);
+                            onClose();
+                          }}
+                          color={theme.colors.primary}
+                        />
+                        <Text variant="bodyLarge" style={{ color: isSelected ? theme.colors.primary : theme.colors.onSurface, marginLeft: 8, fontWeight: isSelected ? 'bold' : 'normal' }}>
+                          {option.label}
+                        </Text>
+                      </View>
+                      {option.icon && (
+                        <MaterialCommunityIcons name={option.icon} size={20} color={isSelected ? theme.colors.primary : theme.colors.onSurfaceVariant} />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </LinearGradient>
+          </Surface>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    maxHeight: '70%',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: 'hidden',
+  },
+  gradient: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  iconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  list: {
+    maxHeight: 400,
+  },
+  optionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  }
+});

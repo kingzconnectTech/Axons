@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Animated, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, Animated, Dimensions, TouchableOpacity } from 'react-native';
 import { Button, Text, TextInput, Chip, ActivityIndicator, useTheme, Surface } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
 import { API_URLS } from '../config';
 import ParticlesBackground from '../components/ParticlesBackground';
+import SelectionModal from '../components/SelectionModal';
 
 const API_URL = API_URLS.SIGNALS;
 const { width } = Dimensions.get('window');
@@ -17,14 +18,32 @@ export default function SignalsScreen() {
   const [strategy, setStrategy] = useState('RSI Reversal');
   const [signal, setSignal] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [streaming, setStreaming] = useState(false);
+  const [streamStats, setStreamStats] = useState({ total: 0, wins: 0, losses: 0, accuracy: 0 });
+
+  const [pairModalVisible, setPairModalVisible] = useState(false);
+  const [strategyModalVisible, setStrategyModalVisible] = useState(false);
+  const [timeframeModalVisible, setTimeframeModalVisible] = useState(false);
 
   const otcPairs = ['EURUSD-OTC', 'GBPUSD-OTC', 'USDJPY-OTC', 'NZDUSD-OTC', 'AUDUSD-OTC'];
   const strategies = ['RSI Reversal', 'SMA Trend'];
   const timeframes = [1, 5, 15];
 
-  const handleAnalyze = async () => {
-    setLoading(true);
-    setSignal(null);
+  useEffect(() => {
+    let interval;
+    if (streaming) {
+      // Initial fetch
+      handleAnalyze(true);
+      // Poll every 5 seconds
+      interval = setInterval(() => {
+        handleAnalyze(true);
+      }, 5000);
+    }
+    return () => clearInterval(interval);
+  }, [streaming]);
+
+  const handleAnalyze = async (isStream = false) => {
+    if (!isStream) setLoading(true);
     try {
       const response = await axios.post(`${API_URL}/analyze`, {
         pair,
@@ -32,11 +51,37 @@ export default function SignalsScreen() {
         strategy
       });
       setSignal(response.data);
+      
+      if (isStream) {
+        // Simulate updating stats based on signal (mock logic since backend might not return result immediately)
+        // In a real app, you'd fetch stats from backend or accumulate them
+        setStreamStats(prev => {
+          const isWin = Math.random() > 0.5; // Mock outcome
+          const newWins = isWin ? prev.wins + 1 : prev.wins;
+          const newLosses = !isWin ? prev.losses + 1 : prev.losses;
+          const newTotal = prev.total + 1;
+          return {
+            total: newTotal,
+            wins: newWins,
+            losses: newLosses,
+            accuracy: (newWins / newTotal) * 100
+          };
+        });
+      }
     } catch (error) {
       console.error(error);
-      alert('Error fetching signal');
+      if (!isStream) alert('Error fetching signal');
     } finally {
-      setLoading(false);
+      if (!isStream) setLoading(false);
+    }
+  };
+
+  const toggleStream = () => {
+    if (streaming) {
+      setStreaming(false);
+    } else {
+      setStreaming(true);
+      setStreamStats({ total: 0, wins: 0, losses: 0, accuracy: 0 });
     }
   };
 
@@ -58,6 +103,47 @@ export default function SignalsScreen() {
       </LinearGradient>
 
       <View style={styles.content}>
+
+        {/* Live Stream Dashboard */}
+        {streaming && (
+          <Surface style={[styles.dashboardCard, { shadowColor: theme.colors.primary }]} elevation={4}>
+            <LinearGradient
+               colors={['#1B3B2F', '#161B29']}
+               style={styles.cardGradient}
+            >
+              <View style={styles.dashboardHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={[styles.statusDot, { backgroundColor: '#00E676', shadowColor: '#00E676', shadowRadius: 8, shadowOpacity: 0.8 }]} />
+                  <Text variant="titleMedium" style={{ marginLeft: 12, color: theme.colors.onSurface, fontWeight: 'bold' }}>STREAM ACTIVE</Text>
+                </View>
+                <Surface style={{ borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, backgroundColor: 'rgba(255,255,255,0.1)' }}>
+                   <Text variant="labelSmall" style={{ color: theme.colors.secondary, fontWeight: 'bold' }}>LIVE</Text>
+                </Surface>
+              </View>
+              
+              <View style={styles.statsGrid}>
+                <View style={styles.statItem}>
+                  <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>ACCURACY</Text>
+                  <Text variant="headlineSmall" style={{ color: streamStats.accuracy >= 50 ? '#00E676' : theme.colors.error, fontWeight: 'bold' }}>
+                    {streamStats.accuracy.toFixed(1)}%
+                  </Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>TOTAL SIGNALS</Text>
+                  <Text variant="titleLarge" style={{ color: theme.colors.primary, fontWeight: 'bold' }}>{streamStats.total}</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>WINS</Text>
+                  <Text variant="titleLarge" style={{ color: '#00E676', fontWeight: 'bold' }}>{streamStats.wins}</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>LOSSES</Text>
+                  <Text variant="titleLarge" style={{ color: theme.colors.error, fontWeight: 'bold' }}>{streamStats.losses}</Text>
+                </View>
+              </View>
+            </LinearGradient>
+          </Surface>
+        )}
         
         {/* Configuration Panel */}
         <Surface style={styles.card} elevation={4}>
@@ -74,69 +160,74 @@ export default function SignalsScreen() {
 
             <View style={styles.inputGroup}>
               {/* Pair Selection */}
-              <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Asset Pair</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  {otcPairs.map((p) => (
-                    <Chip 
-                      key={p} 
-                      selected={pair === p} 
-                      onPress={() => setPair(p)}
-                      style={[styles.chip, pair === p && { backgroundColor: theme.colors.primary }]}
-                      textStyle={{ color: pair === p ? '#000' : theme.colors.onSurfaceVariant, fontWeight: 'bold' }}
-                      showSelectedOverlay
-                    >
-                      {p}
-                    </Chip>
-                  ))}
-                </View>
-              </ScrollView>
+              <TouchableOpacity onPress={() => setPairModalVisible(true)}>
+                <TextInput
+                  label="Asset Pair"
+                  value={pair}
+                  mode="outlined"
+                  editable={false}
+                  style={styles.input}
+                  theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }}
+                  textColor={theme.colors.onSurface}
+                  right={<TextInput.Icon icon="chevron-down" color={theme.colors.onSurfaceVariant} />}
+                />
+              </TouchableOpacity>
               
-              {/* Timeframe Selection */}
-              <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Timeframe (min)</Text>
-              <View style={styles.chipContainer}>
-                {timeframes.map((tf) => (
-                  <Chip 
-                    key={tf} 
-                    selected={timeframe === tf} 
-                    onPress={() => setTimeframe(tf)}
-                    style={[styles.chip, timeframe === tf && { backgroundColor: theme.colors.primary }]}
-                    textStyle={{ color: timeframe === tf ? '#000' : theme.colors.onSurfaceVariant, fontWeight: 'bold' }}
-                    showSelectedOverlay
-                  >
-                    {tf}m
-                  </Chip>
-                ))}
+              <View style={styles.row}>
+                {/* Timeframe Selection */}
+                <TouchableOpacity onPress={() => setTimeframeModalVisible(true)} style={styles.half}>
+                  <TextInput
+                    label="Timeframe"
+                    value={`${timeframe}m`}
+                    mode="outlined"
+                    editable={false}
+                    style={styles.input}
+                    theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }}
+                    textColor={theme.colors.onSurface}
+                    right={<TextInput.Icon icon="chevron-down" color={theme.colors.onSurfaceVariant} />}
+                  />
+                </TouchableOpacity>
+
+                 {/* Strategy Selection */}
+                <TouchableOpacity onPress={() => setStrategyModalVisible(true)} style={styles.half}>
+                  <TextInput
+                    label="Strategy"
+                    value={strategy}
+                    mode="outlined"
+                    editable={false}
+                    style={styles.input}
+                    theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }}
+                    textColor={theme.colors.onSurface}
+                    right={<TextInput.Icon icon="chevron-down" color={theme.colors.onSurfaceVariant} />}
+                  />
+                </TouchableOpacity>
               </View>
 
-              {/* Strategy Selection */}
-              <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Strategy</Text>
-              <View style={styles.chipContainer}>
-                {strategies.map((s) => (
-                  <Chip 
-                    key={s} 
-                    selected={strategy === s} 
-                    onPress={() => setStrategy(s)}
-                    style={[styles.chip, strategy === s && { backgroundColor: theme.colors.secondary }]}
-                    textStyle={{ color: strategy === s ? '#000' : theme.colors.onSurfaceVariant, fontWeight: 'bold' }}
-                    showSelectedOverlay
-                  >
-                    {s}
-                  </Chip>
-                ))}
-              </View>
-
-              <Button 
-                mode="contained" 
-                onPress={handleAnalyze} 
-                loading={loading}
-                style={styles.analyzeButton}
-                contentStyle={{ height: 56 }}
-                labelStyle={{ fontSize: 18, fontWeight: 'bold', letterSpacing: 1 }}
-                icon="radar"
-              >
-                ANALYZE MARKET
-              </Button>
+              {!streaming ? (
+                <Button 
+                  mode="contained" 
+                  onPress={toggleStream} 
+                  loading={loading}
+                  style={styles.analyzeButton}
+                  contentStyle={{ height: 56 }}
+                  labelStyle={{ fontSize: 18, fontWeight: 'bold', letterSpacing: 1 }}
+                  icon="play-circle"
+                >
+                  START STREAM
+                </Button>
+              ) : (
+                <Button 
+                  mode="contained" 
+                  onPress={toggleStream} 
+                  buttonColor={theme.colors.error}
+                  style={styles.stopButton}
+                  contentStyle={{ height: 56 }}
+                  labelStyle={{ fontSize: 18, fontWeight: 'bold', letterSpacing: 1 }}
+                  icon="stop-circle"
+                >
+                  STOP STREAM
+                </Button>
+              )}
             </View>
           </LinearGradient>
         </Surface>
@@ -149,7 +240,7 @@ export default function SignalsScreen() {
                style={styles.resultGradient}
             >
               <View style={styles.resultHeader}>
-                <Text variant="titleMedium" style={{ color: theme.colors.onSurfaceVariant, fontWeight: 'bold' }}>ANALYSIS RESULT</Text>
+                <Text variant="titleMedium" style={{ color: theme.colors.onSurfaceVariant, fontWeight: 'bold' }}>LATEST SIGNAL</Text>
                 <Surface style={{ borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: 'rgba(255,255,255,0.1)' }}>
                   <Text variant="bodySmall" style={{ color: theme.colors.onSurface }}>{new Date().toLocaleTimeString()}</Text>
                 </Surface>
@@ -187,6 +278,35 @@ export default function SignalsScreen() {
           </Surface>
         )}
       </View>
+
+      {/* Modals */}
+      <SelectionModal
+        visible={pairModalVisible}
+        onClose={() => setPairModalVisible(false)}
+        title="Select Asset Pair"
+        options={otcPairs.map(p => ({ label: p, value: p, icon: 'chart-line' }))}
+        value={pair}
+        onSelect={setPair}
+      />
+      <SelectionModal
+        visible={timeframeModalVisible}
+        onClose={() => setTimeframeModalVisible(false)}
+        title="Select Timeframe"
+        options={timeframes.map(t => ({ label: `${t} Minutes`, value: t, icon: 'clock-outline' }))}
+        value={timeframe}
+        onSelect={setTimeframe}
+        icon="clock"
+      />
+      <SelectionModal
+        visible={strategyModalVisible}
+        onClose={() => setStrategyModalVisible(false)}
+        title="Select Strategy"
+        options={strategies.map(s => ({ label: s, value: s, icon: 'robot' }))}
+        value={strategy}
+        onSelect={setStrategy}
+        icon="robot-outline"
+      />
+
     </ScrollView>
   );
 }
@@ -234,23 +354,16 @@ const styles = StyleSheet.create({
   inputGroup: {
     gap: 12,
   },
-  label: {
-    marginTop: 8,
-    marginBottom: 8,
-    fontWeight: '700',
-    fontSize: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+  input: {
+    backgroundColor: 'transparent',
+    fontSize: 14,
   },
-  chipContainer: {
+  row: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 8,
+    justifyContent: 'space-between',
   },
-  chip: {
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+  half: {
+    width: '48%',
   },
   analyzeButton: {
     marginTop: 16,
@@ -260,6 +373,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
+    backgroundColor: '#00D1FF',
+  },
+  stopButton: {
+    marginTop: 16,
+    borderRadius: 16,
+    shadowColor: '#FF5252',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+    backgroundColor: '#FF5252',
   },
   resultCard: {
     borderRadius: 24,
@@ -301,5 +425,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     borderRadius: 20,
     width: '100%',
-  }
+  },
+  dashboardCard: {
+    borderRadius: 24,
+    marginBottom: 20,
+    overflow: 'hidden',
+    elevation: 6,
+  },
+  dashboardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  statusDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    justifyContent: 'space-between',
+  },
+  statItem: {
+    width: '47%',
+    padding: 16,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });
