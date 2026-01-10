@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+iqoptionapi
+pydantic
+websockets
+requests
+python-dotenv
+sqlalchemy

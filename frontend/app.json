@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "Axon",
+    "slug": "axon",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.axon.trading"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
