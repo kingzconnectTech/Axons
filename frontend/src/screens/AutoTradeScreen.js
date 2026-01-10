@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
-import { Button, Text, TextInput, Card, Switch, SegmentedButtons, useTheme, Surface, Divider, Avatar, Chip } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import { Button, Text, TextInput, Card, SegmentedButtons, useTheme, Surface, Divider, Avatar, Chip } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
 import { API_URLS } from '../config';
+import ParticlesBackground from '../components/ParticlesBackground';
 
 const API_URL = API_URLS.AUTOTRADE;
+const { width } = Dimensions.get('window');
 
 export default function AutoTradeScreen() {
   const theme = useTheme();
@@ -81,204 +84,324 @@ export default function AutoTradeScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]} contentContainerStyle={{ paddingBottom: 40 }}>
       
-      {/* Live Status Dashboard */}
-      {status && status.active && (
-        <Surface style={[styles.dashboardCard, { backgroundColor: theme.colors.surface }]} elevation={4}>
-           <View style={styles.dashboardHeader}>
-             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-               <View style={[styles.statusDot, { backgroundColor: theme.colors.secondary }]} />
-               <Text variant="titleMedium" style={{ marginLeft: 8, color: theme.colors.onSurface }}>System Active</Text>
-             </View>
-             <Text variant="bodySmall" style={{ color: theme.colors.outline }}>{accountType}</Text>
-           </View>
-           
-           <View style={styles.statsGrid}>
-             <View style={styles.statItem}>
-               <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>PROFIT</Text>
-               <Text variant="headlineSmall" style={{ color: status.profit >= 0 ? theme.colors.secondary : theme.colors.error }}>
-                 ${status.profit.toFixed(2)}
-               </Text>
-             </View>
-             <View style={styles.statItem}>
-               <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>WINS</Text>
-               <Text variant="titleLarge" style={{ color: theme.colors.primary }}>{status.wins}</Text>
-             </View>
-             <View style={styles.statItem}>
-               <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>LOSSES</Text>
-               <Text variant="titleLarge" style={{ color: theme.colors.error }}>{status.losses}</Text>
-             </View>
-             <View style={styles.statItem}>
-               <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>TOTAL</Text>
-               <Text variant="titleLarge" style={{ color: theme.colors.onSurface }}>{status.total_trades}</Text>
-             </View>
-           </View>
-        </Surface>
-      )}
+      {/* Header */}
+      <LinearGradient
+        colors={[theme.colors.secondaryContainer, theme.colors.background]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 0.8 }}
+        style={styles.headerGradient}
+      >
+        <ParticlesBackground />
+        <View style={styles.headerContent}>
+          <Text variant="headlineMedium" style={{ color: theme.colors.onPrimaryContainer, fontWeight: '900', letterSpacing: 2 }}>AUTO BOT</Text>
+          <Text variant="bodyMedium" style={{ color: theme.colors.secondary, fontWeight: 'bold', letterSpacing: 1, marginTop: 4 }}>AUTOMATED TRADING</Text>
+        </View>
+      </LinearGradient>
 
-      {/* Account Settings */}
-      <Card style={[styles.card, { backgroundColor: theme.colors.surface }]} mode="contained">
-        <Card.Title 
-          title="Account Credentials" 
-          titleStyle={{ color: theme.colors.onSurface, fontWeight: 'bold' }}
-          left={(props) => <Avatar.Icon {...props} icon="account-key" size={40} style={{ backgroundColor: theme.colors.secondaryContainer }} color={theme.colors.secondary} />}
-        />
-        <Card.Content>
-          <TextInput 
-            label="Email" 
-            value={email} 
-            onChangeText={setEmail} 
-            mode="outlined" 
-            style={styles.input}
-            left={<TextInput.Icon icon="email" />}
-          />
-          <TextInput 
-            label="Password" 
-            value={password} 
-            onChangeText={setPassword} 
-            secureTextEntry 
-            mode="outlined" 
-            style={styles.input}
-            left={<TextInput.Icon icon="lock" />}
-          />
-          
-          <SegmentedButtons
-            value={accountType}
-            onValueChange={setAccountType}
-            buttons={[
-              { value: 'PRACTICE', label: 'Practice', icon: 'school' },
-              { value: 'REAL', label: 'Real Account', icon: 'cash' },
-            ]}
-            style={styles.input}
-          />
+      <View style={styles.content}>
 
-          <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, marginTop: 8 }}>Select Pair (OTC)</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {otcPairs.map((p) => (
-                <Chip 
-                  key={p} 
-                  selected={pair === p} 
-                  onPress={() => setPair(p)}
-                  style={pair === p && { backgroundColor: theme.colors.primaryContainer }}
-                  showSelectedOverlay
-                >
-                  {p}
-                </Chip>
-              ))}
-            </View>
-          </ScrollView>
-        </Card.Content>
-      </Card>
-
-      {/* Strategy & Risk */}
-      <Card style={[styles.card, { backgroundColor: theme.colors.surface }]} mode="contained">
-        <Card.Title 
-          title="Strategy & Risk" 
-          titleStyle={{ color: theme.colors.onSurface, fontWeight: 'bold' }}
-          left={(props) => <Avatar.Icon {...props} icon="shield-check" size={40} style={{ backgroundColor: theme.colors.primaryContainer }} color={theme.colors.primary} />}
-        />
-        <Card.Content>
-          <View style={styles.row}>
-            <TextInput label="Amount ($)" value={amount} onChangeText={setAmount} mode="outlined" style={[styles.input, styles.half]} keyboardType="numeric" />
-            <TextInput label="Timeframe (m)" value={timeframe} onChangeText={setTimeframe} mode="outlined" style={[styles.input, styles.half]} keyboardType="numeric" />
-          </View>
-          
-          <TextInput 
-            label="Strategy" 
-            value={strategy} 
-            onChangeText={setStrategy} 
-            mode="outlined" 
-            style={styles.input} 
-            right={<TextInput.Icon icon="chevron-down" />}
-          />
-          
-          <Divider style={{ marginVertical: 10 }} />
-          <Text variant="titleSmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 10 }}>Risk Management</Text>
-
-          <View style={styles.row}>
-            <TextInput label="Stop Loss ($)" value={stopLoss} onChangeText={setStopLoss} mode="outlined" style={[styles.input, styles.half]} keyboardType="numeric" />
-            <TextInput label="Take Profit ($)" value={takeProfit} onChangeText={setTakeProfit} mode="outlined" style={[styles.input, styles.half]} keyboardType="numeric" />
-          </View>
-
-          <View style={styles.row}>
-            <TextInput label="Max Cons. Losses" value={maxLosses} onChangeText={setMaxLosses} mode="outlined" style={[styles.input, styles.half]} keyboardType="numeric" />
-            <TextInput label="Max Trades" value={maxTrades} onChangeText={setMaxTrades} mode="outlined" style={[styles.input, styles.half]} keyboardType="numeric" />
-          </View>
-        </Card.Content>
-      </Card>
-
-      <View style={styles.buttonContainer}>
-        {!status?.active ? (
-          <Button 
-            mode="contained" 
-            onPress={handleStart} 
-            loading={loading} 
-            style={styles.startButton}
-            contentStyle={{ height: 56 }}
-            labelStyle={{ fontSize: 18, fontWeight: 'bold' }}
-            icon="play-circle"
-          >
-            Start Auto Trade
-          </Button>
-        ) : (
-          <Button 
-            mode="contained" 
-            onPress={handleStop} 
-            loading={loading} 
-            buttonColor={theme.colors.error} 
-            style={styles.stopButton}
-            contentStyle={{ height: 56 }}
-            labelStyle={{ fontSize: 18, fontWeight: 'bold' }}
-            icon="stop-circle"
-          >
-            Stop Trading
-          </Button>
+        {/* Live Status Dashboard */}
+        {status && status.active && (
+          <Surface style={[styles.dashboardCard, { shadowColor: theme.colors.secondary }]} elevation={4}>
+            <LinearGradient
+               colors={['#1B3B2F', '#161B29']}
+               style={styles.cardGradient}
+            >
+              <View style={styles.dashboardHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={[styles.statusDot, { backgroundColor: '#00E676', shadowColor: '#00E676', shadowRadius: 8, shadowOpacity: 0.8 }]} />
+                  <Text variant="titleMedium" style={{ marginLeft: 12, color: theme.colors.onSurface, fontWeight: 'bold' }}>SYSTEM ACTIVE</Text>
+                </View>
+                <Surface style={{ borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, backgroundColor: 'rgba(255,255,255,0.1)' }}>
+                   <Text variant="labelSmall" style={{ color: theme.colors.secondary, fontWeight: 'bold' }}>{accountType}</Text>
+                </Surface>
+              </View>
+              
+              <View style={styles.statsGrid}>
+                <View style={styles.statItem}>
+                  <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>PROFIT</Text>
+                  <Text variant="headlineSmall" style={{ color: status.profit >= 0 ? '#00E676' : theme.colors.error, fontWeight: 'bold' }}>
+                    ${status.profit.toFixed(2)}
+                  </Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>WINS</Text>
+                  <Text variant="titleLarge" style={{ color: theme.colors.primary, fontWeight: 'bold' }}>{status.wins}</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>LOSSES</Text>
+                  <Text variant="titleLarge" style={{ color: theme.colors.error, fontWeight: 'bold' }}>{status.losses}</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>TOTAL</Text>
+                  <Text variant="titleLarge" style={{ color: theme.colors.onSurface, fontWeight: 'bold' }}>{status.total_trades}</Text>
+                </View>
+              </View>
+            </LinearGradient>
+          </Surface>
         )}
+
+        {/* Account Credentials */}
+        <Surface style={styles.card} elevation={2}>
+           <LinearGradient colors={['#252D40', '#1F2636']} style={styles.cardGradient}>
+            <View style={styles.cardHeader}>
+              <View style={[styles.iconBox, { backgroundColor: theme.colors.secondaryContainer }]}>
+                 <MaterialCommunityIcons name="account-key" size={24} color={theme.colors.secondary} />
+              </View>
+              <Text variant="titleLarge" style={{ color: theme.colors.onSurface, fontWeight: 'bold', marginLeft: 12 }}>Credentials</Text>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <TextInput 
+                label="Email" 
+                value={email} 
+                onChangeText={setEmail} 
+                mode="outlined" 
+                style={styles.input}
+                textColor={theme.colors.onSurface}
+                theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }}
+                left={<TextInput.Icon icon="email" color={theme.colors.onSurfaceVariant} />}
+              />
+              <TextInput 
+                label="Password" 
+                value={password} 
+                onChangeText={setPassword} 
+                secureTextEntry 
+                mode="outlined" 
+                style={styles.input}
+                textColor={theme.colors.onSurface}
+                theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }}
+                left={<TextInput.Icon icon="lock" color={theme.colors.onSurfaceVariant} />}
+              />
+              
+              <SegmentedButtons
+                value={accountType}
+                onValueChange={setAccountType}
+                buttons={[
+                  { value: 'PRACTICE', label: 'PRACTICE', icon: 'school' },
+                  { value: 'REAL', label: 'REAL', icon: 'cash' },
+                ]}
+                style={styles.segmentButton}
+                theme={{ colors: { secondaryContainer: theme.colors.secondary, onSecondaryContainer: '#000' } }}
+              />
+
+              <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Select Asset (OTC)</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {otcPairs.map((p) => (
+                    <Chip 
+                      key={p} 
+                      selected={pair === p} 
+                      onPress={() => setPair(p)}
+                      style={[styles.chip, pair === p && { backgroundColor: theme.colors.secondary }]}
+                      textStyle={{ color: pair === p ? '#000' : theme.colors.onSurfaceVariant, fontWeight: 'bold' }}
+                      showSelectedOverlay
+                    >
+                      {p}
+                    </Chip>
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
+           </LinearGradient>
+        </Surface>
+
+        {/* Strategy & Risk */}
+        <Surface style={styles.card} elevation={2}>
+          <LinearGradient colors={['#252D40', '#1F2636']} style={styles.cardGradient}>
+            <View style={styles.cardHeader}>
+              <View style={[styles.iconBox, { backgroundColor: theme.colors.primaryContainer }]}>
+                 <MaterialCommunityIcons name="shield-check" size={24} color={theme.colors.primary} />
+              </View>
+              <Text variant="titleLarge" style={{ color: theme.colors.onSurface, fontWeight: 'bold', marginLeft: 12 }}>Strategy & Risk</Text>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <View style={styles.row}>
+                <TextInput label="Amount ($)" value={amount} onChangeText={setAmount} mode="outlined" style={[styles.input, styles.half]} keyboardType="numeric" theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }} textColor={theme.colors.onSurface} />
+                <TextInput label="Timeframe (m)" value={timeframe} onChangeText={setTimeframe} mode="outlined" style={[styles.input, styles.half]} keyboardType="numeric" theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }} textColor={theme.colors.onSurface} />
+              </View>
+              
+              <TextInput 
+                label="Strategy" 
+                value={strategy} 
+                onChangeText={setStrategy} 
+                mode="outlined" 
+                style={styles.input} 
+                theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }}
+                textColor={theme.colors.onSurface}
+                right={<TextInput.Icon icon="chevron-down" />}
+              />
+              
+              <Divider style={{ marginVertical: 12, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+              <Text variant="labelLarge" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12, fontWeight: 'bold' }}>RISK MANAGEMENT</Text>
+
+              <View style={styles.row}>
+                <TextInput label="Stop Loss ($)" value={stopLoss} onChangeText={setStopLoss} mode="outlined" style={[styles.input, styles.half]} keyboardType="numeric" theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }} textColor={theme.colors.onSurface} />
+                <TextInput label="Take Profit ($)" value={takeProfit} onChangeText={setTakeProfit} mode="outlined" style={[styles.input, styles.half]} keyboardType="numeric" theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }} textColor={theme.colors.onSurface} />
+              </View>
+
+              <View style={styles.row}>
+                <TextInput label="Max Losses" value={maxLosses} onChangeText={setMaxLosses} mode="outlined" style={[styles.input, styles.half]} keyboardType="numeric" theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }} textColor={theme.colors.onSurface} />
+                <TextInput label="Max Trades" value={maxTrades} onChangeText={setMaxTrades} mode="outlined" style={[styles.input, styles.half]} keyboardType="numeric" theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }} textColor={theme.colors.onSurface} />
+              </View>
+            </View>
+          </LinearGradient>
+        </Surface>
+
+        <View style={styles.buttonContainer}>
+          {!status?.active ? (
+            <Button 
+              mode="contained" 
+              onPress={handleStart} 
+              loading={loading} 
+              style={styles.startButton}
+              contentStyle={{ height: 60 }}
+              labelStyle={{ fontSize: 18, fontWeight: 'bold', letterSpacing: 1 }}
+              icon="play-circle"
+            >
+              START AUTO TRADE
+            </Button>
+          ) : (
+            <Button 
+              mode="contained" 
+              onPress={handleStop} 
+              loading={loading} 
+              buttonColor={theme.colors.error} 
+              style={styles.stopButton}
+              contentStyle={{ height: 60 }}
+              labelStyle={{ fontSize: 18, fontWeight: 'bold', letterSpacing: 1 }}
+              icon="stop-circle"
+            >
+              STOP TRADING
+            </Button>
+          )}
+        </View>
       </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16 },
-  card: { marginBottom: 16, borderRadius: 16 },
-  input: { marginBottom: 12, backgroundColor: 'transparent' },
-  row: { flexDirection: 'row', justifyContent: 'space-between' },
-  half: { width: '48%' },
-  buttonContainer: { marginTop: 10, marginBottom: 40 },
-  startButton: { borderRadius: 12 },
-  stopButton: { borderRadius: 12 },
-  dashboardCard: {
+  container: {
+    flex: 1,
+  },
+  headerGradient: {
+    paddingTop: 60,
+    paddingBottom: 40,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    overflow: 'hidden',
+  },
+  headerContent: {
+    alignItems: 'center',
+  },
+  content: {
     padding: 16,
-    borderRadius: 16,
+    marginTop: -20,
+  },
+  card: {
+    borderRadius: 24,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  cardGradient: {
+    padding: 20,
+  },
+  dashboardCard: {
+    borderRadius: 24,
     marginBottom: 20,
-    borderLeftWidth: 4,
-    borderLeftColor: '#00E676'
+    overflow: 'hidden',
+    elevation: 6,
   },
   dashboardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 12,
     justifyContent: 'space-between',
   },
   statItem: {
-    width: '48%',
-    padding: 10,
+    width: '47%',
+    padding: 16,
     backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 8,
+    borderRadius: 16,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  iconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  inputGroup: {
+    gap: 12,
+  },
+  input: {
+    backgroundColor: 'transparent',
+    fontSize: 14,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  half: {
+    width: '48%',
+  },
+  segmentButton: {
+    marginBottom: 8,
+  },
+  label: {
+    marginTop: 8,
+    marginBottom: 8,
+    fontWeight: '700',
+    fontSize: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  chip: {
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  buttonContainer: {
+    marginTop: 10,
+    marginBottom: 20,
+  },
+  startButton: {
+    borderRadius: 16,
+    shadowColor: '#00E676',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+    backgroundColor: '#00E676',
+  },
+  stopButton: {
+    borderRadius: 16,
+    shadowColor: '#FF5252',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   }
 });
