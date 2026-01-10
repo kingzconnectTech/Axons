@@ -1,7 +1,8 @@
 import threading
 import time
-from .iq_service import IQSessionManager
-from .strategy_service import StrategyService
+from services.iq_service import IQSessionManager
+from services.strategy_service import StrategyService
+
 
 class TradeSession(threading.Thread):
     def __init__(self, config):
@@ -32,11 +33,7 @@ class TradeSession(threading.Thread):
                     break
 
                 # Get Candles
-                # Assuming single pair for now or we need to iterate pairs
-                # The user input said "select pairs for analysis" for signals, but for auto trade "set timeframe, set strategy". 
-                # It didn't explicitly say select pairs for auto trade, but it's implied. I'll default to EURUSD-OTC or allow selection.
-                # Let's assume a default pair for now or add it to config.
-                pair = "EURUSD-OTC" 
+                pair = self.config.pair
                 
                 candles = iq.get_candles(pair, self.config.timeframe * 60, 100, time.time())
                 analysis = StrategyService.analyze(pair, candles, self.config.strategy)

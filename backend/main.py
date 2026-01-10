@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from .routers import signals, autotrade
+from routers import signals, autotrade, market
 
 app = FastAPI(title="Axon Trading App")
 
@@ -15,6 +15,7 @@ app.add_middleware(
 
 app.include_router(signals.router, prefix="/api/signals", tags=["signals"])
 app.include_router(autotrade.router, prefix="/api/autotrade", tags=["autotrade"])
+app.include_router(market.router, prefix="/api/market", tags=["market"])
 
 @app.get("/")
 def read_root():

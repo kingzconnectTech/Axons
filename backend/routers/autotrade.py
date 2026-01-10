@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
-from ..services.trade_service import trade_manager
-from ..models.schemas import AutoTradeConfig, TradeStatus
+from services.trade_service import trade_manager
+from models.schemas import AutoTradeConfig, TradeStatus
 
 router = APIRouter()
 

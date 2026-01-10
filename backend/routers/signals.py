@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
-from ..services.iq_service import iq_manager
-from ..services.strategy_service import StrategyService
-from ..models.schemas import SignalRequest, SignalResponse
+from services.iq_service import iq_manager
+from services.strategy_service import StrategyService
+from models.schemas import SignalRequest, SignalResponse
 import time
 
 router = APIRouter()

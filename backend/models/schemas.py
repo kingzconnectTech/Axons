@@ -16,6 +16,7 @@ class AutoTradeConfig(BaseModel):
     email: str
     password: str
     account_type: str = "PRACTICE"  # PRACTICE or REAL
+    pair: str = "EURUSD-OTC"
     amount: float
     timeframe: int
     strategy: str

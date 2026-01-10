@@ -67,7 +67,7 @@ export default function App() {
             cardStyle: { backgroundColor: theme.colors.background }
           }}
         >
-          <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'AXON' }} />
+          <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
           <Stack.Screen name="Signals" component={SignalsScreen} options={{ title: 'Market Signals' }} />
           <Stack.Screen name="AutoTrade" component={AutoTradeScreen} options={{ title: 'Auto Trader' }} />
         </Stack.Navigator>

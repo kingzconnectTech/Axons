@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
-import { Button, Text, TextInput, Card, Switch, SegmentedButtons, useTheme, Surface, Divider, Avatar } from 'react-native-paper';
+import { Button, Text, TextInput, Card, Switch, SegmentedButtons, useTheme, Surface, Divider, Avatar, Chip } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios';
 import { API_URLS } from '../config';
@@ -12,8 +12,11 @@ export default function AutoTradeScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [accountType, setAccountType] = useState('PRACTICE');
+  const [pair, setPair] = useState('EURUSD-OTC');
   const [amount, setAmount] = useState('1');
   const [timeframe, setTimeframe] = useState('1');
+
+  const otcPairs = ['EURUSD-OTC', 'GBPUSD-OTC', 'USDJPY-OTC', 'NZDUSD-OTC', 'AUDUSD-OTC'];
   const [strategy, setStrategy] = useState('RSI Reversal');
   const [stopLoss, setStopLoss] = useState('10');
   const [takeProfit, setTakeProfit] = useState('20');
@@ -48,6 +51,7 @@ export default function AutoTradeScreen() {
         email,
         password,
         account_type: accountType,
+        pair,
         amount: parseFloat(amount),
         timeframe: parseInt(timeframe),
         strategy,
@@ -148,6 +152,23 @@ export default function AutoTradeScreen() {
             ]}
             style={styles.input}
           />
+
+          <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, marginTop: 8 }}>Select Pair (OTC)</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {otcPairs.map((p) => (
+                <Chip 
+                  key={p} 
+                  selected={pair === p} 
+                  onPress={() => setPair(p)}
+                  style={pair === p && { backgroundColor: theme.colors.primaryContainer }}
+                  showSelectedOverlay
+                >
+                  {p}
+                </Chip>
+              ))}
+            </View>
+          </ScrollView>
         </Card.Content>
       </Card>
 

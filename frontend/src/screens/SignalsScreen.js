@@ -15,6 +15,7 @@ export default function SignalsScreen() {
   const [signal, setSignal] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  const otcPairs = ['EURUSD-OTC', 'GBPUSD-OTC', 'USDJPY-OTC', 'NZDUSD-OTC', 'AUDUSD-OTC'];
   const strategies = ['RSI Reversal', 'SMA Trend'];
   const timeframes = [1, 5, 15];
 
