@@ -24,6 +24,7 @@ class AutoTradeConfig(BaseModel):
     take_profit: float
     max_consecutive_losses: int
     max_trades: int
+    paper_trade: bool = False
 
 class TradeStatus(BaseModel):
     active: bool
@@ -34,3 +35,4 @@ class TradeStatus(BaseModel):
     consecutive_losses: int
     balance: float = 0.0
     currency: Optional[str] = None
+    last_signal: Optional[dict] = None

@@ -36,7 +36,8 @@ class TradeManager:
                 "consecutive_losses": 0,
                 "balance": 0.0,
                 "currency": None,
-                "active": True
+                "active": True,
+                "last_signal": None
             })
             
             # Start Process

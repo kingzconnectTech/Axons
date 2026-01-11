@@ -98,33 +98,67 @@ def run_trade_session(config, shared_stats, stop_event):
                 action = best_opportunity["action"]
                 timeframe = best_opportunity["timeframe"]
                 
-                print(f"[Worker] Executing trade: {pair} {action} {timeframe}m ({best_opportunity['confidence']}%)")
-                
-                check, id = iq.buy(config.amount, pair, action, timeframe)
-                if check:
-                    print(f"[Worker] Trade placed for {config.email}: {action} (ID: {id})")
+                # Check for Paper Trade
+                if hasattr(config, 'paper_trade') and config.paper_trade:
+                    print(f"[Worker] Signal Found (Paper): {pair} {action} {timeframe}m ({best_opportunity['confidence']}%)")
                     
-                    # Update stats
-                    # shared_stats is a DictProxy, need to copy-modify-assign or use keys
-                    shared_stats["total_trades"] += 1
+                    # Update shared stats with signal
+                    # Use a timestamp to distinguish unique signals
+                    signal_data = {
+                        "pair": pair,
+                        "action": action,
+                        "confidence": best_opportunity["confidence"],
+                        "timeframe": timeframe,
+                        "timestamp": time.time()
+                    }
                     
-                    # Wait for expiry
-                    sleep_seconds = int(timeframe * 60 + 5)
-                    for _ in range(sleep_seconds):
-                        if stop_event.is_set():
-                            break
-                        time.sleep(1)
+                    # Avoid spamming the same signal (simple dedup by timestamp/candle time?)
+                    # Since we scan continuously, we might hit the same condition for the duration of the candle.
+                    # We can check if the last signal was recent and same pair/action.
+                    last_sig = shared_stats.get("last_signal")
+                    is_new = True
+                    if last_sig and last_sig["pair"] == pair and last_sig["action"] == action:
+                         if time.time() - last_sig["timestamp"] < (timeframe * 60):
+                             is_new = False
                     
-                    # Check Result
-                    # profit = iq.check_win_v3(id) # This blocks sometimes, use get_optioninfo or similar
-                    # For simplicity, we assume result is available or we check balance change next loop
-                    
-                    # If we really want to track wins/losses, we need check_win logic
-                    # This often blocks. Let's try non-blocking check if possible
-                    # Or just rely on balance update for now to avoid complexity in this step
+                    if is_new:
+                        shared_stats["last_signal"] = signal_data
+                        # Increment 'total_trades' to show activity? 
+                        # Maybe separate 'signals_found'? For now reuse total_trades for "Events"
+                        shared_stats["total_trades"] += 1
+                        
+                        # Wait a bit to avoid re-triggering instantly
+                        # Wait for half the timeframe?
+                        time.sleep(10) 
                     
                 else:
-                    print(f"[Worker] Trade failed for {config.email}")
+                    print(f"[Worker] Executing trade: {pair} {action} {timeframe}m ({best_opportunity['confidence']}%)")
+                    
+                    check, id = iq.buy(config.amount, pair, action, timeframe)
+                    if check:
+                        print(f"[Worker] Trade placed for {config.email}: {action} (ID: {id})")
+                        
+                        # Update stats
+                        # shared_stats is a DictProxy, need to copy-modify-assign or use keys
+                        shared_stats["total_trades"] += 1
+                        
+                        # Wait for expiry
+                        sleep_seconds = int(timeframe * 60 + 5)
+                        for _ in range(sleep_seconds):
+                            if stop_event.is_set():
+                                break
+                            time.sleep(1)
+                        
+                        # Check Result
+                        # profit = iq.check_win_v3(id) # This blocks sometimes, use get_optioninfo or similar
+                        # For simplicity, we assume result is available or we check balance change next loop
+                        
+                        # If we really want to track wins/losses, we need check_win logic
+                        # This often blocks. Let's try non-blocking check if possible
+                        # Or just rely on balance update for now to avoid complexity in this step
+                        
+                    else:
+                        print(f"[Worker] Trade failed for {config.email}")
             
             time.sleep(1)
 
