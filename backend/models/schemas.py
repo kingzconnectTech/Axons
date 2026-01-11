@@ -16,9 +16,9 @@ class AutoTradeConfig(BaseModel):
     email: str
     password: str
     account_type: str = "PRACTICE"  # PRACTICE or REAL
-    pair: str = "EURUSD-OTC"
+    pairs: List[str] = ["EURUSD-OTC"]
     amount: float
-    timeframe: int
+    timeframe: float
     strategy: str
     stop_loss: float
     take_profit: float
@@ -32,3 +32,5 @@ class TradeStatus(BaseModel):
     losses: int
     profit: float
     consecutive_losses: int
+    balance: float = 0.0
+    currency: Optional[str] = None

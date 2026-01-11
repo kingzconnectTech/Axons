@@ -1,23 +1,31 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { StatusBar } from 'react-native';
-import { NavigationContainer, DarkTheme as NavDarkTheme } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme as NavDarkTheme, DefaultTheme as NavDefaultTheme } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Provider as PaperProvider, MD3DarkTheme, adaptNavigationTheme } from 'react-native-paper';
+import { Provider as PaperProvider, MD3DarkTheme, MD3LightTheme, adaptNavigationTheme } from 'react-native-paper';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ThemeContext } from './src/context/ThemeContext';
+import { BotProvider } from './src/context/BotContext';
+import { registerForPushNotificationsAsync } from './src/services/NotificationService';
+
 import HomeScreen from './src/screens/HomeScreen';
 import SignalsScreen from './src/screens/SignalsScreen';
 import AutoTradeScreen from './src/screens/AutoTradeScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
 
 const Stack = createStackNavigator();
 
-const { LightTheme, DarkTheme } = adaptNavigationTheme({
-  reactNavigationLight: NavDarkTheme, // Force dark for this pro look
+const { LightTheme: AdaptedLightTheme, DarkTheme: AdaptedDarkTheme } = adaptNavigationTheme({
+  reactNavigationLight: NavDefaultTheme,
   reactNavigationDark: NavDarkTheme,
 });
 
-const theme = {
+const customDarkTheme = {
   ...MD3DarkTheme,
+  ...AdaptedDarkTheme,
   colors: {
     ...MD3DarkTheme.colors,
+    ...AdaptedDarkTheme.colors,
     primary: '#00D1FF', // Cyber Blue
     onPrimary: '#003344',
     primaryContainer: '#004F66',
@@ -46,32 +54,108 @@ const theme = {
   roundness: 12,
 };
 
+const customLightTheme = {
+  ...MD3LightTheme,
+  ...AdaptedLightTheme,
+  colors: {
+    ...MD3LightTheme.colors,
+    ...AdaptedLightTheme.colors,
+    primary: '#006D85', // Darker Blue
+    onPrimary: '#FFFFFF',
+    primaryContainer: '#B8EAFF',
+    onPrimaryContainer: '#001F29',
+    secondary: '#006D39', // Darker Green
+    onSecondary: '#FFFFFF',
+    secondaryContainer: '#99F6C0',
+    onSecondaryContainer: '#00210E',
+    tertiary: '#B31952', // Darker Pink/Red
+    onTertiary: '#FFFFFF',
+    tertiaryContainer: '#FFD9E2',
+    onTertiaryContainer: '#3F0011',
+    background: '#F0F2F5', // Light Grayish Blue
+    surface: '#FFFFFF',
+    onSurface: '#191C1E',
+    error: '#BA1A1A',
+    elevation: {
+      level0: 'transparent',
+      level1: '#F5F6F8',
+      level2: '#EEF0F4',
+      level3: '#E8EAED',
+      level4: '#E3E6E9',
+      level5: '#DDE1E5',
+    },
+  },
+  roundness: 12,
+};
+
 export default function App() {
+  const [isDark, setIsDark] = useState(true);
+
+  useEffect(() => {
+    loadThemePreference();
+    registerForPushNotificationsAsync();
+  }, []);
+
+  const loadThemePreference = async () => {
+    try {
+      const savedTheme = await AsyncStorage.getItem('theme_preference');
+      if (savedTheme !== null) {
+        setIsDark(savedTheme === 'dark');
+      }
+    } catch (e) {
+      console.log('Failed to load theme preference');
+    }
+  };
+
+  const themeContext = useMemo(() => ({
+    isDark,
+    toggleTheme: async () => {
+      const newTheme = !isDark;
+      setIsDark(newTheme);
+      try {
+        await AsyncStorage.setItem('theme_preference', newTheme ? 'dark' : 'light');
+      } catch (e) {
+        console.log('Failed to save theme preference');
+      }
+    },
+  }), [isDark]);
+
+  const theme = isDark ? customDarkTheme : customLightTheme;
+
   return (
-    <PaperProvider theme={theme}>
-      <NavigationContainer theme={DarkTheme}>
-        <StatusBar barStyle="light-content" backgroundColor={theme.colors.background} />
-        <Stack.Navigator 
-          initialRouteName="Home"
-          screenOptions={{
-            headerStyle: {
-              backgroundColor: theme.colors.background,
-              elevation: 0,
-              shadowOpacity: 0,
-              borderBottomWidth: 0,
-            },
-            headerTintColor: theme.colors.primary,
-            headerTitleStyle: {
-              fontWeight: 'bold',
-            },
-            cardStyle: { backgroundColor: theme.colors.background }
-          }}
-        >
-          <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="Signals" component={SignalsScreen} options={{ title: 'Market Signals' }} />
-          <Stack.Screen name="AutoTrade" component={AutoTradeScreen} options={{ title: 'Auto Trader' }} />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </PaperProvider>
+    <ThemeContext.Provider value={themeContext}>
+      <BotProvider>
+        <PaperProvider theme={theme}>
+          <NavigationContainer theme={theme}>
+            <StatusBar 
+              barStyle={isDark ? "light-content" : "dark-content"} 
+              backgroundColor={theme.colors.background} 
+            />
+            <Stack.Navigator 
+              initialRouteName="Home"
+              screenOptions={{
+                headerStyle: {
+                  backgroundColor: theme.colors.background,
+                  elevation: 0,
+                  shadowOpacity: 0,
+                  borderBottomWidth: 0,
+                },
+                headerTintColor: theme.colors.onSurface,
+                headerTitleStyle: {
+                  fontWeight: 'bold',
+                  color: theme.colors.onSurface,
+                },
+                cardStyle: { backgroundColor: theme.colors.background }
+              }}
+            >
+              <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="Signals" component={SignalsScreen} options={{ title: 'Market Signals' }} />
+              <Stack.Screen name="AutoTrade" component={AutoTradeScreen} options={{ title: 'Auto Trader' }} />
+              <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
+            </Stack.Navigator>
+          </NavigationContainer>
+        </PaperProvider>
+      </BotProvider>
+    </ThemeContext.Provider>
   );
 }

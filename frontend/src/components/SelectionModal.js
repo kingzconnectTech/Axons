@@ -1,11 +1,25 @@
 import React from 'react';
 import { View, ScrollView, StyleSheet, Modal, TouchableOpacity } from 'react-native';
-import { Text, Surface, Button, useTheme, Divider, RadioButton } from 'react-native-paper';
+import { Text, Surface, Button, useTheme, Divider, RadioButton, Checkbox } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-export default function SelectionModal({ visible, onClose, title, options, value, onSelect, icon = "format-list-bulleted" }) {
+export default function SelectionModal({ visible, onClose, title, options, value, onSelect, icon = "format-list-bulleted", multi = false }) {
   const theme = useTheme();
+
+  const handleSelect = (optionValue) => {
+    if (multi) {
+      const currentValues = Array.isArray(value) ? value : [];
+      if (currentValues.includes(optionValue)) {
+        onSelect(currentValues.filter(v => v !== optionValue));
+      } else {
+        onSelect([...currentValues, optionValue]);
+      }
+    } else {
+      onSelect(optionValue);
+      onClose();
+    }
+  };
 
   return (
     <Modal
@@ -39,7 +53,10 @@ export default function SelectionModal({ visible, onClose, title, options, value
               {/* Options List */}
               <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
                 {options.map((option) => {
-                  const isSelected = value === option.value;
+                  const isSelected = multi 
+                    ? (Array.isArray(value) && value.includes(option.value))
+                    : value === option.value;
+                    
                   return (
                     <TouchableOpacity
                       key={option.value}
@@ -47,21 +64,23 @@ export default function SelectionModal({ visible, onClose, title, options, value
                         styles.optionItem,
                         isSelected && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: theme.colors.primary, borderWidth: 1 }
                       ]}
-                      onPress={() => {
-                        onSelect(option.value);
-                        onClose();
-                      }}
+                      onPress={() => handleSelect(option.value)}
                     >
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <RadioButton
-                          value={option.value}
-                          status={isSelected ? 'checked' : 'unchecked'}
-                          onPress={() => {
-                            onSelect(option.value);
-                            onClose();
-                          }}
-                          color={theme.colors.primary}
-                        />
+                        {multi ? (
+                          <Checkbox
+                            status={isSelected ? 'checked' : 'unchecked'}
+                            onPress={() => handleSelect(option.value)}
+                            color={theme.colors.primary}
+                          />
+                        ) : (
+                          <RadioButton
+                            value={option.value}
+                            status={isSelected ? 'checked' : 'unchecked'}
+                            onPress={() => handleSelect(option.value)}
+                            color={theme.colors.primary}
+                          />
+                        )}
                         <Text variant="bodyLarge" style={{ color: isSelected ? theme.colors.primary : theme.colors.onSurface, marginLeft: 8, fontWeight: isSelected ? 'bold' : 'normal' }}>
                           {option.label}
                         </Text>
@@ -73,6 +92,16 @@ export default function SelectionModal({ visible, onClose, title, options, value
                   );
                 })}
               </ScrollView>
+              
+              {multi && (
+                <Button 
+                  mode="contained" 
+                  onPress={onClose}
+                  style={{ marginTop: 16 }}
+                >
+                  Done
+                </Button>
+              )}
             </LinearGradient>
           </Surface>
         </View>

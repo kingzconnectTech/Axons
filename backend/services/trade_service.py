@@ -1,76 +1,14 @@
-import threading
+import multiprocessing
 import time
-from services.iq_service import IQSessionManager
-from services.strategy_service import StrategyService
-
-
-class TradeSession(threading.Thread):
-    def __init__(self, config):
-        super().__init__()
-        self.config = config
-        self.active = True
-        self.stats = {
-            "total_trades": 0,
-            "wins": 0,
-            "losses": 0,
-            "profit": 0.0,
-            "consecutive_losses": 0
-        }
-        self.iq_manager = IQSessionManager.get_instance()
-
-    def run(self):
-        try:
-            iq = self.iq_manager.create_user_session(self.config.email, self.config.password)
-            iq.change_balance(self.config.account_type)
-            
-            while self.active:
-                if self.stats["consecutive_losses"] >= self.config.max_consecutive_losses:
-                    print(f"Max consecutive losses reached for {self.config.email}. Stopping.")
-                    break
-                
-                if self.stats["total_trades"] >= self.config.max_trades:
-                    print(f"Max trades reached for {self.config.email}. Stopping.")
-                    break
-
-                # Get Candles
-                pair = self.config.pair
-                
-                candles = iq.get_candles(pair, self.config.timeframe * 60, 100, time.time())
-                analysis = StrategyService.analyze(pair, candles, self.config.strategy)
-                
-                if analysis["action"] in ["CALL", "PUT"] and analysis["confidence"] > 70:
-                    # Place Trade
-                    check, id = iq.buy(self.config.amount, pair, analysis["action"], self.config.timeframe)
-                    if check:
-                        print(f"Trade placed for {self.config.email}: {analysis['action']}")
-                        self.stats["total_trades"] += 1
-                        
-                        # Wait for result (simplistic)
-                        # In real app we should use websocket callback or poll result
-                        time.sleep(self.config.timeframe * 60 + 5) 
-                        
-                        # Check win/loss (simplified logic)
-                        # profit = iq.check_win_v3(id) ...
-                        # For now just mock stats update
-                        # self.stats["wins"] += 1
-                    else:
-                        print("Trade failed")
-                
-                time.sleep(1) # Loop delay
-                
-        except Exception as e:
-            print(f"Error in trade session for {self.config.email}: {e}")
-        finally:
-            self.active = False
-
-    def stop(self):
-        self.active = False
+from services.trade_worker import run_trade_session
 
 class TradeManager:
     _instance = None
     
     def __init__(self):
-        self.sessions = {} # email -> TradeSession
+        self.sessions = {} # email -> {process, stop_event, stats}
+        self.lock = multiprocessing.Lock()
+        self.manager = multiprocessing.Manager()
 
     @classmethod
     def get_instance(cls):
@@ -79,23 +17,65 @@ class TradeManager:
         return cls._instance
 
     def start_trading(self, config):
-        if config.email in self.sessions and self.sessions[config.email].is_alive():
-            return False, "Session already active"
-        
-        session = TradeSession(config)
-        self.sessions[config.email] = session
-        session.start()
-        return True, "Started"
+        with self.lock:
+            if config.email in self.sessions:
+                proc_info = self.sessions[config.email]
+                if proc_info["process"].is_alive():
+                    return False, "Session already active"
+                else:
+                    # Clean up dead session
+                    del self.sessions[config.email]
+            
+            # Create shared objects
+            stop_event = self.manager.Event()
+            stats = self.manager.dict({
+                "total_trades": 0,
+                "wins": 0,
+                "losses": 0,
+                "profit": 0.0,
+                "consecutive_losses": 0,
+                "balance": 0.0,
+                "currency": None,
+                "active": True
+            })
+            
+            # Start Process
+            process = multiprocessing.Process(
+                target=run_trade_session,
+                args=(config, stats, stop_event)
+            )
+            process.start()
+            
+            self.sessions[config.email] = {
+                "process": process,
+                "stop_event": stop_event,
+                "stats": stats
+            }
+            
+            return True, "Started"
 
     def stop_trading(self, email):
-        if email in self.sessions:
-            self.sessions[email].stop()
-            return True, "Stopped"
-        return False, "No active session"
+        with self.lock:
+            if email in self.sessions:
+                proc_info = self.sessions[email]
+                proc_info["stop_event"].set()
+                # We don't join here to avoid blocking response, 
+                # but we could update 'active' in stats immediately
+                proc_info["stats"]["active"] = False
+                return True, "Stopped"
+            return False, "No active session"
 
     def get_status(self, email):
-        if email in self.sessions:
-            return self.sessions[email].stats
-        return None
+        with self.lock:
+            if email in self.sessions:
+                proc_info = self.sessions[email]
+                stats = dict(proc_info["stats"]) # Convert Proxy to dict
+                
+                # Check if process is still alive
+                is_alive = proc_info["process"].is_alive()
+                stats['active'] = is_alive and not proc_info["stop_event"].is_set()
+                
+                return stats
+            return {}
 
 trade_manager = TradeManager.get_instance()

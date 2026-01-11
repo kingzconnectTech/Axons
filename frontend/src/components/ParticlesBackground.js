@@ -1,7 +1,9 @@
 import React, { useEffect } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
+import { useTheme } from 'react-native-paper';
 
 const Particle = () => {
+  const theme = useTheme();
   const anim = React.useRef(new Animated.Value(0)).current;
   const randomDelay = Math.random() * 2000;
   const duration = Math.random() * 3000 + 4000;
@@ -39,6 +41,8 @@ const Particle = () => {
     outputRange: [0.2, 0.6, 0.2]
   });
 
+  const particleColor = theme.dark ? 'rgba(255,255,255,0.4)' : 'rgba(0, 50, 70, 0.15)';
+
   return (
     <Animated.View
       style={{
@@ -48,7 +52,7 @@ const Particle = () => {
         width: size,
         height: size,
         borderRadius: size / 2,
-        backgroundColor: 'rgba(255,255,255,0.4)',
+        backgroundColor: particleColor,
         transform: [{ translateY }],
         opacity
       }}

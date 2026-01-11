@@ -10,15 +10,31 @@ def get_prices(pairs: str = "EURUSD-OTC,GBPUSD-OTC,USDJPY-OTC,NZDUSD-OTC"):
     results = {}
     for pair in pair_list:
         try:
-            # Get 1 candle (current minute) to get the close price
-            # Timeframe 1 min
-            candles = iq_manager.get_candles(pair, 1, 1) 
-            if candles and len(candles) > 0:
-                results[pair] = candles[-1]['close']
-            else:
-                 results[pair] = 0.0
+            # Get current price (1 min timeframe)
+            candles_current = iq_manager.get_candles(pair, 1, 1)
+            
+            # Get daily open price (1440 min = 1 day timeframe)
+            # This returns the current day's candle, where 'open' is the day's open price
+            candles_day = iq_manager.get_candles(pair, 1440, 1)
+            
+            price = 0.0
+            change = 0.0
+            
+            if candles_current and len(candles_current) > 0:
+                price = candles_current[-1]['close']
+                
+                if candles_day and len(candles_day) > 0:
+                    open_price = candles_day[-1]['open']
+                    if open_price > 0:
+                        change = ((price - open_price) / open_price) * 100
+            
+            results[pair] = {
+                "price": price,
+                "change": change
+            }
+            
         except Exception as e:
             print(f"Error fetching price for {pair}: {e}")
-            results[pair] = 0.0
+            results[pair] = {"price": 0.0, "change": 0.0}
             
     return results

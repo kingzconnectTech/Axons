@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Animated, Dimensions, TouchableOpacity } from 'react-native';
-import { Button, Text, TextInput, Chip, ActivityIndicator, useTheme, Surface } from 'react-native-paper';
+import { Button, Text, TextInput, Chip, ActivityIndicator, useTheme, Surface, Snackbar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
 import { API_URLS } from '../config';
 import ParticlesBackground from '../components/ParticlesBackground';
 import SelectionModal from '../components/SelectionModal';
+import { sendSignalNotification } from '../services/NotificationService';
 
 const API_URL = API_URLS.SIGNALS;
 const { width } = Dimensions.get('window');
@@ -15,26 +16,28 @@ export default function SignalsScreen() {
   const theme = useTheme();
   const [pair, setPair] = useState('EURUSD-OTC');
   const [timeframe, setTimeframe] = useState(1);
-  const [strategy, setStrategy] = useState('RSI Reversal');
+  const [strategy, setStrategy] = useState('RSI + Support & Resistance Reversal');
   const [signal, setSignal] = useState(null);
   const [loading, setLoading] = useState(false);
   const [streaming, setStreaming] = useState(false);
-  const [streamStats, setStreamStats] = useState({ total: 0, wins: 0, losses: 0, accuracy: 0 });
+  const [streamStats, setStreamStats] = useState({ total: 0 });
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [lastSignalAction, setLastSignalAction] = useState('');
 
   const [pairModalVisible, setPairModalVisible] = useState(false);
   const [strategyModalVisible, setStrategyModalVisible] = useState(false);
   const [timeframeModalVisible, setTimeframeModalVisible] = useState(false);
 
   const otcPairs = ['EURUSD-OTC', 'GBPUSD-OTC', 'USDJPY-OTC', 'NZDUSD-OTC', 'AUDUSD-OTC'];
-  const strategies = ['RSI Reversal', 'SMA Trend'];
-  const timeframes = [1, 5, 15];
+  const strategies = ['RSI + Support & Resistance Reversal'];
+  const timeframes = [1, 2, 3, 4, 5, 15];
 
   useEffect(() => {
     let interval;
     if (streaming) {
       // Initial fetch
       handleAnalyze(true);
-      // Poll every 5 seconds
+      // Poll every 5 seconds (Reduced frequency to avoid rate limits if user leaves it running)
       interval = setInterval(() => {
         handleAnalyze(true);
       }, 5000);
@@ -53,20 +56,23 @@ export default function SignalsScreen() {
       setSignal(response.data);
       
       if (isStream) {
-        // Simulate updating stats based on signal (mock logic since backend might not return result immediately)
-        // In a real app, you'd fetch stats from backend or accumulate them
-        setStreamStats(prev => {
-          const isWin = Math.random() > 0.5; // Mock outcome
-          const newWins = isWin ? prev.wins + 1 : prev.wins;
-          const newLosses = !isWin ? prev.losses + 1 : prev.losses;
-          const newTotal = prev.total + 1;
-          return {
-            total: newTotal,
-            wins: newWins,
-            losses: newLosses,
-            accuracy: (newWins / newTotal) * 100
-          };
-        });
+        // Only record valid trades (CALL/PUT)
+        if (response.data.action === 'CALL' || response.data.action === 'PUT') {
+          // Trigger Notifications
+          sendSignalNotification(pair, response.data.action, response.data.confidence);
+          setLastSignalAction(response.data.action);
+          setSnackbarVisible(true);
+
+          setStreamStats(prev => {
+            const newTotal = prev.total + 1;
+            // Since we can't know result instantly, we just track "Signals Found"
+            // For now, let's reset wins/losses logic to just count total signals found
+            return {
+              ...prev,
+              total: newTotal
+            };
+          });
+        }
       }
     } catch (error) {
       console.error(error);
@@ -81,7 +87,7 @@ export default function SignalsScreen() {
       setStreaming(false);
     } else {
       setStreaming(true);
-      setStreamStats({ total: 0, wins: 0, losses: 0, accuracy: 0 });
+      setStreamStats({ total: 0 });
     }
   };
 
@@ -108,7 +114,7 @@ export default function SignalsScreen() {
         {streaming && (
           <Surface style={[styles.dashboardCard, { shadowColor: theme.colors.primary }]} elevation={4}>
             <LinearGradient
-               colors={['#1B3B2F', '#161B29']}
+               colors={theme.dark ? ['#1B3B2F', '#161B29'] : ['#E0F7FA', '#FFFFFF']}
                style={styles.cardGradient}
             >
               <View style={styles.dashboardHeader}>
@@ -116,29 +122,19 @@ export default function SignalsScreen() {
                   <View style={[styles.statusDot, { backgroundColor: '#00E676', shadowColor: '#00E676', shadowRadius: 8, shadowOpacity: 0.8 }]} />
                   <Text variant="titleMedium" style={{ marginLeft: 12, color: theme.colors.onSurface, fontWeight: 'bold' }}>STREAM ACTIVE</Text>
                 </View>
-                <Surface style={{ borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, backgroundColor: 'rgba(255,255,255,0.1)' }}>
+                <Surface style={{ borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, backgroundColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }}>
                    <Text variant="labelSmall" style={{ color: theme.colors.secondary, fontWeight: 'bold' }}>LIVE</Text>
                 </Surface>
               </View>
               
               <View style={styles.statsGrid}>
                 <View style={styles.statItem}>
-                  <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>ACCURACY</Text>
-                  <Text variant="headlineSmall" style={{ color: streamStats.accuracy >= 50 ? '#00E676' : theme.colors.error, fontWeight: 'bold' }}>
-                    {streamStats.accuracy.toFixed(1)}%
-                  </Text>
+                  <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>SIGNALS FOUND</Text>
+                  <Text variant="headlineLarge" style={{ color: theme.colors.primary, fontWeight: 'bold' }}>{streamStats.total}</Text>
                 </View>
                 <View style={styles.statItem}>
-                  <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>TOTAL SIGNALS</Text>
-                  <Text variant="titleLarge" style={{ color: theme.colors.primary, fontWeight: 'bold' }}>{streamStats.total}</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>WINS</Text>
-                  <Text variant="titleLarge" style={{ color: '#00E676', fontWeight: 'bold' }}>{streamStats.wins}</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>LOSSES</Text>
-                  <Text variant="titleLarge" style={{ color: theme.colors.error, fontWeight: 'bold' }}>{streamStats.losses}</Text>
+                  <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>STATUS</Text>
+                  <Text variant="titleLarge" style={{ color: '#00E676', fontWeight: 'bold' }}>SCANNING</Text>
                 </View>
               </View>
             </LinearGradient>
@@ -148,7 +144,7 @@ export default function SignalsScreen() {
         {/* Configuration Panel */}
         <Surface style={styles.card} elevation={4}>
           <LinearGradient
-            colors={['#252D40', '#1F2636']}
+            colors={theme.dark ? ['#252D40', '#1F2636'] : ['#FFFFFF', '#F5F7FA']}
             style={styles.cardGradient}
           >
             <View style={styles.cardHeader}>
@@ -167,7 +163,7 @@ export default function SignalsScreen() {
                   mode="outlined"
                   editable={false}
                   style={styles.input}
-                  theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }}
+                  theme={{ colors: { outline: theme.dark ? '#3E4C69' : theme.colors.outline, background: theme.dark ? '#161B29' : theme.colors.surface } }}
                   textColor={theme.colors.onSurface}
                   right={<TextInput.Icon icon="chevron-down" color={theme.colors.onSurfaceVariant} />}
                 />
@@ -178,11 +174,11 @@ export default function SignalsScreen() {
                 <TouchableOpacity onPress={() => setTimeframeModalVisible(true)} style={styles.half}>
                   <TextInput
                     label="Timeframe"
-                    value={`${timeframe}m`}
+                    value={timeframe === 0 ? 'Auto' : (timeframe === 0.5 ? '30s' : `${timeframe}m`)}
                     mode="outlined"
                     editable={false}
                     style={styles.input}
-                    theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }}
+                    theme={{ colors: { outline: theme.dark ? '#3E4C69' : theme.colors.outline, background: theme.dark ? '#161B29' : theme.colors.surface } }}
                     textColor={theme.colors.onSurface}
                     right={<TextInput.Icon icon="chevron-down" color={theme.colors.onSurfaceVariant} />}
                   />
@@ -196,7 +192,7 @@ export default function SignalsScreen() {
                     mode="outlined"
                     editable={false}
                     style={styles.input}
-                    theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }}
+                    theme={{ colors: { outline: theme.dark ? '#3E4C69' : theme.colors.outline, background: theme.dark ? '#161B29' : theme.colors.surface } }}
                     textColor={theme.colors.onSurface}
                     right={<TextInput.Icon icon="chevron-down" color={theme.colors.onSurfaceVariant} />}
                   />
@@ -292,7 +288,7 @@ export default function SignalsScreen() {
         visible={timeframeModalVisible}
         onClose={() => setTimeframeModalVisible(false)}
         title="Select Timeframe"
-        options={timeframes.map(t => ({ label: `${t} Minutes`, value: t, icon: 'clock-outline' }))}
+        options={timeframes.map(t => ({ label: t === 0.5 ? '30 Seconds' : `${t} Minutes`, value: t, icon: 'clock-outline' }))}
         value={timeframe}
         onSelect={setTimeframe}
         icon="clock"
@@ -306,6 +302,29 @@ export default function SignalsScreen() {
         onSelect={setStrategy}
         icon="robot-outline"
       />
+
+      {/* In-App Notification Snackbar */}
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={4000}
+        style={{ 
+          backgroundColor: lastSignalAction === 'CALL' ? theme.colors.secondary : theme.colors.error,
+          marginBottom: 20,
+          borderRadius: 12
+        }}
+        action={{
+          label: 'View',
+          onPress: () => {
+            // Already on screen
+          },
+          textColor: 'white'
+        }}
+      >
+        <Text style={{ color: 'white', fontWeight: 'bold' }}>
+          {lastSignalAction} Signal Detected!
+        </Text>
+      </Snackbar>
 
     </ScrollView>
   );

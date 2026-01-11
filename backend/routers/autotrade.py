@@ -29,6 +29,9 @@ def get_status(email: str):
             wins=0,
             losses=0,
             profit=0.0,
-            consecutive_losses=0
+            consecutive_losses=0,
+            balance=0.0,
+            currency=None
         )
-    return TradeStatus(active=True, **stats)
+    # stats now contains 'active' key from TradeManager
+    return TradeStatus(**stats)

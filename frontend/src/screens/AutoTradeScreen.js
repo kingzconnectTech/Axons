@@ -1,27 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, StyleSheet, ScrollView, Dimensions, TouchableOpacity } from 'react-native';
 import { Button, Text, TextInput, Card, SegmentedButtons, useTheme, Surface, Divider, Avatar, Chip } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URLS } from '../config';
 import ParticlesBackground from '../components/ParticlesBackground';
 import SelectionModal from '../components/SelectionModal';
+import { useBot } from '../context/BotContext';
 
 const API_URL = API_URLS.AUTOTRADE;
 const { width } = Dimensions.get('window');
 
 export default function AutoTradeScreen() {
   const theme = useTheme();
+  const { isBotRunning, fetchStatus: refreshGlobalStatus } = useBot();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [accountType, setAccountType] = useState('PRACTICE');
-  const [pair, setPair] = useState('EURUSD-OTC');
+  const [pairs, setPairs] = useState(['EURUSD-OTC']);
   const [amount, setAmount] = useState('1');
   const [timeframe, setTimeframe] = useState('1');
   
   const otcPairs = ['EURUSD-OTC', 'GBPUSD-OTC', 'USDJPY-OTC', 'NZDUSD-OTC', 'AUDUSD-OTC'];
-  const [strategy, setStrategy] = useState('RSI Reversal');
+  const [strategy, setStrategy] = useState('RSI + Support & Resistance Reversal');
   const [stopLoss, setStopLoss] = useState('10');
   const [takeProfit, setTakeProfit] = useState('20');
   const [maxLosses, setMaxLosses] = useState('3');
@@ -29,28 +32,63 @@ export default function AutoTradeScreen() {
   
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [savedCurrency, setSavedCurrency] = useState(null);
 
   // Modal visibility states
   const [pairModalVisible, setPairModalVisible] = useState(false);
   const [strategyModalVisible, setStrategyModalVisible] = useState(false);
   const [timeframeModalVisible, setTimeframeModalVisible] = useState(false);
 
+  const currencySymbol = useMemo(() => {
+    const code = status?.currency || savedCurrency || 'USD';
+    const symbols = {
+      'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥', 'RUB': '₽', 'BRL': 'R$', 'INR': '₹'
+    };
+    return symbols[code] || code;
+  }, [status?.currency, savedCurrency]);
+
   // Options for modals
   const pairOptions = otcPairs.map(p => ({ label: p, value: p, icon: 'currency-usd' }));
   
   const strategyOptions = [
-    { label: 'RSI Reversal', value: 'RSI Reversal', icon: 'chart-bell-curve-cumulative' },
-    { label: 'Bollinger Bands', value: 'Bollinger Bands', icon: 'chart-timeline-variant' },
-    { label: 'MACD Cross', value: 'MACD Cross', icon: 'chart-multiline' },
-    { label: 'MHI', value: 'MHI', icon: 'chart-sankey' },
-    { label: 'AGGRESIVE', value: 'AGGRESIVE', icon: 'flash' }
+    { label: 'RSI + Support & Resistance Reversal', value: 'RSI + Support & Resistance Reversal', icon: 'chart-bell-curve-cumulative' }
   ];
 
   const timeframeOptions = [
+    { label: 'Auto (Best)', value: '0', icon: 'robot' },
+    { label: '30 Seconds', value: '0.5', icon: 'clock-outline' },
     { label: '1 Minute', value: '1', icon: 'clock-outline' },
+    { label: '2 Minutes', value: '2', icon: 'clock-outline' },
+    { label: '3 Minutes', value: '3', icon: 'clock-outline' },
+    { label: '4 Minutes', value: '4', icon: 'clock-outline' },
     { label: '5 Minutes', value: '5', icon: 'clock-outline' },
     { label: '15 Minutes', value: '15', icon: 'clock-outline' }
   ];
+
+  useEffect(() => {
+    const loadCredentials = async () => {
+      try {
+        const savedEmail = await AsyncStorage.getItem('user_email');
+        const savedPassword = await AsyncStorage.getItem('user_password');
+        const savedAmount = await AsyncStorage.getItem('default_amount');
+        const savedCurr = await AsyncStorage.getItem('user_currency');
+        
+        if (savedEmail) setEmail(savedEmail);
+        if (savedPassword) setPassword(savedPassword);
+        if (savedAmount) setAmount(savedAmount);
+        if (savedCurr) setSavedCurrency(savedCurr);
+      } catch (e) {
+        console.log("Failed to load credentials");
+      }
+    };
+    loadCredentials();
+  }, []);
+
+  useEffect(() => {
+    if (email) {
+      fetchStatus();
+    }
+  }, [email]);
 
   useEffect(() => {
     let interval;
@@ -65,6 +103,11 @@ export default function AutoTradeScreen() {
     try {
       const response = await axios.get(`${API_URL}/status/${email}`);
       setStatus(response.data);
+      if (response.data.currency && response.data.currency !== 'USD') {
+        AsyncStorage.setItem('user_currency', response.data.currency);
+        setSavedCurrency(response.data.currency);
+      }
+      refreshGlobalStatus();
     } catch (error) {
       console.log("Status fetch error", error);
     }
@@ -77,9 +120,9 @@ export default function AutoTradeScreen() {
         email,
         password,
         account_type: accountType,
-        pair,
+        pairs,
         amount: parseFloat(amount),
-        timeframe: parseInt(timeframe),
+        timeframe: parseFloat(timeframe),
         strategy,
         stop_loss: parseFloat(stopLoss),
         take_profit: parseFloat(takeProfit),
@@ -129,7 +172,7 @@ export default function AutoTradeScreen() {
         {status && status.active && (
           <Surface style={[styles.dashboardCard, { shadowColor: theme.colors.secondary }]} elevation={4}>
             <LinearGradient
-               colors={['#1B3B2F', '#161B29']}
+               colors={theme.dark ? ['#1B3B2F', '#161B29'] : ['#E0F7FA', '#FFFFFF']}
                style={styles.cardGradient}
             >
               <View style={styles.dashboardHeader}>
@@ -137,8 +180,8 @@ export default function AutoTradeScreen() {
                   <View style={[styles.statusDot, { backgroundColor: '#00E676', shadowColor: '#00E676', shadowRadius: 8, shadowOpacity: 0.8 }]} />
                   <Text variant="titleMedium" style={{ marginLeft: 12, color: theme.colors.onSurface, fontWeight: 'bold' }}>SYSTEM ACTIVE</Text>
                 </View>
-                <Surface style={{ borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, backgroundColor: 'rgba(255,255,255,0.1)' }}>
-                   <Text variant="labelSmall" style={{ color: theme.colors.secondary, fontWeight: 'bold' }}>{accountType}</Text>
+                <Surface style={{ borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, backgroundColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }}>
+                   <Text variant="labelSmall" style={{ color: theme.colors.secondary, fontWeight: 'bold' }}>{accountType} {status.balance > 0 ? `${currencySymbol}${status.balance.toFixed(2)}` : ''}</Text>
                 </Surface>
               </View>
               
@@ -146,7 +189,7 @@ export default function AutoTradeScreen() {
                 <View style={styles.statItem}>
                   <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>PROFIT</Text>
                   <Text variant="headlineSmall" style={{ color: status.profit >= 0 ? '#00E676' : theme.colors.error, fontWeight: 'bold' }}>
-                    ${status.profit.toFixed(2)}
+                    {currencySymbol}{status.profit.toFixed(2)}
                   </Text>
                 </View>
                 <View style={styles.statItem}>
@@ -168,12 +211,12 @@ export default function AutoTradeScreen() {
 
         {/* Account Credentials */}
         <Surface style={styles.card} elevation={2}>
-           <LinearGradient colors={['#252D40', '#1F2636']} style={styles.cardGradient}>
+           <LinearGradient colors={theme.dark ? ['#252D40', '#1F2636'] : ['#FFFFFF', '#F5F7FA']} style={styles.cardGradient}>
             <View style={styles.cardHeader}>
               <View style={[styles.iconBox, { backgroundColor: theme.colors.secondaryContainer }]}>
                  <MaterialCommunityIcons name="account-key" size={24} color={theme.colors.secondary} />
               </View>
-              <Text variant="titleLarge" style={{ color: theme.colors.onSurface, fontWeight: 'bold', marginLeft: 12 }}>Credentials</Text>
+              <Text variant="titleLarge" style={{ color: theme.colors.onSurface, fontWeight: 'bold', marginLeft: 12 }}>IQ Option Credentials</Text>
             </View>
 
             <View style={styles.inputGroup}>
@@ -184,7 +227,7 @@ export default function AutoTradeScreen() {
                 mode="outlined" 
                 style={styles.input}
                 textColor={theme.colors.onSurface}
-                theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }}
+                theme={{ colors: { outline: theme.dark ? '#3E4C69' : theme.colors.outline, background: theme.dark ? '#161B29' : theme.colors.surface } }}
                 left={<TextInput.Icon icon="email" color={theme.colors.onSurfaceVariant} />}
               />
               <TextInput 
@@ -195,7 +238,7 @@ export default function AutoTradeScreen() {
                 mode="outlined" 
                 style={styles.input}
                 textColor={theme.colors.onSurface}
-                theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }}
+                theme={{ colors: { outline: theme.dark ? '#3E4C69' : theme.colors.outline, background: theme.dark ? '#161B29' : theme.colors.surface } }}
                 left={<TextInput.Icon icon="lock" color={theme.colors.onSurfaceVariant} />}
               />
               
@@ -214,11 +257,11 @@ export default function AutoTradeScreen() {
               <TouchableOpacity onPress={() => setPairModalVisible(true)} activeOpacity={0.7}>
                 <View pointerEvents="none">
                   <TextInput
-                    label="Asset"
-                    value={pair}
+                    label="Asset Pairs"
+                    value={pairs.length > 0 ? (pairs.length > 2 ? `${pairs.length} Pairs Selected` : pairs.join(', ')) : 'Select Pairs'}
                     mode="outlined"
                     style={styles.input}
-                    theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }}
+                    theme={{ colors: { outline: theme.dark ? '#3E4C69' : theme.colors.outline, background: theme.dark ? '#161B29' : theme.colors.surface } }}
                     textColor={theme.colors.onSurface}
                     right={<TextInput.Icon icon="chevron-down" />}
                   />
@@ -230,7 +273,7 @@ export default function AutoTradeScreen() {
 
         {/* Strategy & Risk */}
         <Surface style={styles.card} elevation={2}>
-          <LinearGradient colors={['#252D40', '#1F2636']} style={styles.cardGradient}>
+          <LinearGradient colors={theme.dark ? ['#252D40', '#1F2636'] : ['#FFFFFF', '#F5F7FA']} style={styles.cardGradient}>
             <View style={styles.cardHeader}>
               <View style={[styles.iconBox, { backgroundColor: theme.colors.primaryContainer }]}>
                  <MaterialCommunityIcons name="shield-check" size={24} color={theme.colors.primary} />
@@ -241,7 +284,7 @@ export default function AutoTradeScreen() {
             <View style={styles.inputGroup}>
               <View style={styles.row}>
                 <View style={styles.half}>
-                  <TextInput label="Amount ($)" value={amount} onChangeText={setAmount} mode="outlined" style={styles.input} keyboardType="numeric" theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }} textColor={theme.colors.onSurface} />
+                  <TextInput label={`Amount (${currencySymbol})`} value={amount} onChangeText={setAmount} mode="outlined" style={styles.input} keyboardType="numeric" theme={{ colors: { outline: theme.dark ? '#3E4C69' : theme.colors.outline, background: theme.dark ? '#161B29' : theme.colors.surface } }} textColor={theme.colors.onSurface} />
                 </View>
                 <View style={styles.half}>
                   {/* Timeframe Selector */}
@@ -252,7 +295,7 @@ export default function AutoTradeScreen() {
                         value={timeframeOptions.find(t => t.value === timeframe)?.label || timeframe}
                         mode="outlined"
                         style={styles.input}
-                        theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }}
+                        theme={{ colors: { outline: theme.dark ? '#3E4C69' : theme.colors.outline, background: theme.dark ? '#161B29' : theme.colors.surface } }}
                         textColor={theme.colors.onSurface}
                         right={<TextInput.Icon icon="chevron-down" />}
                       />
@@ -269,7 +312,7 @@ export default function AutoTradeScreen() {
                     value={strategy} 
                     mode="outlined" 
                     style={styles.input} 
-                    theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }}
+                    theme={{ colors: { outline: theme.dark ? '#3E4C69' : theme.colors.outline, background: theme.dark ? '#161B29' : theme.colors.surface } }}
                     textColor={theme.colors.onSurface}
                     right={<TextInput.Icon icon="chevron-down" />}
                   />
@@ -280,13 +323,13 @@ export default function AutoTradeScreen() {
               <Text variant="labelLarge" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12, fontWeight: 'bold' }}>RISK MANAGEMENT</Text>
 
               <View style={styles.row}>
-                <TextInput label="Stop Loss ($)" value={stopLoss} onChangeText={setStopLoss} mode="outlined" style={[styles.input, styles.half]} keyboardType="numeric" theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }} textColor={theme.colors.onSurface} />
-                <TextInput label="Take Profit ($)" value={takeProfit} onChangeText={setTakeProfit} mode="outlined" style={[styles.input, styles.half]} keyboardType="numeric" theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }} textColor={theme.colors.onSurface} />
+                <TextInput label={`Stop Loss (${currencySymbol})`} value={stopLoss} onChangeText={setStopLoss} mode="outlined" style={[styles.input, styles.half]} keyboardType="numeric" theme={{ colors: { outline: theme.dark ? '#3E4C69' : theme.colors.outline, background: theme.dark ? '#161B29' : theme.colors.surface } }} textColor={theme.colors.onSurface} />
+                <TextInput label={`Take Profit (${currencySymbol})`} value={takeProfit} onChangeText={setTakeProfit} mode="outlined" style={[styles.input, styles.half]} keyboardType="numeric" theme={{ colors: { outline: theme.dark ? '#3E4C69' : theme.colors.outline, background: theme.dark ? '#161B29' : theme.colors.surface } }} textColor={theme.colors.onSurface} />
               </View>
 
               <View style={styles.row}>
-                <TextInput label="Max Losses" value={maxLosses} onChangeText={setMaxLosses} mode="outlined" style={[styles.input, styles.half]} keyboardType="numeric" theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }} textColor={theme.colors.onSurface} />
-                <TextInput label="Max Trades" value={maxTrades} onChangeText={setMaxTrades} mode="outlined" style={[styles.input, styles.half]} keyboardType="numeric" theme={{ colors: { outline: '#3E4C69', background: '#161B29' } }} textColor={theme.colors.onSurface} />
+                <TextInput label="Max Losses" value={maxLosses} onChangeText={setMaxLosses} mode="outlined" style={[styles.input, styles.half]} keyboardType="numeric" theme={{ colors: { outline: theme.dark ? '#3E4C69' : theme.colors.outline, background: theme.dark ? '#161B29' : theme.colors.surface } }} textColor={theme.colors.onSurface} />
+                <TextInput label="Max Trades" value={maxTrades} onChangeText={setMaxTrades} mode="outlined" style={[styles.input, styles.half]} keyboardType="numeric" theme={{ colors: { outline: theme.dark ? '#3E4C69' : theme.colors.outline, background: theme.dark ? '#161B29' : theme.colors.surface } }} textColor={theme.colors.onSurface} />
               </View>
             </View>
           </LinearGradient>
@@ -326,11 +369,12 @@ export default function AutoTradeScreen() {
       <SelectionModal
         visible={pairModalVisible}
         onClose={() => setPairModalVisible(false)}
-        title="Select Asset"
+        title="Select Asset Pairs"
         options={pairOptions}
-        value={pair}
-        onSelect={setPair}
+        value={pairs}
+        onSelect={setPairs}
         icon="currency-usd"
+        multi={true}
       />
       <SelectionModal
         visible={strategyModalVisible}
