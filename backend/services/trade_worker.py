@@ -2,7 +2,7 @@ import time
 import traceback
 import random
 from services.iq_service import IQSessionManager
-from services.strategy_service import StrategyService
+from services.strategy_service import StrategyService, resample_to_n_minutes
 
 def run_trade_session(config, shared_stats, stop_event):
     """
@@ -76,18 +76,30 @@ def run_trade_session(config, shared_stats, stop_event):
                     selected_tf = target_timeframe
 
                     if target_timeframe == 0:
-                        # Auto-Timeframe: Scan 1m, 2m, 5m
-                        candidate_tfs = [1, 2, 5]
+                        # Auto-Timeframe: Scan 1m, 2m, 3m, 4m, 5m
+                        candidate_tfs = [1, 2, 3, 4, 5]
                         best_analysis = {"action": "NEUTRAL", "confidence": 0}
                         best_tf = 1
                         
                         for tf in candidate_tfs:
-                            candles = iq.get_candles(pair, int(tf * 60), 100, time.time())
-                            if not candles:
-                                print(f"[Worker] No candles for {pair} {tf}m")
-                                continue
-                                
-                            curr_analysis = StrategyService.analyze(pair, candles, config.strategy)
+                            supported_tfs = {1, 2, 5, 15, 60}
+                            if tf in supported_tfs:
+                                candles = iq.get_candles(pair, int(tf * 60), 100, time.time())
+                                if not candles:
+                                    print(f"[Worker] No candles for {pair} {tf}m")
+                                    continue
+                                curr_analysis = StrategyService.analyze(pair, candles, config.strategy)
+                            else:
+                                m1_count = max(180, int(tf) * 80)
+                                m1_candles = iq.get_candles(pair, 60, m1_count, time.time())
+                                if not m1_candles:
+                                    print(f"[Worker] No M1 candles for {pair} to resample {tf}m (auto)")
+                                    continue
+                                mN_candles = resample_to_n_minutes(m1_candles, int(tf))
+                                if not mN_candles or len(mN_candles) < 30:
+                                    print(f"[Worker] Not enough resampled candles for {pair} {tf}m (auto)")
+                                    continue
+                                curr_analysis = StrategyService.analyze(pair, mN_candles, config.strategy)
                             
                             if curr_analysis["action"] in ["CALL", "PUT"] and curr_analysis["confidence"] > best_analysis["confidence"]:
                                 best_analysis = curr_analysis
@@ -96,12 +108,24 @@ def run_trade_session(config, shared_stats, stop_event):
                         analysis = best_analysis
                         selected_tf = best_tf
                     else:
-                        candles = iq.get_candles(pair, int(target_timeframe * 60), 100, time.time())
-                        if not candles:
-                            print(f"[Worker] No candles for {pair} {target_timeframe}m")
-                            continue
-                            
-                        analysis = StrategyService.analyze(pair, candles, config.strategy)
+                        supported_tfs = {1, 2, 5, 15, 60}
+                        if target_timeframe in supported_tfs:
+                            candles = iq.get_candles(pair, int(target_timeframe * 60), 100, time.time())
+                            if not candles:
+                                print(f"[Worker] No candles for {pair} {target_timeframe}m")
+                                continue
+                            analysis = StrategyService.analyze(pair, candles, config.strategy)
+                        else:
+                            m1_count = max(180, int(target_timeframe) * 80)
+                            m1_candles = iq.get_candles(pair, 60, m1_count, time.time())
+                            if not m1_candles:
+                                print(f"[Worker] No M1 candles for {pair} to resample {target_timeframe}m")
+                                continue
+                            mN_candles = resample_to_n_minutes(m1_candles, int(target_timeframe))
+                            if not mN_candles or len(mN_candles) < 30:
+                                print(f"[Worker] Not enough resampled candles for {pair} {target_timeframe}m")
+                                continue
+                            analysis = StrategyService.analyze(pair, mN_candles, config.strategy)
                         
                         # Debug
                         if analysis["action"] != "NEUTRAL":

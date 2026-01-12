@@ -8,7 +8,7 @@ from exponent_server_sdk import (
     PushTicketError,
 )
 from services.iq_service import iq_manager
-from services.strategy_service import StrategyService
+from services.strategy_service import StrategyService, resample_to_n_minutes
 
 class SignalBotManager:
     _instance = None
@@ -77,11 +77,14 @@ class SignalBotManager:
 
         while self.active and not self.stop_event.is_set():
             try:
-                # 1. Fetch Candles
-                candles = iq_manager.get_candles(pair, timeframe)
-                
-                # 2. Analyze
-                result = StrategyService.analyze(pair, candles, strategy)
+                supported = {1, 2, 5, 15, 60}
+                if timeframe in supported:
+                    candles = iq_manager.get_candles(pair, timeframe)
+                    result = StrategyService.analyze(pair, candles, strategy)
+                else:
+                    m1 = iq_manager.get_candles(pair, 1, count=max(120, timeframe * 60))
+                    mN = resample_to_n_minutes(m1, int(timeframe))
+                    result = StrategyService.analyze(pair, mN, strategy)
                 
                 # Update Last Signal
                 self.last_signal = {

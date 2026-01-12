@@ -179,6 +179,26 @@ def resample_to_m5(m1_candles):
         
     return m5_candles
 
+def resample_to_n_minutes(m1_candles, n):
+    mN = []
+    if n <= 1:
+        return m1_candles
+    total = len(m1_candles)
+    remainder = total % n
+    start_idx = remainder
+    for i in range(start_idx, total, n):
+        chunk = m1_candles[i:i+n]
+        if len(chunk) < n:
+            break
+        mN.append({
+            'open': chunk[0]['open'],
+            'close': chunk[-1]['close'],
+            'max': max(c['max'] for c in chunk),
+            'min': min(c['min'] for c in chunk),
+            'volume': sum(c.get('volume', 0) for c in chunk)
+        })
+    return mN
+
 def analyze_otc_mean_reversion(candles):
     """
     OTC Mean Reversion Strategy Logic
