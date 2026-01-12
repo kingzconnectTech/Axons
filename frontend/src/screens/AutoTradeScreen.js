@@ -25,7 +25,13 @@ export default function AutoTradeScreen() {
   
   const otcPairs = ['EURUSD-OTC', 'GBPUSD-OTC', 'EURJPY-OTC', 'AUDCAD-OTC'];
   const [strategy, setStrategy] = useState('RSI + Support & Resistance Reversal');
-  const strategies = ['RSI + Support & Resistance Reversal', 'OTC Mean Reversion', 'OTC Volatility Trap Break–Reclaim', 'Test Execution Strategy'];
+  const strategies = [
+    'RSI + Support & Resistance Reversal',
+    'OTC Mean Reversion',
+    'OTC Volatility Trap Break–Reclaim',
+    'OTC Trend-Pullback Engine Strategy',
+    'Test Execution Strategy'
+  ];
   const [stopLoss, setStopLoss] = useState('10');
   const [takeProfit, setTakeProfit] = useState('20');
   const [maxLosses, setMaxLosses] = useState('3');

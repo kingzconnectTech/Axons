@@ -463,6 +463,86 @@ def analyze_otc_volatility_trap(candles):
 
     return action, min(confidence, 100)
 
+def analyze_otc_trend_pullback(candles):
+    if len(candles) < 60:
+        return "NEUTRAL", 0
+    close_prices = [c['close'] for c in candles]
+    ema20_series = pd.Series(close_prices).ewm(span=20, adjust=False).mean()
+    ema50_series = pd.Series(close_prices).ewm(span=50, adjust=False).mean()
+    rsi_series = calculate_rsi_series(close_prices, 14)
+    upper_band, middle_band, lower_band = calculate_bollinger_bands(close_prices, 20, 2)
+    atr_series = calculate_atr_series(candles, 14)
+    atr_ma_20 = atr_series.rolling(window=20).mean().iloc[-1]
+    idx_confirm = -2
+    idx_pullback = -3
+    ema20_c = ema20_series.iloc[idx_confirm]
+    ema50_c = ema50_series.iloc[idx_confirm]
+    ema20_p = ema20_series.iloc[idx_pullback]
+    ema50_p = ema50_series.iloc[idx_pullback]
+    rsi_pull = rsi_series.iloc[idx_pullback]
+    rsi_prev_pull = rsi_series.iloc[idx_pullback-1] if len(rsi_series) >= abs(idx_pullback-1) else rsi_pull
+    bb_width = upper_band - lower_band
+    bb_width_ma_30 = bb_width.rolling(window=30).mean().iloc[-1]
+    c_confirm = candles[idx_confirm]
+    c_pull = candles[idx_pullback]
+    o_conf = c_confirm['open']
+    c_conf = c_confirm['close']
+    h_conf = c_confirm['max']
+    l_conf = c_confirm['min']
+    o_pull = c_pull['open']
+    c_pull_close = c_pull['close']
+    h_pull = c_pull['max']
+    l_pull = c_pull['min']
+    range_pull = h_pull - l_pull if h_pull != l_pull else 0.00001
+    lower_wick_pull = min(o_pull, c_pull_close) - l_pull
+    upper_wick_pull = h_pull - max(o_pull, c_pull_close)
+    lower_wick_ratio = lower_wick_pull / range_pull
+    upper_wick_ratio = upper_wick_pull / range_pull
+    ema20_c_prev1 = ema20_series.iloc[idx_confirm-1]
+    ema20_c_prev2 = ema20_series.iloc[idx_confirm-2]
+    ema50_c_prev1 = ema50_series.iloc[idx_confirm-1]
+    ema50_c_prev2 = ema50_series.iloc[idx_confirm-2]
+    uptrend = (ema20_c > ema50_c) and (ema20_c > ema20_c_prev1 > ema20_c_prev2) and (ema50_c > ema50_c_prev1 > ema50_c_prev2) and (c_conf > ema20_c)
+    downtrend = (ema20_c < ema50_c) and (ema20_c < ema20_c_prev1 < ema20_c_prev2) and (ema50_c < ema50_c_prev1 < ema50_c_prev2) and (c_conf < ema20_c)
+    if bb_width.iloc[idx_confirm] < 0.8 * bb_width_ma_30:
+        return "NEUTRAL", 0
+    if atr_series.iloc[idx_confirm] > atr_ma_20 * 1.5:
+        return "NEUTRAL", 0
+    fail_count = 0
+    lookback = min(len(candles)-3, 12)
+    for i in range(-lookback, -3):
+        ema20_i = ema20_series.iloc[i]
+        ema20_i_next = ema20_series.iloc[i+1] if (i+1) < 0 else ema20_series.iloc[-1]
+        c_i = candles[i]
+        c_i_next = candles[i+1]
+        touched = (c_i['min'] <= ema20_i) or (c_i['max'] >= ema20_i)
+        failed_up = (c_i['min'] <= ema20_i) and (c_i_next['close'] <= ema20_i_next)
+        failed_down = (c_i['max'] >= ema20_i) and (c_i_next['close'] >= ema20_i_next)
+        if touched and (failed_up or failed_down):
+            fail_count += 1
+    if fail_count >= 2:
+        return "NEUTRAL", 0
+    action = "NEUTRAL"
+    confidence = 0
+    if uptrend:
+        if (l_pull <= ema20_p) and (lower_wick_ratio >= 0.4) and (rsi_pull >= 45) and (c_conf > ema20_c) and (c_pull_close >= ema50_p):
+            action = "CALL"
+            confidence = 85
+            spread = abs(ema20_c - ema50_c)
+            if lower_wick_ratio >= 0.6:
+                confidence += 5
+            if spread > 0 and spread >= (atr_series.iloc[idx_confirm] * 0.3):
+                confidence += 5
+    elif downtrend:
+        if (h_pull >= ema20_p) and (upper_wick_ratio >= 0.4) and (rsi_pull <= 55) and (c_conf < ema20_c) and (c_pull_close <= ema50_p):
+            action = "PUT"
+            confidence = 85
+            spread = abs(ema50_c - ema20_c)
+            if upper_wick_ratio >= 0.6:
+                confidence += 5
+            if spread > 0 and spread >= (atr_series.iloc[idx_confirm] * 0.3):
+                confidence += 5
+    return action, min(confidence, 100)
 
 def analyze_test_execution(candles):
     """
@@ -513,6 +593,13 @@ class StrategyService:
         # ---------------------------------------------------------------------
         if strategy_name == "OTC Volatility Trap Break–Reclaim":
             action, confidence = analyze_otc_volatility_trap(candles)
+            return {"action": action, "confidence": confidence}
+        
+        # ---------------------------------------------------------------------
+        # STRATEGY: OTC Trend-Pullback Engine Strategy
+        # ---------------------------------------------------------------------
+        if strategy_name == "OTC Trend-Pullback Engine Strategy":
+            action, confidence = analyze_otc_trend_pullback(candles)
             return {"action": action, "confidence": confidence}
 
         # ---------------------------------------------------------------------

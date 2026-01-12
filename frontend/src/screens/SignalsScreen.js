@@ -29,7 +29,12 @@ export default function SignalsScreen() {
   const [timeframeModalVisible, setTimeframeModalVisible] = useState(false);
 
   const otcPairs = ['EURUSD-OTC', 'GBPUSD-OTC', 'EURJPY-OTC', 'AUDCAD-OTC'];
-  const strategies = ['RSI + Support & Resistance Reversal', 'OTC Mean Reversion', 'OTC Volatility Trap Break–Reclaim'];
+  const strategies = [
+    'RSI + Support & Resistance Reversal',
+    'OTC Mean Reversion',
+    'OTC Volatility Trap Break–Reclaim',
+    'OTC Trend-Pullback Engine Strategy'
+  ];
   const timeframes = [1, 2, 3, 4, 5, 15];
 
   useEffect(() => {

@@ -3,11 +3,11 @@
     "name": "Axon",
     "slug": "axon",
     "version": "1.0.0",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/Axon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/intro.gif",
       "resizeMode": "contain",
       "backgroundColor": "#0A0E17"
     },
@@ -18,7 +18,7 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.axon.trading",
+      "package": "com.axon.techboi",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0A0E17"

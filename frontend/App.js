@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { StatusBar } from 'react-native';
+import { Image, StatusBar, StyleSheet, View } from 'react-native';
 import { NavigationContainer, DarkTheme as NavDarkTheme, DefaultTheme as NavDefaultTheme } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Provider as PaperProvider, MD3DarkTheme, MD3LightTheme, adaptNavigationTheme } from 'react-native-paper';
@@ -90,10 +90,16 @@ const customLightTheme = {
 
 export default function App() {
   const [isDark, setIsDark] = useState(true);
+  const [showIntro, setShowIntro] = useState(true);
 
   useEffect(() => {
     loadThemePreference();
     registerForPushNotificationsAsync();
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowIntro(false), 3000);
+    return () => clearTimeout(timer);
   }, []);
 
   const loadThemePreference = async () => {
@@ -125,37 +131,58 @@ export default function App() {
   return (
     <ThemeContext.Provider value={themeContext}>
       <BotProvider>
-        <PaperProvider theme={theme}>
-          <NavigationContainer theme={theme}>
-            <StatusBar 
-              barStyle={isDark ? "light-content" : "dark-content"} 
-              backgroundColor={theme.colors.background} 
-            />
-            <Stack.Navigator 
-              initialRouteName="Home"
-              screenOptions={{
-                headerStyle: {
-                  backgroundColor: theme.colors.background,
-                  elevation: 0,
-                  shadowOpacity: 0,
-                  borderBottomWidth: 0,
-                },
-                headerTintColor: theme.colors.onSurface,
-                headerTitleStyle: {
-                  fontWeight: 'bold',
-                  color: theme.colors.onSurface,
-                },
-                cardStyle: { backgroundColor: theme.colors.background }
-              }}
-            >
-              <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-              <Stack.Screen name="Signals" component={SignalsScreen} options={{ title: 'Market Signals' }} />
-              <Stack.Screen name="AutoTrade" component={AutoTradeScreen} options={{ title: 'Auto Trader' }} />
-              <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
-            </Stack.Navigator>
-          </NavigationContainer>
-        </PaperProvider>
+        <View style={styles.root}>
+          <PaperProvider theme={theme}>
+            <NavigationContainer theme={theme}>
+              <StatusBar 
+                barStyle={isDark ? "light-content" : "dark-content"} 
+                backgroundColor={theme.colors.background} 
+              />
+              <Stack.Navigator 
+                initialRouteName="Home"
+                screenOptions={{
+                  headerStyle: {
+                    backgroundColor: theme.colors.background,
+                    elevation: 0,
+                    shadowOpacity: 0,
+                    borderBottomWidth: 0,
+                  },
+                  headerTintColor: theme.colors.onSurface,
+                  headerTitleStyle: {
+                    fontWeight: 'bold',
+                    color: theme.colors.onSurface,
+                  },
+                  cardStyle: { backgroundColor: theme.colors.background }
+                }}
+              >
+                <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+                <Stack.Screen name="Signals" component={SignalsScreen} options={{ title: 'Market Signals' }} />
+                <Stack.Screen name="AutoTrade" component={AutoTradeScreen} options={{ title: 'Auto Trader' }} />
+                <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
+              </Stack.Navigator>
+            </NavigationContainer>
+          </PaperProvider>
+          {showIntro && (
+            <View style={styles.introOverlay}>
+              <Image source={require('./assets/intro.gif')} style={styles.introImage} resizeMode="contain" />
+            </View>
+          )}
+        </View>
       </BotProvider>
     </ThemeContext.Provider>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+  introOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#0A0E17',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  introImage: {
+    width: '100%',
+    height: '100%',
+  },
+});
