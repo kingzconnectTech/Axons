@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Animated, Dimensions, TouchableOpacity } from 'react-native';
 import { Button, Text, TextInput, Chip, ActivityIndicator, useTheme, Surface, Snackbar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -7,105 +7,103 @@ import axios from 'axios';
 import { API_URLS } from '../config';
 import ParticlesBackground from '../components/ParticlesBackground';
 import SelectionModal from '../components/SelectionModal';
-import { sendSignalNotification } from '../services/NotificationService';
-import { useBot } from '../context/BotContext';
+import { registerForPushNotificationsAsync } from '../services/NotificationService';
 
 const API_URL = API_URLS.SIGNALS;
-const AUTOTRADE_URL = API_URLS.AUTOTRADE;
 const { width } = Dimensions.get('window');
-
-// Default credentials for Signals Mode (Paper Trading)
-const DEFAULT_EMAIL = "prosperousdellahs@gmail.com";
-const DEFAULT_PASSWORD = "Prosperous911@";
 
 export default function SignalsScreen() {
   const theme = useTheme();
-  const { isBotRunning, botStats, setEmail, fetchStatus } = useBot();
-  
   const [pair, setPair] = useState('EURUSD-OTC');
   const [timeframe, setTimeframe] = useState(1);
   const [strategy, setStrategy] = useState('RSI + Support & Resistance Reversal');
-  
   const [signal, setSignal] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [streaming, setStreaming] = useState(false);
+  const [streamStats, setStreamStats] = useState({ total: 0 });
   const [snackbarVisible, setSnackbarVisible] = useState(false);
-  
-  // Track last processed signal timestamp to avoid duplicates
-  const lastSignalTimeRef = useRef(0);
+  const [lastSignalAction, setLastSignalAction] = useState('');
 
   const [pairModalVisible, setPairModalVisible] = useState(false);
   const [strategyModalVisible, setStrategyModalVisible] = useState(false);
   const [timeframeModalVisible, setTimeframeModalVisible] = useState(false);
 
-  const otcPairs = ['EURUSD-OTC', 'GBPUSD-OTC', 'USDJPY-OTC', 'NZDUSD-OTC', 'AUDUSD-OTC'];
-  const strategies = ['RSI + Support & Resistance Reversal'];
+  const otcPairs = ['EURUSD-OTC', 'GBPUSD-OTC', 'EURJPY-OTC', 'AUDCAD-OTC'];
+  const strategies = ['RSI + Support & Resistance Reversal', 'OTC Mean Reversion', 'OTC Volatility Trap Break–Reclaim'];
   const timeframes = [1, 2, 3, 4, 5, 15];
 
-  // Watch for bot stats updates (Persistent Signals)
   useEffect(() => {
-    if (botStats && botStats.last_signal) {
-      const sig = botStats.last_signal;
-      
-      // Check if this is a new signal
-      if (sig.timestamp > lastSignalTimeRef.current) {
-        lastSignalTimeRef.current = sig.timestamp;
-        
-        // Update UI
-        setSignal({
-          action: sig.action,
-          confidence: sig.confidence,
-          pair: sig.pair
-        });
-        
-        // Notify
-        sendSignalNotification(sig.pair, sig.action, sig.confidence);
-        setSnackbarVisible(true);
-      }
-    }
-  }, [botStats]);
+    // Check initial status
+    checkStatus();
+    
+    // Poll status periodically (to keep UI in sync if backend is running)
+    const statusInterval = setInterval(checkStatus, 3000); // 3s poll
+    
+    return () => clearInterval(statusInterval);
+  }, []);
 
-  const handleStartStream = async () => {
-    setLoading(true);
+  const checkStatus = async () => {
     try {
-      // 1. Set Context Email (triggers background polling)
-      setEmail(DEFAULT_EMAIL);
-      
-      // 2. Start Backend Session (Paper Mode)
-      const config = {
-        email: DEFAULT_EMAIL,
-        password: DEFAULT_PASSWORD,
-        account_type: "PRACTICE",
-        pairs: [pair],
-        amount: 1, // Dummy amount
-        timeframe: timeframe,
-        strategy: strategy,
-        stop_loss: 0,
-        take_profit: 0,
-        max_consecutive_losses: 10,
-        max_trades: 1000,
-        paper_trade: true // Enable Signals Only Mode
-      };
-      
-      await axios.post(`${AUTOTRADE_URL}/start`, config);
-      
-      // Force immediate status fetch
-      fetchStatus();
-      
+      const response = await axios.get(`${API_URL}/status`);
+      if (response.data.active) {
+        setStreaming(true);
+        // Sync stats/last signal if available
+        if (response.data.last_signal) {
+            setSignal(response.data.last_signal);
+            // If it's a new signal we haven't seen? 
+            // The backend handles notifications now.
+            // Just update UI.
+        }
+        setStreamStats(response.data.stats);
+      } else {
+        setStreaming(false);
+      }
     } catch (error) {
-      console.error("Failed to start stream:", error);
-      alert(error.response?.data?.detail || "Failed to start signals stream");
-    } finally {
-      setLoading(false);
+      console.log("Status check failed", error);
     }
   };
 
-  const handleStopStream = async () => {
+  const toggleStream = async () => {
+    if (streaming) {
+      // Stop
+      try {
+        await axios.post(`${API_URL}/stop`);
+        setStreaming(false);
+      } catch (e) {
+        alert('Failed to stop stream');
+      }
+    } else {
+      // Start
+      try {
+        const token = await registerForPushNotificationsAsync();
+        await axios.post(`${API_URL}/start`, {
+            pair,
+            timeframe,
+            strategy,
+            push_token: token
+        });
+        setStreaming(true);
+        setStreamStats({ total: 0 });
+      } catch (e) {
+        console.error(e);
+        alert('Failed to start stream');
+      }
+    }
+  };
+
+  const handleAnalyze = async () => {
+    // Manual analysis (when not streaming)
     setLoading(true);
     try {
-      await axios.post(`${AUTOTRADE_URL}/stop/${DEFAULT_EMAIL}`);
-      fetchStatus();
+      const response = await axios.post(`${API_URL}/analyze`, {
+        pair,
+        timeframe,
+        strategy
+      });
+      setSignal(response.data);
     } catch (error) {
       console.error(error);
+      alert('Error fetching signal');
     } finally {
       setLoading(false);
     }
@@ -131,7 +129,7 @@ export default function SignalsScreen() {
       <View style={styles.content}>
 
         {/* Live Stream Dashboard */}
-        {isBotRunning && (
+        {streaming && (
           <Surface style={[styles.dashboardCard, { shadowColor: theme.colors.primary }]} elevation={4}>
             <LinearGradient
                colors={theme.dark ? ['#1B3B2F', '#161B29'] : ['#E0F7FA', '#FFFFFF']}
@@ -150,7 +148,7 @@ export default function SignalsScreen() {
               <View style={styles.statsGrid}>
                 <View style={styles.statItem}>
                   <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>SIGNALS FOUND</Text>
-                  <Text variant="headlineLarge" style={{ color: theme.colors.primary, fontWeight: 'bold' }}>{botStats?.total_trades || 0}</Text>
+                  <Text variant="headlineLarge" style={{ color: theme.colors.primary, fontWeight: 'bold' }}>{streamStats.total}</Text>
                 </View>
                 <View style={styles.statItem}>
                   <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>STATUS</Text>
@@ -219,10 +217,10 @@ export default function SignalsScreen() {
                 </TouchableOpacity>
               </View>
 
-              {!isBotRunning ? (
+              {!streaming ? (
                 <Button 
                   mode="contained" 
-                  onPress={handleStartStream} 
+                  onPress={toggleStream} 
                   loading={loading}
                   style={styles.analyzeButton}
                   contentStyle={{ height: 56 }}
@@ -234,7 +232,7 @@ export default function SignalsScreen() {
               ) : (
                 <Button 
                   mode="contained" 
-                  onPress={handleStopStream} 
+                  onPress={toggleStream} 
                   buttonColor={theme.colors.error}
                   style={styles.stopButton}
                   contentStyle={{ height: 56 }}
@@ -320,17 +318,29 @@ export default function SignalsScreen() {
         options={strategies.map(s => ({ label: s, value: s, icon: 'robot' }))}
         value={strategy}
         onSelect={setStrategy}
-        icon="brain"
+        icon="robot-outline"
       />
 
+      {/* In-App Notification Snackbar */}
       <Snackbar
-         visible={snackbarVisible}
-         onDismiss={() => setSnackbarVisible(false)}
-         duration={4000}
-         style={{ backgroundColor: signal?.action === 'CALL' ? '#1B3B2F' : '#3B1B1B', marginBottom: 20 }}
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={4000}
+        style={{ 
+          backgroundColor: lastSignalAction === 'CALL' ? theme.colors.secondary : theme.colors.error,
+          marginBottom: 20,
+          borderRadius: 12
+        }}
+        action={{
+          label: 'View',
+          onPress: () => {
+            // Already on screen
+          },
+          textColor: 'white'
+        }}
       >
-        <Text style={{ color: '#fff', fontWeight: 'bold' }}>
-           {signal?.action === 'CALL' ? '🟢 CALL' : '🔴 PUT'} Signal Detected on {signal?.pair}
+        <Text style={{ color: 'white', fontWeight: 'bold' }}>
+          {lastSignalAction} Signal Detected!
         </Text>
       </Snackbar>
 
@@ -344,51 +354,31 @@ const styles = StyleSheet.create({
   },
   headerGradient: {
     paddingTop: 60,
-    paddingBottom: 30,
+    paddingBottom: 40,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
+    overflow: 'hidden',
   },
   headerContent: {
     alignItems: 'center',
   },
   content: {
-    padding: 20,
+    padding: 16,
     marginTop: -20,
   },
   card: {
-    borderRadius: 20,
-    marginBottom: 20,
-    overflow: 'hidden',
-  },
-  dashboardCard: {
-    borderRadius: 20,
-    marginBottom: 20,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(0,230,118,0.3)',
-  },
-  resultCard: {
     borderRadius: 24,
     marginBottom: 20,
     overflow: 'hidden',
+    elevation: 4,
   },
   cardGradient: {
     padding: 20,
   },
-  resultGradient: {
-    padding: 24,
-    alignItems: 'center',
-  },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
-  },
-  dashboardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     marginBottom: 20,
   },
   iconBox: {
@@ -399,41 +389,66 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   inputGroup: {
-    gap: 16,
+    gap: 12,
   },
   input: {
     backgroundColor: 'transparent',
+    fontSize: 14,
   },
   row: {
     flexDirection: 'row',
-    gap: 12,
+    justifyContent: 'space-between',
   },
   half: {
-    flex: 1,
+    width: '48%',
   },
   analyzeButton: {
-    marginTop: 8,
-    borderRadius: 12,
+    marginTop: 16,
+    borderRadius: 16,
+    shadowColor: '#00D1FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+    backgroundColor: '#00D1FF',
   },
   stopButton: {
-    marginTop: 8,
-    borderRadius: 12,
+    marginTop: 16,
+    borderRadius: 16,
+    shadowColor: '#FF5252',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+    backgroundColor: '#FF5252',
+  },
+  resultCard: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  resultGradient: {
+    padding: 24,
+    alignItems: 'center',
   },
   resultHeader: {
     width: '100%',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   signalDisplay: {
     alignItems: 'center',
     width: '100%',
   },
   signalIconRing: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     borderWidth: 4,
     justifyContent: 'center',
     alignItems: 'center',
@@ -442,10 +457,23 @@ const styles = StyleSheet.create({
   confidenceBar: {
     marginTop: 24,
     alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 20,
     width: '100%',
-    padding: 16,
-    backgroundColor: 'rgba(0,0,0,0.2)',
-    borderRadius: 16,
+  },
+  dashboardCard: {
+    borderRadius: 24,
+    marginBottom: 20,
+    overflow: 'hidden',
+    elevation: 6,
+  },
+  dashboardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   statusDot: {
     width: 12,
@@ -454,12 +482,16 @@ const styles = StyleSheet.create({
   },
   statsGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(0,0,0,0.1)',
-    borderRadius: 12,
-    padding: 16,
   },
   statItem: {
+    width: '47%',
+    padding: 16,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 16,
     alignItems: 'center',
-  }
+    justifyContent: 'center',
+  },
 });

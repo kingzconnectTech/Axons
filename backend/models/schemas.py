@@ -6,6 +6,18 @@ class SignalRequest(BaseModel):
     timeframe: int  # in minutes
     strategy: str
 
+class SignalBotStart(BaseModel):
+    pair: str
+    timeframe: int
+    strategy: str
+    push_token: Optional[str] = None
+
+class SignalBotStatus(BaseModel):
+    active: bool
+    params: dict
+    stats: dict
+    last_signal: Optional[dict]
+
 class SignalResponse(BaseModel):
     pair: str
     action: str  # "CALL", "PUT", "NEUTRAL"
@@ -24,7 +36,6 @@ class AutoTradeConfig(BaseModel):
     take_profit: float
     max_consecutive_losses: int
     max_trades: int
-    paper_trade: bool = False
 
 class TradeStatus(BaseModel):
     active: bool
@@ -35,4 +46,3 @@ class TradeStatus(BaseModel):
     consecutive_losses: int
     balance: float = 0.0
     currency: Optional[str] = None
-    last_signal: Optional[dict] = None

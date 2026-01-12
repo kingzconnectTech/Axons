@@ -1,70 +1,114 @@
-import React, { useEffect } from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { View, StyleSheet, Animated, Text, Dimensions, Easing } from 'react-native';
 import { useTheme } from 'react-native-paper';
 
-const Particle = () => {
+const { width, height } = Dimensions.get('window');
+
+const CHARS = 'ﾊﾐﾋｰｳｼﾅﾓﾆｻﾜﾂｵﾘｱﾎﾃﾏｹﾒｴｶｷﾑﾕﾗｾﾈｽﾀﾇﾍ1234567890';
+
+const MatrixStream = ({ x, delay, speed, fontSize, length, containerHeight }) => {
   const theme = useTheme();
-  const anim = React.useRef(new Animated.Value(0)).current;
-  const randomDelay = Math.random() * 2000;
-  const duration = Math.random() * 3000 + 4000;
+  const anim = useRef(new Animated.Value(0)).current;
   
-  // Random static position
-  const left = `${Math.random() * 100}%`;
-  const top = `${Math.random() * 100}%`;
-  const size = Math.random() * 4 + 2; // 2-6px
+  // Generate random string for this stream
+  const streamText = useMemo(() => {
+    return Array(length).fill(0).map(() => CHARS[Math.floor(Math.random() * CHARS.length)]).join('\n');
+  }, [length]);
+
+  const totalDistance = containerHeight + fontSize * length;
+  const duration = (totalDistance / speed) * 1000;
 
   useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.delay(randomDelay),
+    if (containerHeight <= 0) return;
+
+    Animated.sequence([
+      Animated.delay(delay),
+      Animated.loop(
         Animated.timing(anim, {
           toValue: 1,
           duration: duration,
           useNativeDriver: true,
-        }),
-        Animated.timing(anim, {
-          toValue: 0,
-          duration: duration,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, []);
+          easing: Easing.linear
+        })
+      )
+    ]).start();
+  }, [containerHeight, duration, delay]);
 
   const translateY = anim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, -30] // Float up 30px
+    outputRange: [-fontSize * length, containerHeight + fontSize]
   });
 
   const opacity = anim.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [0.2, 0.6, 0.2]
+    inputRange: [0, 0.1, 0.8, 1],
+    outputRange: [0, 1, 1, 0]
   });
 
-  const particleColor = theme.dark ? 'rgba(255,255,255,0.4)' : 'rgba(0, 50, 70, 0.15)';
+  // Matrix green colors
+  const color = theme.dark ? '#00FF41' : '#008F11'; 
+
+  if (containerHeight <= 0) return null;
 
   return (
     <Animated.View
       style={{
         position: 'absolute',
-        left,
-        top,
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        backgroundColor: particleColor,
-        transform: [{ translateY }],
-        opacity
+        left: x,
+        top: 0,
+        opacity,
+        transform: [{ translateY }]
       }}
-    />
+    >
+      <Text style={{ 
+        color, 
+        fontSize, 
+        fontFamily: 'monospace',
+        lineHeight: fontSize,
+        fontWeight: 'bold',
+        textAlign: 'center',
+        textShadowColor: color,
+        textShadowRadius: theme.dark ? 4 : 1,
+        opacity: theme.dark ? 0.8 : 0.4
+      }}>
+        {streamText}
+      </Text>
+    </Animated.View>
   );
 };
 
 const ParticlesBackground = () => {
+  const [containerHeight, setContainerHeight] = useState(0);
+  const fontSize = 14;
+  
+  const streams = useMemo(() => {
+    const items = [];
+    const count = 25; // Number of rain streams
+    for (let i = 0; i < count; i++) {
+        const x = Math.floor(Math.random() * width);
+        const delay = Math.random() * 2000; // Start within 0-2s
+        const speed = Math.floor(Math.random() * 150) + 100; // 100-250 px/s
+        const length = Math.floor(Math.random() * 15) + 5; // 5-20 chars
+        items.push({ key: i, x, delay, speed, length });
+    }
+    return items;
+  }, []);
+
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      {[...Array(25)].map((_, i) => (
-        <Particle key={i} />
+    <View 
+      style={StyleSheet.absoluteFill} 
+      pointerEvents="none"
+      onLayout={(e) => setContainerHeight(e.nativeEvent.layout.height)}
+    >
+      {streams.map(s => (
+        <MatrixStream 
+          key={s.key} 
+          x={s.x} 
+          delay={s.delay} 
+          speed={s.speed} 
+          length={s.length}
+          fontSize={fontSize}
+          containerHeight={containerHeight}
+        />
       ))}
     </View>
   );

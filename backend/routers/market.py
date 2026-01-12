@@ -5,7 +5,7 @@ from typing import List
 router = APIRouter()
 
 @router.get("/prices")
-def get_prices(pairs: str = "EURUSD-OTC,GBPUSD-OTC,USDJPY-OTC,NZDUSD-OTC"):
+def get_prices(pairs: str = "EURUSD-OTC,GBPUSD-OTC,EURJPY-OTC,AUDCAD-OTC"):
     pair_list = pairs.split(",")
     results = {}
     for pair in pair_list:

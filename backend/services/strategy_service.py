@@ -17,6 +17,74 @@ def calculate_sma(prices, period=14):
         return prices[-1]
     return pd.Series(prices).rolling(window=period).mean().iloc[-1]
 
+def calculate_bollinger_bands(prices, period=20, std_dev=2):
+    if len(prices) < period:
+        return pd.Series([0]*len(prices)), pd.Series([0]*len(prices)), pd.Series([0]*len(prices))
+        
+    prices_series = pd.Series(prices)
+    sma = prices_series.rolling(window=period).mean()
+    std = prices_series.rolling(window=period).std()
+    
+    upper = sma + (std * std_dev)
+    lower = sma - (std * std_dev)
+    
+    return upper, sma, lower # sma is middle band
+
+def calculate_ema(prices, period=50):
+    if len(prices) < period:
+        return prices[-1]
+    return pd.Series(prices).ewm(span=period, adjust=False).mean().iloc[-1]
+
+def calculate_atr(candles, period=14):
+    if len(candles) < period + 1:
+        return 0.0001 # Avoid division by zero
+    
+    highs = pd.Series([c['max'] for c in candles])
+    lows = pd.Series([c['min'] for c in candles])
+    closes = pd.Series([c['close'] for c in candles])
+    
+    # TR calculation
+    # TR = max(high-low, abs(high-prev_close), abs(low-prev_close))
+    # Pandas approach
+    prev_closes = closes.shift(1)
+    tr1 = highs - lows
+    tr2 = (highs - prev_closes).abs()
+    tr3 = (lows - prev_closes).abs()
+    
+    tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+    atr = tr.rolling(window=period).mean().iloc[-1]
+    
+    return atr if not pd.isna(atr) else 0.0001
+
+def calculate_atr_series(candles, period=14):
+    """Returns the full ATR series for MA calculation"""
+    if len(candles) < period + 1:
+        return pd.Series([0.0001] * len(candles))
+        
+    highs = pd.Series([c['max'] for c in candles])
+    lows = pd.Series([c['min'] for c in candles])
+    closes = pd.Series([c['close'] for c in candles])
+    
+    prev_closes = closes.shift(1)
+    tr1 = highs - lows
+    tr2 = (highs - prev_closes).abs()
+    tr3 = (lows - prev_closes).abs()
+    
+    tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+    atr_series = tr.rolling(window=period).mean()
+    return atr_series
+
+def calculate_rsi_series(prices, period=14):
+    if len(prices) < period:
+        return pd.Series([50] * len(prices))
+    delta = pd.Series(prices).diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+    
+    rs = gain / loss
+    rsi = 100 - (100 / (1 + rs))
+    return rsi.fillna(50)
+
 def get_candle_features(candle):
     """
     Extracts features from a candle dict:
@@ -111,6 +179,313 @@ def resample_to_m5(m1_candles):
         
     return m5_candles
 
+def analyze_otc_mean_reversion(candles):
+    """
+    OTC Mean Reversion Strategy Logic
+    """
+    if len(candles) < 55: # Need enough for EMA50 + lookback
+        return "NEUTRAL", 0
+        
+    close_prices = [c['close'] for c in candles]
+    
+    # 1. Indicators
+    rsi_series = calculate_rsi_series(close_prices, 14)
+    current_rsi = rsi_series.iloc[-1]
+    prev_rsi = rsi_series.iloc[-2]
+    
+    ema_50 = calculate_ema(close_prices, 50)
+    
+    atr_series = calculate_atr_series(candles, 14)
+    current_atr = atr_series.iloc[-1]
+    
+    # ATR MA(20)
+    # We need the MA of the ATR series
+    atr_ma_20 = atr_series.rolling(window=20).mean().iloc[-1]
+    
+    # Current Candle (Assuming [-1] is the trigger candle)
+    c = candles[-1]
+    open_p = c['open']
+    close_p = c['close']
+    high_p = c['max']
+    low_p = c['min']
+    
+    candle_range = high_p - low_p if high_p != low_p else 0.00001
+    
+    # Wick Ratios
+    # Buy: LowerWick = min(Open, Close) - Low
+    lower_wick = min(open_p, close_p) - low_p
+    lower_wick_ratio = lower_wick / candle_range
+    
+    # Sell: UpperWick = High - max(Open, Close)
+    upper_wick = high_p - max(open_p, close_p)
+    upper_wick_ratio = upper_wick / candle_range
+    
+    # 5-candle lookback (excluding current)
+    # candles[-6:-1] gives the 5 candles before current
+    prev_5_candles = candles[-6:-1]
+    if len(prev_5_candles) < 5:
+        return "NEUTRAL", 0
+        
+    lowest_low_5 = min(x['min'] for x in prev_5_candles)
+    highest_high_5 = max(x['max'] for x in prev_5_candles)
+    
+    action = "NEUTRAL"
+    confidence = 0
+    
+    # --- FILTERS ---
+    # ATR(14) <= ATR_MA(20) (Strict volatility filter from logic)
+    # Also "DO NOT TRADE IF: ATR(14) > ATR_MA(20) * 1.2" (This is looser, so strict one covers it)
+    if current_atr > atr_ma_20:
+        return "NEUTRAL", 0
+        
+    # Spread spike / Candle range spike
+    # "Candle range > 1.5x recent average range"
+    # Recent average range (last 5 candles)
+    recent_ranges = [(x['max'] - x['min']) for x in prev_5_candles]
+    avg_range = sum(recent_ranges) / len(recent_ranges) if recent_ranges else candle_range
+    if candle_range > 1.5 * avg_range:
+        return "NEUTRAL", 0
+
+    # --- BUY (CALL) CONDITIONS ---
+    # 1. RSI <= 28 (Actually "RSI rising after touching <= 28")
+    # Upgrade: RSI Slope check.
+    # Current RSI <= 28 OR (RSI Rising AND recently <= 28)
+    # The prompt says: "Trigger BUY when ALL conditions are TRUE: RSI(14) <= 28 ... BOT UPGRADE: BUY only if RSI is rising after touching <=28"
+    # This implies the TRIGGER happens when RSI is rising.
+    # So: RSI[-1] > RSI[-2] AND (RSI[-1] <= 28 OR RSI[-2] <= 28) ??
+    # Actually, "RSI rising after touching <= 28" usually means RSI turned up.
+    # Let's enforce: Current RSI <= 35 (buffer) AND RSI Rising AND (RSI[-2] <= 28 OR RSI[-3] <= 28)
+    # But strict rules say: "RSI(14) <= 28". 
+    # Let's combine:
+    # Condition: Current RSI <= 28 OR (Current RSI > Prev RSI and Prev RSI <= 28)
+    # Prompt "Trigger BUY when... RSI <= 28" AND "Upgrade: Buy only if RSI is rising".
+    # This means RSI must be <= 28 AND Rising. (Very strict window).
+    # OR it means "RSI was <= 28 recently and now rising".
+    # Given "Mean Reversion", usually catching the bottom.
+    # I will stick to: RSI <= 30 (slightly relaxed) AND Rising (Current > Prev).
+    # STRICT RULE: RSI <= 28. 
+    # UPGRADE: RSI Rising.
+    # So: RSI <= 28 AND RSI > Prev_RSI.
+    
+    rsi_buy_cond = (current_rsi <= 28) and (current_rsi > prev_rsi)
+    
+    if rsi_buy_cond:
+        # 2. Current Low < lowest low of last 5
+        if low_p < lowest_low_5:
+            # 3. Lower wick >= 60%
+            if lower_wick_ratio >= 0.6:
+                # 4. Bullish Rejection (Close > Open)
+                if close_p > open_p:
+                    # 5. Distance from EMA50 >= 0.3 * ATR
+                    # Buy means price is low, so EMA > Close
+                    dist = abs(ema_50 - close_p)
+                    if dist >= (0.3 * current_atr):
+                        action = "CALL"
+                        confidence = 88
+                        
+                        # Boosts
+                        if lower_wick_ratio >= 0.7: confidence += 5
+                        if current_rsi <= 20: confidence += 5
+
+    # --- SELL (PUT) CONDITIONS ---
+    # 1. RSI >= 72 AND Rising (Falling actually)
+    # Upgrade: RSI Falling after touching >= 72
+    # So: RSI >= 72 AND RSI < Prev_RSI
+    
+    rsi_sell_cond = (current_rsi >= 72) and (current_rsi < prev_rsi)
+    
+    if rsi_sell_cond:
+        # 2. Current High > highest high of last 5
+        if high_p > highest_high_5:
+            # 3. Upper wick >= 60%
+            if upper_wick_ratio >= 0.6:
+                # 4. Bearish Rejection (Close < Open)
+                if close_p < open_p:
+                    # 5. Distance from EMA50 >= 0.3 * ATR
+                    dist = abs(close_p - ema_50)
+                    if dist >= (0.3 * current_atr):
+                        action = "PUT"
+                        confidence = 88
+                        
+                        if upper_wick_ratio >= 0.7: confidence += 5
+                        if current_rsi >= 80: confidence += 5
+
+    return action, min(confidence, 100)
+
+def analyze_otc_volatility_trap(candles):
+    """
+    OTC Volatility Trap Break–Reclaim Strategy Logic
+    """
+    if len(candles) < 40:
+        return "NEUTRAL", 0
+        
+    close_prices = [c['close'] for c in candles]
+    
+    # 1. Indicators
+    upper_band, middle_band, lower_band = calculate_bollinger_bands(close_prices, 20, 2)
+    ema_20 = calculate_ema(close_prices, 20)
+    atr_series = calculate_atr_series(candles, 14)
+    atr_ma_20 = atr_series.rolling(window=20).mean().iloc[-1]
+    
+    current_atr = atr_series.iloc[-1]
+    
+    # BB Width
+    bb_width = upper_band - lower_band
+    # 30-period average width
+    bb_width_ma_30 = bb_width.rolling(window=30).mean().iloc[-1]
+    current_bb_width = bb_width.iloc[-1]
+    
+    # RSI for Upgrade
+    rsi = calculate_rsi(close_prices, 14)
+    
+    # Candles
+    # We need:
+    # Breakout Candle ([-2])
+    # Reclaim Candle ([-1])
+    
+    breakout_c = candles[-2]
+    reclaim_c = candles[-1]
+    
+    # Breakout Candle Features
+    breakout_open = breakout_c['open']
+    breakout_close = breakout_c['close']
+    breakout_high = breakout_c['max']
+    breakout_low = breakout_c['min']
+    breakout_range = breakout_high - breakout_low if breakout_high != breakout_low else 0.00001
+    breakout_body = abs(breakout_close - breakout_open)
+    breakout_body_ratio = breakout_body / breakout_range
+    
+    # Reclaim Candle Features
+    reclaim_open = reclaim_c['open']
+    reclaim_close = reclaim_c['close']
+    reclaim_high = reclaim_c['max']
+    reclaim_low = reclaim_c['min']
+    reclaim_range = reclaim_high - reclaim_low if reclaim_high != reclaim_low else 0.00001
+    
+    # --- MARKET CONDITION (NON-NEGOTIABLE) ---
+    # Use index -2 for Reclaim (Latest Closed) and -3 for Breakout to avoid repainting
+    idx_reclaim = -2
+    idx_breakout = -3
+    idx_prev_breakout = -4
+    
+    # 1. BB Width < 30-period average width (Squeeze)
+    # Check at Reclaim time
+    if bb_width.iloc[idx_reclaim] >= bb_width_ma_30:
+        return "NEUTRAL", 0
+        
+    # 2. ATR(14) <= ATR_MA(20)
+    if atr_series.iloc[idx_reclaim] > atr_ma_20:
+        return "NEUTRAL", 0
+        
+    # 3. Price oscillating around EMA 20
+    
+    action = "NEUTRAL"
+    confidence = 0
+    
+    # Define Candles based on shifted indices
+    breakout_c = candles[idx_breakout]
+    reclaim_c = candles[idx_reclaim]
+    prev_breakout_c = candles[idx_prev_breakout]
+
+    # Re-extract features for correct indices
+    breakout_open = breakout_c['open']
+    breakout_close = breakout_c['close']
+    breakout_high = breakout_c['max']
+    breakout_low = breakout_c['min']
+    breakout_range = breakout_high - breakout_low if breakout_high != breakout_low else 0.00001
+    breakout_body = abs(breakout_close - breakout_open)
+    breakout_body_ratio = breakout_body / breakout_range
+    
+    reclaim_open = reclaim_c['open']
+    reclaim_close = reclaim_c['close']
+    reclaim_high = reclaim_c['max']
+    reclaim_low = reclaim_c['min']
+    reclaim_range = reclaim_high - reclaim_low if reclaim_high != reclaim_low else 0.00001
+
+    # --- FILTERS ---
+    # 1. Breakout candle body > 65% of range
+    if breakout_body_ratio > 0.65:
+        return "NEUTRAL", 0
+        
+    # 2. Reclaim candle has no wick
+    reclaim_body = abs(reclaim_close - reclaim_open)
+    reclaim_total_wick = reclaim_range - reclaim_body
+    reclaim_wick_ratio = reclaim_total_wick / reclaim_range
+    if reclaim_wick_ratio < 0.1:
+        return "NEUTRAL", 0
+        
+    # 3. Two band breaks occur without a reclaim
+    prev_breakout_close = prev_breakout_c['close']
+    
+    # EMA Series (Need full series to get historical values)
+    ema_20_series = pd.Series(close_prices).ewm(span=20, adjust=False).mean()
+    ema_val = ema_20_series.iloc[idx_reclaim]
+
+    # --- BUY (CALL) CONDITIONS ---
+    # 1. Candle closes below lower band (Fake breakout)
+    lb_breakout = lower_band.iloc[idx_breakout]
+    lb_reclaim = lower_band.iloc[idx_reclaim]
+    
+    if breakout_close < lb_breakout:
+        # 2. Next candle closes back inside the bands (Reclaim)
+        if reclaim_close > lb_reclaim:
+            # 3. Reclaim candle closes above EMA 20
+            if reclaim_close > ema_val:
+                # 5. Check "Two band breaks" filter
+                if prev_breakout_close < lower_band.iloc[idx_prev_breakout]:
+                    return "NEUTRAL", 0
+                
+                # UPGRADE: RSI < 45 at reclaim
+                if rsi < 45:
+                    action = "CALL"
+                    confidence = 90
+                    if reclaim_close > middle_band.iloc[idx_reclaim]: confidence += 5
+
+    # --- SELL (PUT) CONDITIONS ---
+    # 1. Candle closes above upper band
+    ub_breakout = upper_band.iloc[idx_breakout]
+    ub_reclaim = upper_band.iloc[idx_reclaim]
+    
+    if breakout_close > ub_breakout:
+        # 2. Next candle closes back inside
+        if reclaim_close < ub_reclaim:
+            # 3. Reclaim candle closes below EMA 20
+            if reclaim_close < ema_val:
+                # 4. Check "Two band breaks"
+                if prev_breakout_close > upper_band.iloc[idx_prev_breakout]:
+                    return "NEUTRAL", 0
+                    
+                # UPGRADE: RSI > 55 at reclaim
+                if rsi > 55:
+                    action = "PUT"
+                    confidence = 90
+                    if reclaim_close < middle_band.iloc[idx_reclaim]: confidence += 5
+
+    return action, min(confidence, 100)
+
+
+def analyze_test_execution(candles):
+    """
+    Test Execution Strategy:
+    Simple momentum/reversal logic for verifying execution.
+    Green candle -> CALL
+    Red candle -> PUT
+    Confidence: 99
+    """
+    if len(candles) < 2:
+        return "NEUTRAL", 0
+    
+    last_candle = candles[-2] # Use closed candle
+    open_p = last_candle['open']
+    close_p = last_candle['close']
+    
+    if close_p > open_p:
+        return "CALL", 99
+    elif close_p < open_p:
+        return "PUT", 99
+        
+    return "NEUTRAL", 0
+
 class StrategyService:
     @staticmethod
     def analyze(pair, candles, strategy_name):
@@ -119,6 +494,27 @@ class StrategyService:
 
         close_prices = [c['close'] for c in candles]
         
+        # ---------------------------------------------------------------------
+        # STRATEGY: Test Execution Strategy
+        # ---------------------------------------------------------------------
+        if strategy_name == "Test Execution Strategy":
+            action, confidence = analyze_test_execution(candles)
+            return {"action": action, "confidence": confidence}
+        
+        # ---------------------------------------------------------------------
+        # STRATEGY: OTC Mean Reversion
+        # ---------------------------------------------------------------------
+        if strategy_name == "OTC Mean Reversion":
+            action, confidence = analyze_otc_mean_reversion(candles)
+            return {"action": action, "confidence": confidence}
+
+        # ---------------------------------------------------------------------
+        # STRATEGY: OTC Volatility Trap Break–Reclaim
+        # ---------------------------------------------------------------------
+        if strategy_name == "OTC Volatility Trap Break–Reclaim":
+            action, confidence = analyze_otc_volatility_trap(candles)
+            return {"action": action, "confidence": confidence}
+
         # ---------------------------------------------------------------------
         # STRATEGY: RSI + Support & Resistance Reversal (M1 Binary)
         # ---------------------------------------------------------------------

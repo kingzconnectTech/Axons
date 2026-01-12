@@ -1,10 +1,31 @@
 from fastapi import APIRouter, HTTPException
 from services.iq_service import iq_manager
 from services.strategy_service import StrategyService
-from models.schemas import SignalRequest, SignalResponse
+from services.signal_bot_service import signal_bot_manager
+from models.schemas import SignalRequest, SignalResponse, SignalBotStart, SignalBotStatus
 import time
 
 router = APIRouter()
+
+@router.post("/start")
+def start_signal_stream(data: SignalBotStart):
+    success, msg = signal_bot_manager.start_stream(
+        data.pair, data.timeframe, data.strategy, data.push_token
+    )
+    if not success:
+        raise HTTPException(status_code=400, detail=msg)
+    return {"status": "started", "message": msg}
+
+@router.post("/stop")
+def stop_signal_stream():
+    success, msg = signal_bot_manager.stop_stream()
+    if not success:
+        raise HTTPException(status_code=400, detail=msg)
+    return {"status": "stopped", "message": msg}
+
+@router.get("/status", response_model=SignalBotStatus)
+def get_signal_status():
+    return signal_bot_manager.get_status()
 
 @router.post("/analyze", response_model=SignalResponse)
 def get_signal(request: SignalRequest):

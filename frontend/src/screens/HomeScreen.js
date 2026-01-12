@@ -47,15 +47,15 @@ export default function HomeScreen({ navigation }) {
   const [prices, setPrices] = useState({
     'EURUSD-OTC': { price: 1.0835, change: 0.05 },
     'GBPUSD-OTC': { price: 1.2745, change: -0.12 },
-    'USDJPY-OTC': { price: 145.20, change: 0.23 },
-    'NZDUSD-OTC': { price: 0.6120, change: 0.15 }
+    'EURJPY-OTC': { price: 157.50, change: 0.15 },
+    'AUDCAD-OTC': { price: 0.8950, change: 0.10 }
   });
 
   // Live Market Fetch
   useEffect(() => {
     const fetchPrices = async () => {
       try {
-        const response = await axios.get(`${API_URLS.MARKET}/prices?pairs=EURUSD-OTC,GBPUSD-OTC,USDJPY-OTC,NZDUSD-OTC`);
+        const response = await axios.get(`${API_URLS.MARKET}/prices?pairs=EURUSD-OTC,GBPUSD-OTC,EURJPY-OTC,AUDCAD-OTC`);
         if (response.data && Object.keys(response.data).length > 0) {
            setPrices(response.data);
         }
@@ -161,8 +161,8 @@ export default function HomeScreen({ navigation }) {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tickerContainer}>
           <PriceCard pair="EUR/USD-OTC" data={prices['EURUSD-OTC']} />
           <PriceCard pair="GBP/USD-OTC" data={prices['GBPUSD-OTC']} />
-          <PriceCard pair="USD/JPY-OTC" data={prices['USDJPY-OTC']} />
-          <PriceCard pair="NZD/USD-OTC" data={prices['NZDUSD-OTC']} />
+          <PriceCard pair="EUR/JPY-OTC" data={prices['EURJPY-OTC']} />
+          <PriceCard pair="AUD/CAD-OTC" data={prices['AUDCAD-OTC']} />
         </ScrollView>
       </View>
 

@@ -23,8 +23,9 @@ export default function AutoTradeScreen() {
   const [amount, setAmount] = useState('1');
   const [timeframe, setTimeframe] = useState('1');
   
-  const otcPairs = ['EURUSD-OTC', 'GBPUSD-OTC', 'USDJPY-OTC', 'NZDUSD-OTC', 'AUDUSD-OTC'];
+  const otcPairs = ['EURUSD-OTC', 'GBPUSD-OTC', 'EURJPY-OTC', 'AUDCAD-OTC'];
   const [strategy, setStrategy] = useState('RSI + Support & Resistance Reversal');
+  const strategies = ['RSI + Support & Resistance Reversal', 'OTC Mean Reversion', 'OTC Volatility Trap Break–Reclaim', 'Test Execution Strategy'];
   const [stopLoss, setStopLoss] = useState('10');
   const [takeProfit, setTakeProfit] = useState('20');
   const [maxLosses, setMaxLosses] = useState('3');
@@ -50,9 +51,11 @@ export default function AutoTradeScreen() {
   // Options for modals
   const pairOptions = otcPairs.map(p => ({ label: p, value: p, icon: 'currency-usd' }));
   
-  const strategyOptions = [
-    { label: 'RSI + Support & Resistance Reversal', value: 'RSI + Support & Resistance Reversal', icon: 'chart-bell-curve-cumulative' }
-  ];
+  const strategyOptions = strategies.map(s => ({
+    label: s,
+    value: s,
+    icon: 'chart-bell-curve-cumulative'
+  }));
 
   const timeframeOptions = [
     { label: 'Auto (Best)', value: '0', icon: 'robot' },
