@@ -179,6 +179,8 @@ export default function HomeScreen({ navigation }) {
               color="#4caf50" 
               badge={isBotRunning ? { text: 'RUNNING', color: '#4caf50' } : null}
             />
+            <View style={{ width: 16 }} />
+            <QuickActionCard title="Quick" icon="flash" route="Quick" color="#FF9800" />
         </View>
       </View>
 

@@ -564,6 +564,41 @@ def analyze_otc_trend_pullback(candles):
                 confidence += 5
     return action, min(confidence, 100)
 
+def analyze_quick_2m(candles):
+    """
+    Quick 2M Analysis Strategy
+    Uses 1m candles to predict 2m movement.
+    Trend following based on last few candles.
+    Returns: (action, confidence, reason)
+    """
+    if len(candles) < 5:
+        return "NEUTRAL", 0, "Insufficient data"
+    
+    # Analyze last 3 CLOSED candles (excluding forming one if present, assume -1 is forming)
+    # We use -2, -3, -4 as the confirmed history
+    c1 = candles[-2] # Most recent closed
+    c2 = candles[-3]
+    c3 = candles[-4]
+    
+    def is_green(c): return c['close'] > c['open']
+    def is_red(c): return c['close'] < c['open']
+    def body(c): return abs(c['close'] - c['open'])
+    
+    # Logic: Strong Momentum (3 consecutive candles)
+    if is_green(c1) and is_green(c2) and is_green(c3):
+        # Filter: Sustained momentum (latest body is not tiny compared to previous)
+        if body(c1) > body(c2) * 0.5: 
+             return "CALL", 88, "3 Consecutive Green Candles with strong momentum"
+             
+    if is_red(c1) and is_red(c2) and is_red(c3):
+        if body(c1) > body(c2) * 0.5:
+            return "PUT", 88, "3 Consecutive Red Candles with strong momentum"
+            
+    # Logic: 2 strong candles after consolidation?
+    # Keep it simple for "Quick" analysis as requested.
+    
+    return "NEUTRAL", 0, "No strong trend pattern detected (Side-ways)"
+
 def analyze_test_execution(candles):
     """
     Test Execution Strategy:
@@ -621,6 +656,13 @@ class StrategyService:
         if strategy_name == "OTC Trend-Pullback Engine Strategy":
             action, confidence = analyze_otc_trend_pullback(candles)
             return {"action": action, "confidence": confidence}
+
+        # ---------------------------------------------------------------------
+        # STRATEGY: Quick 2M Strategy
+        # ---------------------------------------------------------------------
+        if strategy_name == "Quick 2M Strategy":
+            action, confidence, reason = analyze_quick_2m(candles)
+            return {"action": action, "confidence": confidence, "reason": reason}
 
         # ---------------------------------------------------------------------
         # STRATEGY: RSI + Support & Resistance Reversal (M1 Binary)

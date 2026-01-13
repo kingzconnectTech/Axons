@@ -12,6 +12,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import SignalsScreen from './src/screens/SignalsScreen';
 import AutoTradeScreen from './src/screens/AutoTradeScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import QuickScreen from './src/screens/QuickScreen';
 
 const Stack = createStackNavigator();
 
@@ -159,6 +160,7 @@ export default function App() {
                 <Stack.Screen name="Signals" component={SignalsScreen} options={{ title: 'Market Signals' }} />
                 <Stack.Screen name="AutoTrade" component={AutoTradeScreen} options={{ title: 'Auto Trader' }} />
                 <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
+                <Stack.Screen name="Quick" component={QuickScreen} />
               </Stack.Navigator>
             </NavigationContainer>
           </PaperProvider>

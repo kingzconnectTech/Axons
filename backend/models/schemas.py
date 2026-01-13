@@ -23,6 +23,7 @@ class SignalResponse(BaseModel):
     action: str  # "CALL", "PUT", "NEUTRAL"
     confidence: float
     timestamp: float
+    reason: Optional[str] = None
 
 class AutoTradeConfig(BaseModel):
     email: str
