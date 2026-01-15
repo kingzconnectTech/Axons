@@ -19,6 +19,7 @@
     },
     "android": {
       "package": "com.axon.techboi",
+      "icon": "./assets/Axon.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/Axon.png",
         "backgroundColor": "#0A0E17"
