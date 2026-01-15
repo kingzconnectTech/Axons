@@ -6,3 +6,4 @@ websockets
 requests
 python-dotenv
 sqlalchemy
+boto3
