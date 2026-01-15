@@ -9,6 +9,7 @@ import { API_URLS } from '../config';
 import ParticlesBackground from '../components/ParticlesBackground';
 import SelectionModal from '../components/SelectionModal';
 import { useBot } from '../context/BotContext';
+import { useInterstitialAd, TestIds } from 'react-native-google-mobile-ads';
 
 const API_URL = API_URLS.AUTOTRADE;
 const { width } = Dimensions.get('window');
@@ -45,6 +46,12 @@ export default function AutoTradeScreen() {
   const [pairModalVisible, setPairModalVisible] = useState(false);
   const [strategyModalVisible, setStrategyModalVisible] = useState(false);
   const [timeframeModalVisible, setTimeframeModalVisible] = useState(false);
+
+  const INTERSTITIAL_UNIT_ID = __DEV__ ? TestIds.INTERSTITIAL : 'ca-app-pub-3940256099942544/1033173712';
+  const interstitial = useInterstitialAd(INTERSTITIAL_UNIT_ID, {
+    requestNonPersonalizedAdsOnly: true,
+  });
+  const [pendingStart, setPendingStart] = useState(false);
 
   const currencySymbol = useMemo(() => {
     const code = status?.currency || savedCurrency || 'USD';
@@ -107,6 +114,20 @@ export default function AutoTradeScreen() {
     return () => clearInterval(interval);
   }, [status?.active]);
 
+  useEffect(() => {
+    interstitial.load();
+  }, [interstitial.load]);
+
+  useEffect(() => {
+    if (pendingStart && interstitial.isClosed) {
+      setPendingStart(false);
+      executeStartTrade();
+      interstitial.load();
+    }
+  }, [pendingStart, interstitial.isClosed, interstitial.load]);
+
+  
+
   const fetchStatus = async () => {
     if (!email) return;
     try {
@@ -122,7 +143,7 @@ export default function AutoTradeScreen() {
     }
   };
 
-  const handleStart = async () => {
+  const executeStartTrade = async () => {
     setLoading(true);
     try {
       await axios.post(`${API_URL}/start`, {
@@ -143,6 +164,16 @@ export default function AutoTradeScreen() {
       alert('Failed to start: ' + (error.response?.data?.detail || error.message));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleStart = () => {
+    if (interstitial.isLoaded) {
+      setPendingStart(true);
+      interstitial.show();
+    } else {
+      executeStartTrade();
+      interstitial.load();
     }
   };
 

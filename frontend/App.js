@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeContext } from './src/context/ThemeContext';
 import { BotProvider } from './src/context/BotContext';
 import { registerForPushNotificationsAsync } from './src/services/NotificationService';
+import mobileAds from 'react-native-google-mobile-ads';
 
 import HomeScreen from './src/screens/HomeScreen';
 import SignalsScreen from './src/screens/SignalsScreen';
@@ -96,6 +97,7 @@ export default function App() {
   useEffect(() => {
     loadThemePreference();
     registerForPushNotificationsAsync();
+    mobileAds().initialize().then(() => {});
   }, []);
 
   useEffect(() => {
@@ -160,7 +162,7 @@ export default function App() {
                 <Stack.Screen name="Signals" component={SignalsScreen} options={{ title: 'Market Signals' }} />
                 <Stack.Screen name="AutoTrade" component={AutoTradeScreen} options={{ title: 'Auto Trader' }} />
                 <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
-                <Stack.Screen name="Quick" component={QuickScreen} />
+                <Stack.Screen name="Quick" component={QuickScreen} options={{ title: 'Flash' }} />
               </Stack.Navigator>
             </NavigationContainer>
           </PaperProvider>

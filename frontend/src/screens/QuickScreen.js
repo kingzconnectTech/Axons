@@ -7,6 +7,7 @@ import axios from 'axios';
 import { API_URLS } from '../config';
 import ParticlesBackground from '../components/ParticlesBackground';
 import SelectionModal from '../components/SelectionModal';
+import AdBanner from '../components/AdBanner';
 
 const { width } = Dimensions.get('window');
 
@@ -93,14 +94,14 @@ export default function QuickScreen({ navigation }) {
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
       <LinearGradient
-        colors={['#FF9800', theme.colors.background]} // Orange gradient for "Quick"
+        colors={['#FF9800', theme.colors.background]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 0.6 }}
         style={styles.headerGradient}
       >
         <ParticlesBackground />
         <View style={styles.headerContent}>
-          <Text variant="headlineMedium" style={styles.headerTitle}>QUICK SCAN</Text>
+          <Text variant="headlineMedium" style={styles.headerTitle}>FLASH SCAN</Text>
           <Text variant="bodyMedium" style={styles.headerSubtitle}>INSTANT 2M PREDICTION</Text>
         </View>
       </LinearGradient>
@@ -167,12 +168,12 @@ export default function QuickScreen({ navigation }) {
               )}
            </TouchableOpacity>
            
-           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, opacity: 0.8 }}>
-              <MaterialCommunityIcons name="check-all" size={16} color={theme.colors.onSurfaceVariant} style={{ marginRight: 6 }} />
-              <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 12, fontWeight: '500' }}>
-                 Tip: Scan twice for best confirmation
+           <Surface style={styles.instructionCard} elevation={1}>
+              <MaterialCommunityIcons name="information" size={20} color="#FF9800" />
+              <Text style={styles.instructionText}>
+                 For best accuracy, scan twice to confirm the signal.
               </Text>
-           </View>
+           </Surface>
         </View>
 
         {/* Result Section */}
@@ -223,8 +224,9 @@ export default function QuickScreen({ navigation }) {
             </TouchableOpacity>
           </Surface>
         )}
-
       </ScrollView>
+
+      <AdBanner />
 
       <SelectionModal
         visible={modalVisible}
@@ -370,5 +372,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     opacity: 0.7,
+  },
+  instructionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#FFF3E0', // Light orange background
+    borderWidth: 1,
+    borderColor: 'rgba(255, 152, 0, 0.2)',
+  },
+  instructionText: {
+    color: '#E65100', // Darker orange text
+    fontSize: 13,
+    fontWeight: '600',
+    marginLeft: 10,
+    flex: 1,
   }
 });

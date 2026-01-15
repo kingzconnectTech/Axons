@@ -7,6 +7,7 @@ import axios from 'axios';
 import { LineChart } from 'react-native-chart-kit';
 
 import ParticlesBackground from '../components/ParticlesBackground';
+import AdBanner from '../components/AdBanner';
 import { API_URLS } from '../config';
 import { useBot } from '../context/BotContext';
 
@@ -17,7 +18,7 @@ const MOCK_CHART_DATA = {
   datasets: [
     {
       data: [1.0830, 1.0835, 1.0832, 1.0838, 1.0834, 1.0836],
-      color: (opacity = 1) => `rgba(33, 150, 243, ${opacity})`, // Blue
+      color: (opacity = 1) => `rgba(33, 150, 243, ${opacity})`,
       strokeWidth: 2
     }
   ]
@@ -50,6 +51,7 @@ export default function HomeScreen({ navigation }) {
     'EURJPY-OTC': { price: 157.50, change: 0.15 },
     'AUDCAD-OTC': { price: 0.8950, change: 0.10 }
   });
+  const [trendData, setTrendData] = useState(MOCK_CHART_DATA.datasets[0].data);
 
   // Live Market Fetch
   useEffect(() => {
@@ -67,6 +69,19 @@ export default function HomeScreen({ navigation }) {
 
     fetchPrices(); // Initial fetch
     const interval = setInterval(fetchPrices, 5000); // Poll every 5s
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTrendData(prev => {
+        const last = prev[prev.length - 1] ?? 1.0835;
+        const change = (Math.random() - 0.5) * 0.0008;
+        const next = Math.max(0, last + change);
+        const sliced = prev.slice(1);
+        return [...sliced, parseFloat(next.toFixed(5))];
+      });
+    }, 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -180,18 +195,24 @@ export default function HomeScreen({ navigation }) {
               badge={isBotRunning ? { text: 'RUNNING', color: '#4caf50' } : null}
             />
             <View style={{ width: 16 }} />
-            <QuickActionCard title="Quick" icon="flash" route="Quick" color="#FF9800" />
+            <QuickActionCard title="Flash" icon="flash" route="Quick" color="#FF9800" />
         </View>
       </View>
 
       {/* Chart Section */}
       <View style={styles.section}>
-         <View style={styles.rowBetween}>
-            <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>Market Trend</Text>
-            <Button mode="text" compact textColor={theme.colors.primary}>View All</Button>
-         </View>
+         <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>Market Trend</Text>
          <LineChart
-            data={MOCK_CHART_DATA}
+            data={{
+              labels: MOCK_CHART_DATA.labels,
+              datasets: [
+                {
+                  data: trendData,
+                  color: (opacity = 1) => `rgba(33, 150, 243, ${opacity})`,
+                  strokeWidth: 2,
+                },
+              ],
+            }}
             width={width - 32}
             height={220}
             yAxisLabel=""
@@ -206,6 +227,7 @@ export default function HomeScreen({ navigation }) {
           />
       </View>
       
+      <AdBanner />
       <View style={{ height: 20 }} />
     </ScrollView>
   );
