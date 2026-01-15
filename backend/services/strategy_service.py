@@ -208,7 +208,6 @@ def analyze_otc_mean_reversion(candles):
         
     close_prices = [c['close'] for c in candles]
     
-    # 1. Indicators
     rsi_series = calculate_rsi_series(close_prices, 14)
     current_rsi = rsi_series.iloc[-1]
     prev_rsi = rsi_series.iloc[-2]
@@ -218,8 +217,6 @@ def analyze_otc_mean_reversion(candles):
     atr_series = calculate_atr_series(candles, 14)
     current_atr = atr_series.iloc[-1]
     
-    # ATR MA(20)
-    # We need the MA of the ATR series
     atr_ma_20 = atr_series.rolling(window=20).mean().iloc[-1]
     
     # Current Candle (Assuming [-1] is the trigger candle)
@@ -252,42 +249,15 @@ def analyze_otc_mean_reversion(candles):
     action = "NEUTRAL"
     confidence = 0
     
-    # --- FILTERS ---
-    # ATR(14) <= ATR_MA(20) (Strict volatility filter from logic)
-    # Also "DO NOT TRADE IF: ATR(14) > ATR_MA(20) * 1.2" (This is looser, so strict one covers it)
-    if current_atr > atr_ma_20:
+    if current_atr > atr_ma_20 * 1.2:
         return "NEUTRAL", 0
         
-    # Spread spike / Candle range spike
-    # "Candle range > 1.5x recent average range"
-    # Recent average range (last 5 candles)
     recent_ranges = [(x['max'] - x['min']) for x in prev_5_candles]
     avg_range = sum(recent_ranges) / len(recent_ranges) if recent_ranges else candle_range
-    if candle_range > 1.5 * avg_range:
+    if candle_range > 1.8 * avg_range:
         return "NEUTRAL", 0
 
-    # --- BUY (CALL) CONDITIONS ---
-    # 1. RSI <= 28 (Actually "RSI rising after touching <= 28")
-    # Upgrade: RSI Slope check.
-    # Current RSI <= 28 OR (RSI Rising AND recently <= 28)
-    # The prompt says: "Trigger BUY when ALL conditions are TRUE: RSI(14) <= 28 ... BOT UPGRADE: BUY only if RSI is rising after touching <=28"
-    # This implies the TRIGGER happens when RSI is rising.
-    # So: RSI[-1] > RSI[-2] AND (RSI[-1] <= 28 OR RSI[-2] <= 28) ??
-    # Actually, "RSI rising after touching <= 28" usually means RSI turned up.
-    # Let's enforce: Current RSI <= 35 (buffer) AND RSI Rising AND (RSI[-2] <= 28 OR RSI[-3] <= 28)
-    # But strict rules say: "RSI(14) <= 28". 
-    # Let's combine:
-    # Condition: Current RSI <= 28 OR (Current RSI > Prev RSI and Prev RSI <= 28)
-    # Prompt "Trigger BUY when... RSI <= 28" AND "Upgrade: Buy only if RSI is rising".
-    # This means RSI must be <= 28 AND Rising. (Very strict window).
-    # OR it means "RSI was <= 28 recently and now rising".
-    # Given "Mean Reversion", usually catching the bottom.
-    # I will stick to: RSI <= 30 (slightly relaxed) AND Rising (Current > Prev).
-    # STRICT RULE: RSI <= 28. 
-    # UPGRADE: RSI Rising.
-    # So: RSI <= 28 AND RSI > Prev_RSI.
-    
-    rsi_buy_cond = (current_rsi <= 28) and (current_rsi > prev_rsi)
+    rsi_buy_cond = (current_rsi <= 32) and (current_rsi > prev_rsi)
     
     if rsi_buy_cond:
         # 2. Current Low < lowest low of last 5
@@ -307,12 +277,7 @@ def analyze_otc_mean_reversion(candles):
                         if lower_wick_ratio >= 0.7: confidence += 5
                         if current_rsi <= 20: confidence += 5
 
-    # --- SELL (PUT) CONDITIONS ---
-    # 1. RSI >= 72 AND Rising (Falling actually)
-    # Upgrade: RSI Falling after touching >= 72
-    # So: RSI >= 72 AND RSI < Prev_RSI
-    
-    rsi_sell_cond = (current_rsi >= 72) and (current_rsi < prev_rsi)
+    rsi_sell_cond = (current_rsi >= 68) and (current_rsi < prev_rsi)
     
     if rsi_sell_cond:
         # 2. Current High > highest high of last 5
@@ -341,7 +306,6 @@ def analyze_otc_volatility_trap(candles):
         
     close_prices = [c['close'] for c in candles]
     
-    # 1. Indicators
     upper_band, middle_band, lower_band = calculate_bollinger_bands(close_prices, 20, 2)
     ema_20 = calculate_ema(close_prices, 20)
     atr_series = calculate_atr_series(candles, 14)
@@ -349,9 +313,7 @@ def analyze_otc_volatility_trap(candles):
     
     current_atr = atr_series.iloc[-1]
     
-    # BB Width
     bb_width = upper_band - lower_band
-    # 30-period average width
     bb_width_ma_30 = bb_width.rolling(window=30).mean().iloc[-1]
     current_bb_width = bb_width.iloc[-1]
     
@@ -382,19 +344,14 @@ def analyze_otc_volatility_trap(candles):
     reclaim_low = reclaim_c['min']
     reclaim_range = reclaim_high - reclaim_low if reclaim_high != reclaim_low else 0.00001
     
-    # --- MARKET CONDITION (NON-NEGOTIABLE) ---
-    # Use index -2 for Reclaim (Latest Closed) and -3 for Breakout to avoid repainting
     idx_reclaim = -2
     idx_breakout = -3
     idx_prev_breakout = -4
     
-    # 1. BB Width < 30-period average width (Squeeze)
-    # Check at Reclaim time
-    if bb_width.iloc[idx_reclaim] >= bb_width_ma_30:
+    if bb_width.iloc[idx_reclaim] >= bb_width_ma_30 * 1.1:
         return "NEUTRAL", 0
         
-    # 2. ATR(14) <= ATR_MA(20)
-    if atr_series.iloc[idx_reclaim] > atr_ma_20:
+    if atr_series.iloc[idx_reclaim] > atr_ma_20 * 1.15:
         return "NEUTRAL", 0
         
     # 3. Price oscillating around EMA 20
@@ -422,16 +379,13 @@ def analyze_otc_volatility_trap(candles):
     reclaim_low = reclaim_c['min']
     reclaim_range = reclaim_high - reclaim_low if reclaim_high != reclaim_low else 0.00001
 
-    # --- FILTERS ---
-    # 1. Breakout candle body > 65% of range
-    if breakout_body_ratio > 0.65:
+    if breakout_body_ratio > 0.75:
         return "NEUTRAL", 0
         
-    # 2. Reclaim candle has no wick
     reclaim_body = abs(reclaim_close - reclaim_open)
     reclaim_total_wick = reclaim_range - reclaim_body
     reclaim_wick_ratio = reclaim_total_wick / reclaim_range
-    if reclaim_wick_ratio < 0.1:
+    if reclaim_wick_ratio < 0.07:
         return "NEUTRAL", 0
         
     # 3. Two band breaks occur without a reclaim
@@ -441,8 +395,6 @@ def analyze_otc_volatility_trap(candles):
     ema_20_series = pd.Series(close_prices).ewm(span=20, adjust=False).mean()
     ema_val = ema_20_series.iloc[idx_reclaim]
 
-    # --- BUY (CALL) CONDITIONS ---
-    # 1. Candle closes below lower band (Fake breakout)
     lb_breakout = lower_band.iloc[idx_breakout]
     lb_reclaim = lower_band.iloc[idx_reclaim]
     
@@ -455,14 +407,11 @@ def analyze_otc_volatility_trap(candles):
                 if prev_breakout_close < lower_band.iloc[idx_prev_breakout]:
                     return "NEUTRAL", 0
                 
-                # UPGRADE: RSI < 45 at reclaim
-                if rsi < 45:
+                if rsi < 50:
                     action = "CALL"
                     confidence = 90
                     if reclaim_close > middle_band.iloc[idx_reclaim]: confidence += 5
 
-    # --- SELL (PUT) CONDITIONS ---
-    # 1. Candle closes above upper band
     ub_breakout = upper_band.iloc[idx_breakout]
     ub_reclaim = upper_band.iloc[idx_reclaim]
     
@@ -475,8 +424,7 @@ def analyze_otc_volatility_trap(candles):
                 if prev_breakout_close > upper_band.iloc[idx_prev_breakout]:
                     return "NEUTRAL", 0
                     
-                # UPGRADE: RSI > 55 at reclaim
-                if rsi > 55:
+                if rsi > 50:
                     action = "PUT"
                     confidence = 90
                     if reclaim_close < middle_band.iloc[idx_reclaim]: confidence += 5
@@ -524,9 +472,9 @@ def analyze_otc_trend_pullback(candles):
     ema50_c_prev2 = ema50_series.iloc[idx_confirm-2]
     uptrend = (ema20_c > ema50_c) and (ema20_c > ema20_c_prev1 > ema20_c_prev2) and (ema50_c > ema50_c_prev1 > ema50_c_prev2) and (c_conf > ema20_c)
     downtrend = (ema20_c < ema50_c) and (ema20_c < ema20_c_prev1 < ema20_c_prev2) and (ema50_c < ema50_c_prev1 < ema50_c_prev2) and (c_conf < ema20_c)
-    if bb_width.iloc[idx_confirm] < 0.8 * bb_width_ma_30:
+    if bb_width.iloc[idx_confirm] < 0.7 * bb_width_ma_30:
         return "NEUTRAL", 0
-    if atr_series.iloc[idx_confirm] > atr_ma_20 * 1.5:
+    if atr_series.iloc[idx_confirm] > atr_ma_20 * 1.8:
         return "NEUTRAL", 0
     fail_count = 0
     lookback = min(len(candles)-3, 12)
@@ -540,12 +488,12 @@ def analyze_otc_trend_pullback(candles):
         failed_down = (c_i['max'] >= ema20_i) and (c_i_next['close'] >= ema20_i_next)
         if touched and (failed_up or failed_down):
             fail_count += 1
-    if fail_count >= 2:
+    if fail_count >= 3:
         return "NEUTRAL", 0
     action = "NEUTRAL"
     confidence = 0
     if uptrend:
-        if (l_pull <= ema20_p) and (lower_wick_ratio >= 0.4) and (rsi_pull >= 45) and (c_conf > ema20_c) and (c_pull_close >= ema50_p):
+        if (l_pull <= ema20_p) and (lower_wick_ratio >= 0.35) and (rsi_pull >= 43) and (c_conf > ema20_c) and (c_pull_close >= ema50_p):
             action = "CALL"
             confidence = 85
             spread = abs(ema20_c - ema50_c)
@@ -554,7 +502,7 @@ def analyze_otc_trend_pullback(candles):
             if spread > 0 and spread >= (atr_series.iloc[idx_confirm] * 0.3):
                 confidence += 5
     elif downtrend:
-        if (h_pull >= ema20_p) and (upper_wick_ratio >= 0.4) and (rsi_pull <= 55) and (c_conf < ema20_c) and (c_pull_close <= ema50_p):
+        if (h_pull >= ema20_p) and (upper_wick_ratio >= 0.35) and (rsi_pull <= 57) and (c_conf < ema20_c) and (c_pull_close <= ema50_p):
             action = "PUT"
             confidence = 85
             spread = abs(ema50_c - ema20_c)
@@ -624,7 +572,7 @@ def analyze_test_execution(candles):
 class StrategyService:
     @staticmethod
     def analyze(pair, candles, strategy_name):
-        if not candles or len(candles) < 30:
+        if not candles or len(candles) < 20:
             return {"action": "NEUTRAL", "confidence": 0}
 
         close_prices = [c['close'] for c in candles]
@@ -727,22 +675,22 @@ class StrategyService:
                               is_near_zone(conf_candle['low'], support_zones)
             
             if touched_support:
-                # 2. RSI <= 35 (Ideal <= 30)
-                if rsi <= 35:
-                    # 3. Indecision Candle (Body <= 30% of range)
-                    if indec_candle['body_ratio'] <= 0.30:
-                        # 4. Bullish Confirmation Candle
-                        # Close > Open
-                        # Body >= 50%
-                        # Close > Indecision Midpoint
+                if rsi <= 45:
+                    if indec_candle['body_ratio'] <= 0.45:
                         if conf_candle['is_bullish'] and \
-                           conf_candle['body_ratio'] >= 0.50 and \
+                           conf_candle['body_ratio'] >= 0.40 and \
                            conf_candle['close'] > indec_candle['midpoint']:
                             
                             action = "CALL"
-                            confidence = 85 # High base confidence
-                            if rsi <= 30: confidence += 5
-                            if conf_candle['close'] > indec_candle['high']: confidence += 5 # Strong engulfing
+                            # Tiered confidence: stronger when RSI is deeper and candles are cleaner
+                            if rsi <= 35 and indec_candle['body_ratio'] <= 0.30 and conf_candle['body_ratio'] >= 0.50:
+                                confidence = 88
+                            else:
+                                confidence = 78
+                            if rsi <= 30:
+                                confidence += 4
+                            if conf_candle['close'] > indec_candle['high']:
+                                confidence += 4
 
             # --- SELL CONDITIONS ---
             # 1. Price enters strong resistance zone
@@ -750,22 +698,21 @@ class StrategyService:
                                  is_near_zone(conf_candle['high'], resistance_zones)
                                  
             if touched_resistance:
-                # 2. RSI >= 65 (Ideal >= 70)
-                if rsi >= 65:
-                    # 3. Indecision Candle
-                    if indec_candle['body_ratio'] <= 0.30:
-                        # 4. Bearish Confirmation Candle
-                        # Close < Open
-                        # Body >= 50%
-                        # Close < Indecision Midpoint
+                if rsi >= 55:
+                    if indec_candle['body_ratio'] <= 0.45:
                         if not conf_candle['is_bullish'] and \
-                           conf_candle['body_ratio'] >= 0.50 and \
+                           conf_candle['body_ratio'] >= 0.40 and \
                            conf_candle['close'] < indec_candle['midpoint']:
                             
                             action = "PUT"
-                            confidence = 85
-                            if rsi >= 70: confidence += 5
-                            if conf_candle['close'] < indec_candle['low']: confidence += 5
+                            if rsi >= 65 and indec_candle['body_ratio'] <= 0.30 and conf_candle['body_ratio'] >= 0.50:
+                                confidence = 88
+                            else:
+                                confidence = 78
+                            if rsi >= 70:
+                                confidence += 4
+                            if conf_candle['close'] < indec_candle['low']:
+                                confidence += 4
 
             # --- FILTERS ---
             # 1. Trend Filter (Reject if RSI stuck in overbought/oversold for multiple candles)
@@ -780,22 +727,15 @@ class StrategyService:
                  # If we have the candle confirmation, we can ignore this, or reduce confidence.
                  pass 
 
-            # 2. M5 Range Confirmation (Optional)
-            # Confirm M5 RSI between 40-60 (Range Bound)
             m5_candles = resample_to_m5(candles)
             if len(m5_candles) >= 14:
                 m5_close = [c['close'] for c in m5_candles]
                 m5_rsi = calculate_rsi(m5_close, 14)
                 
-                # If M5 RSI is clearly trending (>60 or <40), reduce confidence for a range strategy
-                if not (40 <= m5_rsi <= 60):
-                     # If we are betting on Reversal, maybe extreme M5 RSI is okay?
-                     # User said: "Confirm M5 RSI between 40–60 (range confirmation)"
-                     # This implies we ONLY want to trade when the higher timeframe is RANGING.
-                     # So if M5 is trending (e.g. 70), M1 reversals might fail.
-                     confidence -= 20 # Penalize heavily if not in range
+                if not (35 <= m5_rsi <= 65):
+                     confidence -= 10
                 else:
-                     confidence += 5 # Boost if confirmed range
+                     confidence += 3
 
             return {
                 "action": action, 
