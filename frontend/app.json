@@ -37,16 +37,6 @@
           }
         }
       ]
-    ]
-  },
-  "react-native-google-mobile-ads": {
-    "android_app_id": "ca-app-pub-4647863166992264~5710161013",
-    "delay_app_measurement_init": false,
-    "optimize_initialization": true,
-    "optimize_ad_loading": true
-  }
-}
-      ]
     ],
     "extra": {
       "eas": {
@@ -54,5 +44,11 @@
       }
     },
     "owner": "kingzconnect"
+  },
+  "react-native-google-mobile-ads": {
+    "android_app_id": "ca-app-pub-4647863166992264~5710161013",
+    "delay_app_measurement_init": false,
+    "optimize_initialization": true,
+    "optimize_ad_loading": true
   }
 }
