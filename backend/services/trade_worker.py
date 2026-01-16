@@ -1,7 +1,7 @@
 import time
 import traceback
 import random
-from services.iq_service import IQSessionManager
+from iqoptionapi.stable_api import IQ_Option
 from services.strategy_service import StrategyService, resample_to_n_minutes
 
 def run_trade_session(config, shared_stats, stop_event):
@@ -11,11 +11,13 @@ def run_trade_session(config, shared_stats, stop_event):
     try:
         print(f"[Worker] Starting trade session for {config.email}")
         
-        # In a new process, this creates a new instance (singleton per process)
-        iq_manager = IQSessionManager.get_instance()
+        # Direct connection to ensure process isolation (Bypassing IQSessionManager Singleton)
+        print(f"[Worker] Connecting to IQ Option for {config.email}...")
+        iq = IQ_Option(config.email, config.password)
+        check, reason = iq.connect()
+        if not check:
+             raise Exception(f"Failed to connect: {reason}")
         
-        # Connect to IQ Option
-        iq = iq_manager.create_user_session(config.email, config.password)
         iq.change_balance(config.account_type)
         
         # Get Currency
@@ -69,6 +71,8 @@ def run_trade_session(config, shared_stats, stop_event):
             print(f"[Worker] Scanning {len(pairs_to_scan)} pairs: {pairs_to_scan} | Strategy: {config.strategy}")
 
             for pair in pairs_to_scan:
+                if stop_event.is_set():
+                    break
                 try:
                     target_timeframe = config.timeframe
                     
@@ -82,6 +86,8 @@ def run_trade_session(config, shared_stats, stop_event):
                         best_tf = 1
                         
                         for tf in candidate_tfs:
+                            if stop_event.is_set():
+                                break
                             supported_tfs = {1, 2, 5, 15, 60}
                             if tf in supported_tfs:
                                 candles = iq.get_candles(pair, int(tf * 60), 100, time.time())
@@ -151,7 +157,7 @@ def run_trade_session(config, shared_stats, stop_event):
                     continue
 
             # Execute Trade
-            if best_opportunity["action"] in ["CALL", "PUT"] and best_opportunity["confidence"] > 70:
+            if not stop_event.is_set() and best_opportunity["action"] in ["CALL", "PUT"] and best_opportunity["confidence"] > 70:
                 pair = best_opportunity["pair"]
                 action = best_opportunity["action"]
                 timeframe = best_opportunity["timeframe"]
@@ -213,5 +219,13 @@ def run_trade_session(config, shared_stats, stop_event):
     except Exception as e:
         print(f"[Worker] Error in trade session for {config.email}: {e}")
         traceback.print_exc()
+        try:
+            shared_stats["active"] = False
+        except Exception:
+            pass
+        try:
+            stop_event.set()
+        except Exception:
+            pass
     finally:
         print(f"[Worker] Session ended for {config.email}")

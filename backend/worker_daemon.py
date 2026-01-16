@@ -21,11 +21,17 @@ class WorkerDaemon:
     def monitor_session(self, email, stats, stop_event):
         while True:
             data = dict(stats)
+            # Use is_alive + active flag to determine true status
             data["active"] = not stop_event.is_set()
             status_store.set_status(email, data)
-            if stop_event.is_set():
+            
+            # Wait for 5 seconds OR until stop_event is set
+            if stop_event.wait(5):
+                # If stopped, perform one last update to ensure active=False
+                data = dict(stats)
+                data["active"] = False
+                status_store.set_status(email, data)
                 break
-            time.sleep(5)
 
     def start_session(self, config_dict):
         email = config_dict["email"]
