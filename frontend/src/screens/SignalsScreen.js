@@ -7,6 +7,7 @@ import axios from 'axios';
 import { API_URLS } from '../config';
 import ParticlesBackground from '../components/ParticlesBackground';
 import SelectionModal from '../components/SelectionModal';
+import AdBanner from '../components/AdBanner';
 import { registerForPushNotificationsAsync } from '../services/NotificationService';
 
 const API_URL = API_URLS.SIGNALS;
@@ -126,8 +127,8 @@ export default function SignalsScreen() {
       >
         <ParticlesBackground />
         <View style={styles.headerContent}>
-          <Text variant="headlineMedium" style={{ color: theme.colors.onPrimaryContainer, fontWeight: '900', letterSpacing: 2 }}>AI SIGNALS</Text>
-          <Text variant="bodyMedium" style={{ color: theme.colors.primary, fontWeight: 'bold', letterSpacing: 1, marginTop: 4 }}>MARKET ANALYSIS</Text>
+          <Text variant="headlineMedium" style={{ color: theme.colors.onPrimaryContainer, fontWeight: '900', letterSpacing: 2 }}>AXON TRADING ASSISTANT</Text>
+          <Text variant="bodyMedium" style={{ color: theme.colors.primary, fontWeight: 'bold', letterSpacing: 1, marginTop: 4 }}>MARKET SIGNALS</Text>
         </View>
       </LinearGradient>
 
@@ -326,6 +327,8 @@ export default function SignalsScreen() {
         icon="robot-outline"
       />
 
+      <AdBanner />
+
       {/* In-App Notification Snackbar */}
       <Snackbar
         visible={snackbarVisible}
@@ -348,7 +351,6 @@ export default function SignalsScreen() {
           {lastSignalAction} Signal Detected!
         </Text>
       </Snackbar>
-
     </ScrollView>
   );
 }

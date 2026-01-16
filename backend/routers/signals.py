@@ -35,10 +35,19 @@ def quick_scan():
     Returns analysis for each pair.
     """
     pairs = [
-        # OTC
-        "EURUSD-OTC", "GBPUSD-OTC", "EURJPY-OTC", "AUDCAD-OTC", "NZDUSD-OTC", "USDCHF-OTC",
-        # Normal
-        "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD"
+        "EURUSD-OTC",
+        "GBPUSD-OTC",
+        "EURJPY-OTC",
+        "AUDCAD-OTC",
+        "EURUSD",
+        "EURGBP",
+        "AUDUSD",
+        "USDJPY",
+        "GBPUSD",
+        "USDCHF",
+        "EURJPY",
+        "GBPJPY",
+        "USDCAD",
     ]
     results = []
     

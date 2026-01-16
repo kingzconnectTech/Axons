@@ -114,8 +114,12 @@ export default function HomeScreen({ navigation }) {
     </Surface>
   )};
 
-  const QuickActionCard = ({ title, icon, route, color, badge }) => (
-    <TouchableOpacity onPress={() => navigation.navigate(route)} style={{ flex: 1 }}>
+  const QuickActionCard = ({ title, icon, route, color, badge, disabled }) => (
+    <TouchableOpacity 
+      onPress={() => { if (!disabled) navigation.navigate(route); }} 
+      style={{ flex: 1 }}
+      activeOpacity={disabled ? 1 : 0.7}
+    >
       <Surface style={[styles.actionCard, { backgroundColor: theme.colors.surface }]} elevation={2}>
         <LinearGradient
             colors={[color + '20', 'transparent']}
@@ -123,8 +127,8 @@ export default function HomeScreen({ navigation }) {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
         />
-        <MaterialCommunityIcons name={icon} size={32} color={color} />
-        <Text variant="titleMedium" style={{ marginTop: 12, fontWeight: 'bold', color: theme.colors.onSurface }}>{title}</Text>
+        <MaterialCommunityIcons name={icon} size={32} color={disabled ? theme.colors.onSurfaceVariant : color} />
+        <Text variant="titleMedium" style={{ marginTop: 12, fontWeight: 'bold', color: disabled ? theme.colors.onSurfaceVariant : theme.colors.onSurface }}>{title}</Text>
         <MaterialCommunityIcons name="arrow-right" size={20} color={theme.colors.onSurfaceVariant} style={{ position: 'absolute', bottom: 12, right: 12 }} />
         
         {badge && (
@@ -188,11 +192,12 @@ export default function HomeScreen({ navigation }) {
             <QuickActionCard title="Signals" icon="radar" route="Signals" color="#2196f3" />
             <View style={{ width: 16 }} />
             <QuickActionCard 
-              title="Auto Trade" 
+              title="Auto Trade (Coming Soon)" 
               icon="robot" 
               route="AutoTrade" 
-              color="#4caf50" 
-              badge={isBotRunning ? { text: 'RUNNING', color: '#4caf50' } : null}
+              color="#4caf50"
+              disabled={true}
+              badge={{ text: 'COMING SOON', color: '#9e9e9e' }}
             />
             <View style={{ width: 16 }} />
             <QuickActionCard title="Flash" icon="flash" route="Quick" color="#FF9800" />

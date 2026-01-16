@@ -23,25 +23,26 @@ export default function QuickScreen({ navigation }) {
   const [modalVisible, setModalVisible] = useState(false);
 
   const pairs = [
-    // OTC Pairs
     { label: 'EUR/USD OTC', value: 'EURUSD-OTC' },
     { label: 'GBP/USD OTC', value: 'GBPUSD-OTC' },
     { label: 'EUR/JPY OTC', value: 'EURJPY-OTC' },
     { label: 'AUD/CAD OTC', value: 'AUDCAD-OTC' },
-    { label: 'NZD/USD OTC', value: 'NZDUSD-OTC' },
-    { label: 'USD/CHF OTC', value: 'USDCHF-OTC' },
-    // Normal Pairs
     { label: 'EUR/USD', value: 'EURUSD' },
-    { label: 'GBP/USD', value: 'GBPUSD' },
-    { label: 'USD/JPY', value: 'USDJPY' },
+    { label: 'EUR/GBP', value: 'EURGBP' },
     { label: 'AUD/USD', value: 'AUDUSD' },
+    { label: 'USD/JPY', value: 'USDJPY' },
+    { label: 'GBP/USD', value: 'GBPUSD' },
+    { label: 'USD/CHF', value: 'USDCHF' },
+    { label: 'EUR/JPY', value: 'EURJPY' },
+    { label: 'GBP/JPY', value: 'GBPJPY' },
     { label: 'USD/CAD', value: 'USDCAD' },
   ];
 
   const popularPairs = [
-    { label: 'EUR/USD', value: 'EURUSD-OTC' },
-    { label: 'GBP/USD', value: 'GBPUSD-OTC' },
-    { label: 'USD/JPY', value: 'EURJPY-OTC' }, // Using EURJPY-OTC as proxy for popular list or just display
+    { label: 'EUR/USD OTC', value: 'EURUSD-OTC' },
+    { label: 'GBP/USD OTC', value: 'GBPUSD-OTC' },
+    { label: 'EUR/JPY OTC', value: 'EURJPY-OTC' },
+    { label: 'AUD/CAD OTC', value: 'AUDCAD-OTC' },
   ];
 
   const handleAnalyze = async () => {
@@ -101,8 +102,8 @@ export default function QuickScreen({ navigation }) {
       >
         <ParticlesBackground />
         <View style={styles.headerContent}>
-          <Text variant="headlineMedium" style={styles.headerTitle}>FLASH SCAN</Text>
-          <Text variant="bodyMedium" style={styles.headerSubtitle}>INSTANT 2M PREDICTION</Text>
+          <Text variant="headlineMedium" style={styles.headerTitle}>AXON TRADING ASSISTANT</Text>
+          <Text variant="bodyMedium" style={styles.headerSubtitle}>FLASH SCAN</Text>
         </View>
       </LinearGradient>
 

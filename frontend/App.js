@@ -159,10 +159,10 @@ export default function App() {
                 }}
               >
                 <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-                <Stack.Screen name="Signals" component={SignalsScreen} options={{ title: 'Market Signals' }} />
-                <Stack.Screen name="AutoTrade" component={AutoTradeScreen} options={{ title: 'Auto Trader' }} />
+                <Stack.Screen name="Signals" component={SignalsScreen} options={{ title: 'AXON Trading Assistant' }} />
+                <Stack.Screen name="AutoTrade" component={AutoTradeScreen} options={{ title: 'AXON Trading Assistant (Coming Soon)' }} />
                 <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
-                <Stack.Screen name="Quick" component={QuickScreen} options={{ title: 'Flash' }} />
+                <Stack.Screen name="Quick" component={QuickScreen} options={{ title: 'AXON Flash Scan' }} />
               </Stack.Navigator>
             </NavigationContainer>
           </PaperProvider>

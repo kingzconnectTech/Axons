@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { View, StyleSheet, ScrollView, Dimensions, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { View, StyleSheet, ScrollView, Dimensions, TouchableOpacity, AppState } from 'react-native';
 import { Button, Text, TextInput, Card, SegmentedButtons, useTheme, Surface, Divider, Avatar, Chip } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -52,6 +52,7 @@ export default function AutoTradeScreen() {
     requestNonPersonalizedAdsOnly: true,
   });
   const [pendingStart, setPendingStart] = useState(false);
+  const appState = useRef(AppState.currentState);
 
   const currencySymbol = useMemo(() => {
     const code = status?.currency || savedCurrency || 'USD';
@@ -104,6 +105,20 @@ export default function AutoTradeScreen() {
     if (email) {
       fetchStatus();
     }
+  }, [email]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextState => {
+      if (appState.current.match(/inactive|background/) && nextState === 'active') {
+        if (email) {
+          fetchStatus();
+        }
+      }
+      appState.current = nextState;
+    });
+    return () => {
+      subscription.remove();
+    };
   }, [email]);
 
   useEffect(() => {
@@ -201,8 +216,8 @@ export default function AutoTradeScreen() {
       >
         <ParticlesBackground />
         <View style={styles.headerContent}>
-          <Text variant="headlineMedium" style={{ color: theme.colors.onPrimaryContainer, fontWeight: '900', letterSpacing: 2 }}>AUTO BOT</Text>
-          <Text variant="bodyMedium" style={{ color: theme.colors.secondary, fontWeight: 'bold', letterSpacing: 1, marginTop: 4 }}>AUTOMATED TRADING</Text>
+          <Text variant="headlineMedium" style={{ color: theme.colors.onPrimaryContainer, fontWeight: '900', letterSpacing: 2 }}>AXON TRADING ASSISTANT</Text>
+          <Text variant="bodyMedium" style={{ color: theme.colors.secondary, fontWeight: 'bold', letterSpacing: 1, marginTop: 4 }}>AUTO TRADE (COMING SOON)</Text>
         </View>
       </LinearGradient>
 
