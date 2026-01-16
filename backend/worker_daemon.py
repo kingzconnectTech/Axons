@@ -18,8 +18,16 @@ class WorkerDaemon:
         if not self.queue_url:
             raise RuntimeError("AXON_SQS_QUEUE_URL not set")
 
-    def monitor_session(self, email, stats, stop_event):
+    def monitor_session(self, email, stats, stop_event, process):
         while True:
+            # Check if process died unexpectedly
+            if not process.is_alive():
+                print(f"[WorkerDaemon] Process for {email} died unexpectedly.")
+                data = dict(stats)
+                data["active"] = False
+                status_store.set_status(email, data)
+                break
+
             data = dict(stats)
             # Use is_alive + active flag to determine true status
             data["active"] = not stop_event.is_set()
@@ -55,13 +63,18 @@ class WorkerDaemon:
         config = AutoTradeConfig(**config_dict)
         process = multiprocessing.Process(target=run_trade_session, args=(config, stats, stop_event))
         process.start()
-        monitor = threading.Thread(target=self.monitor_session, args=(email, stats, stop_event), daemon=True)
+        monitor = threading.Thread(target=self.monitor_session, args=(email, stats, stop_event, process), daemon=True)
         monitor.start()
         self.sessions[email] = {"process": process, "stop_event": stop_event, "stats": stats}
 
     def stop_session(self, email):
         if email in self.sessions:
             self.sessions[email]["stop_event"].set()
+        else:
+            # Ghost session handling: If we receive a stop request but have no session,
+            # force update DB to inactive to clear any stale state.
+            print(f"[WorkerDaemon] clear ghost session for {email}")
+            status_store.set_status(email, {"active": False})
 
     def run(self):
         while True:
