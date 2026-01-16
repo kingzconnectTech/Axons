@@ -4,6 +4,7 @@ import { Button, Text, TextInput, Chip, ActivityIndicator, useTheme, Surface, Sn
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
+import { useInterstitialAd, TestIds } from 'react-native-google-mobile-ads';
 import { API_URLS } from '../config';
 import ParticlesBackground from '../components/ParticlesBackground';
 import SelectionModal from '../components/SelectionModal';
@@ -28,6 +29,12 @@ export default function SignalsScreen() {
   const [pairModalVisible, setPairModalVisible] = useState(false);
   const [strategyModalVisible, setStrategyModalVisible] = useState(false);
   const [timeframeModalVisible, setTimeframeModalVisible] = useState(false);
+  const [pendingToggle, setPendingToggle] = useState(false);
+
+  const INTERSTITIAL_UNIT_ID = __DEV__ ? TestIds.INTERSTITIAL : 'ca-app-pub-3940256099942544/1033173712';
+  const interstitial = useInterstitialAd(INTERSTITIAL_UNIT_ID, {
+    requestNonPersonalizedAdsOnly: true,
+  });
 
   const otcPairs = ['EURUSD-OTC', 'GBPUSD-OTC', 'EURJPY-OTC', 'AUDCAD-OTC'];
   const strategies = [
@@ -37,6 +44,18 @@ export default function SignalsScreen() {
     'OTC Trend-Pullback Engine Strategy'
   ];
   const timeframes = [1, 2, 3, 4, 5, 15];
+
+  useEffect(() => {
+    interstitial.load();
+  }, [interstitial.load]);
+
+  useEffect(() => {
+    if (pendingToggle && interstitial.isClosed) {
+      setPendingToggle(false);
+      toggleStreamCore();
+      interstitial.load();
+    }
+  }, [pendingToggle, interstitial.isClosed, interstitial.load]);
 
   useEffect(() => {
     // Check initial status
@@ -69,9 +88,8 @@ export default function SignalsScreen() {
     }
   };
 
-  const toggleStream = async () => {
+  const toggleStreamCore = async () => {
     if (streaming) {
-      // Stop
       try {
         await axios.post(`${API_URL}/stop`);
         setStreaming(false);
@@ -79,7 +97,6 @@ export default function SignalsScreen() {
         alert('Failed to stop stream');
       }
     } else {
-      // Start
       try {
         const token = await registerForPushNotificationsAsync();
         await axios.post(`${API_URL}/start`, {
@@ -94,6 +111,16 @@ export default function SignalsScreen() {
         console.error(e);
         alert('Failed to start stream');
       }
+    }
+  };
+
+  const toggleStream = async () => {
+    if (interstitial.isLoaded) {
+      setPendingToggle(true);
+      interstitial.show();
+    } else {
+      await toggleStreamCore();
+      interstitial.load();
     }
   };
 
