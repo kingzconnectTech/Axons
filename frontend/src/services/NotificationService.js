@@ -20,6 +20,7 @@ export async function registerForPushNotificationsAsync() {
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#FF231F7C',
+      sound: 'axon-notification.mp3',
     });
   }
 
@@ -60,7 +61,7 @@ export async function sendSignalNotification(pair, action, confidence) {
       title,
       body,
       data: { pair, action, confidence },
-      sound: true,
+      sound: 'axon-notification.mp3',
       priority: Notifications.AndroidNotificationPriority.HIGH,
     },
     trigger: null, // Send immediately

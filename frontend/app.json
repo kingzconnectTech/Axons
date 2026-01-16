@@ -36,6 +36,14 @@
             "useFrameworks": "static"
           }
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "sounds": [
+            "./assets/axon-notification.mp3"
+          ]
+        }
       ]
     ],
     "extra": {
