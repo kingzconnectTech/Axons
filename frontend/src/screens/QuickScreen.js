@@ -10,8 +10,8 @@ import SelectionModal from '../components/SelectionModal';
 import AdBanner from '../components/AdBanner';
 
 const { width } = Dimensions.get('window');
-const SCAN_ACCENT = '#FFE2AF';
-const SCAN_ACCENT_DARK = '#7A4E00';
+const SCAN_ACCENT = '#3d0dadff';
+const SCAN_ACCENT_DARK = '#1c0472ff';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,
-    shadowColor: '#FF9800',
+    shadowColor: '#6a00ffff',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -431,7 +431,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     padding: 12,
     borderRadius: 12,
-    backgroundColor: '#FFF7E3',
+    backgroundColor: '#3700ffff',
     borderWidth: 1,
     borderColor: 'rgba(255, 226, 175, 0.7)',
   },
