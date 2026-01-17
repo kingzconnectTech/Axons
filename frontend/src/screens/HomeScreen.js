@@ -46,10 +46,10 @@ export default function HomeScreen({ navigation }) {
   const theme = useTheme();
   const { isBotRunning } = useBot();
   const [prices, setPrices] = useState({
-    'EURUSD-OTC': { price: 1.0835, change: 0.05 },
-    'GBPUSD-OTC': { price: 1.2745, change: -0.12 },
-    'EURJPY-OTC': { price: 157.50, change: 0.15 },
-    'AUDCAD-OTC': { price: 0.8950, change: 0.10 }
+    'EURUSD': { price: 1.0835, change: 0.05 },
+    'GBPUSD': { price: 1.2745, change: -0.12 },
+    'EURJPY': { price: 157.50, change: 0.15 },
+    'AUDCAD': { price: 0.8950, change: 0.10 }
   });
   const [trendData, setTrendData] = useState(MOCK_CHART_DATA.datasets[0].data);
 
@@ -57,7 +57,7 @@ export default function HomeScreen({ navigation }) {
   useEffect(() => {
     const fetchPrices = async () => {
       try {
-        const response = await axios.get(`${API_URLS.MARKET}/prices?pairs=EURUSD-OTC,GBPUSD-OTC,EURJPY-OTC,AUDCAD-OTC`);
+        const response = await axios.get(`${API_URLS.MARKET}/prices?pairs=EURUSD,GBPUSD,EURJPY,AUDCAD`);
         if (response.data && Object.keys(response.data).length > 0) {
            setPrices(response.data);
         }
@@ -178,10 +178,10 @@ export default function HomeScreen({ navigation }) {
       <View style={styles.section}>
         <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>Live Market</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tickerContainer}>
-          <PriceCard pair="EUR/USD-OTC" data={prices['EURUSD-OTC']} />
-          <PriceCard pair="GBP/USD-OTC" data={prices['GBPUSD-OTC']} />
-          <PriceCard pair="EUR/JPY-OTC" data={prices['EURJPY-OTC']} />
-          <PriceCard pair="AUD/CAD-OTC" data={prices['AUDCAD-OTC']} />
+          <PriceCard pair="EUR/USD" data={prices['EURUSD']} />
+          <PriceCard pair="GBP/USD" data={prices['GBPUSD']} />
+          <PriceCard pair="EUR/JPY" data={prices['EURJPY']} />
+          <PriceCard pair="AUD/CAD" data={prices['AUDCAD']} />
         </ScrollView>
       </View>
 

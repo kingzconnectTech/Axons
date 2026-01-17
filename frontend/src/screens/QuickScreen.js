@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Vibration, LayoutAnimation, Platform, UIManager } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Vibration, LayoutAnimation, Platform, UIManager, Animated } from 'react-native';
 import { Text, Surface, useTheme, Button, ActivityIndicator, IconButton, Chip } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,6 +10,8 @@ import SelectionModal from '../components/SelectionModal';
 import AdBanner from '../components/AdBanner';
 
 const { width } = Dimensions.get('window');
+const SCAN_ACCENT = '#FFE2AF';
+const SCAN_ACCENT_DARK = '#7A4E00';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -21,6 +23,8 @@ export default function QuickScreen({ navigation }) {
   const [result, setResult] = useState(null);
   const [selectedPair, setSelectedPair] = useState('EURUSD-OTC');
   const [modalVisible, setModalVisible] = useState(false);
+  const [scanAnim] = useState(new Animated.Value(0));
+  const scanLoop = useRef(null);
 
   const pairs = [
     { label: 'EUR/USD OTC', value: 'EURUSD-OTC' },
@@ -44,6 +48,43 @@ export default function QuickScreen({ navigation }) {
     { label: 'EUR/JPY OTC', value: 'EURJPY-OTC' },
     { label: 'AUD/CAD OTC', value: 'AUDCAD-OTC' },
   ];
+
+  useEffect(() => {
+    if (loading) {
+      scanAnim.setValue(0);
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(scanAnim, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scanAnim, {
+            toValue: 0,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      scanLoop.current = loop;
+      loop.start();
+    } else {
+      if (scanLoop.current) {
+        scanLoop.current.stop();
+        scanLoop.current = null;
+      }
+    }
+  }, [loading, scanAnim]);
+
+  const pulseScale = scanAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.05],
+  });
+
+  const glowOpacity = scanAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.6, 1],
+  });
 
   const handleAnalyze = async () => {
     Vibration.vibrate(50); // Haptic feedback start
@@ -95,7 +136,7 @@ export default function QuickScreen({ navigation }) {
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
       <LinearGradient
-        colors={['#FF9800', theme.colors.background]}
+        colors={[SCAN_ACCENT, theme.colors.background]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 0.6 }}
         style={styles.headerGradient}
@@ -116,8 +157,8 @@ export default function QuickScreen({ navigation }) {
                     key={p.value} 
                     selected={selectedPair === p.value}
                     onPress={() => setSelectedPair(p.value)}
-                    style={[styles.chip, selectedPair === p.value && { backgroundColor: '#FF9800' }]}
-                    textStyle={{ color: selectedPair === p.value ? 'white' : theme.colors.onSurface }}
+                    style={[styles.chip, selectedPair === p.value && { backgroundColor: SCAN_ACCENT }]}
+                    textStyle={{ color: selectedPair === p.value ? SCAN_ACCENT_DARK : theme.colors.onSurface }}
                     mode="outlined"
                 >
                     {p.label}
@@ -137,8 +178,8 @@ export default function QuickScreen({ navigation }) {
         <TouchableOpacity onPress={() => setModalVisible(true)} activeOpacity={0.9}>
           <Surface style={[styles.card, { backgroundColor: theme.colors.surface }]} elevation={4}>
              <View style={styles.cardInner}>
-                <View style={[styles.iconBox, { backgroundColor: 'rgba(255, 152, 0, 0.1)' }]}>
-                   <MaterialCommunityIcons name="currency-usd" size={32} color="#FF9800" />
+                <View style={[styles.iconBox, { backgroundColor: 'rgba(255, 226, 175, 0.15)' }]}>
+                   <MaterialCommunityIcons name="currency-usd" size={32} color={SCAN_ACCENT_DARK} />
                 </View>
                 <View style={{ flex: 1, marginLeft: 16 }}>
                    <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant, letterSpacing: 1 }}>SELECTED ASSET</Text>
@@ -156,21 +197,31 @@ export default function QuickScreen({ navigation }) {
            <TouchableOpacity 
               onPress={handleAnalyze} 
               disabled={loading}
-              style={[styles.analyzeButton, { backgroundColor: loading ? theme.colors.surfaceDisabled : '#FF9800' }]}
-              activeOpacity={0.8}
+              activeOpacity={0.9}
            >
-              {loading ? (
-                <ActivityIndicator color="white" size="small" />
-              ) : (
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                   <MaterialCommunityIcons name="lightning-bolt" size={24} color="white" style={{ marginRight: 8 }} />
-                   <Text style={styles.buttonText}>SCAN NOW</Text>
-                </View>
-              )}
+              <Animated.View
+                style={[
+                  styles.analyzeButton,
+                  {
+                    backgroundColor: SCAN_ACCENT,
+                    transform: [{ scale: loading ? pulseScale : 1 }],
+                    opacity: loading ? glowOpacity : 1,
+                  },
+                ]}
+              >
+                {loading ? (
+                  <ActivityIndicator color={SCAN_ACCENT_DARK} size="small" />
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <MaterialCommunityIcons name="lightning-bolt" size={24} color={SCAN_ACCENT_DARK} style={{ marginRight: 8 }} />
+                    <Text style={styles.buttonText}>SCAN NOW</Text>
+                  </View>
+                )}
+              </Animated.View>
            </TouchableOpacity>
            
            <Surface style={styles.instructionCard} elevation={1}>
-              <MaterialCommunityIcons name="information" size={20} color="#FF9800" />
+              <MaterialCommunityIcons name="information" size={20} color={SCAN_ACCENT_DARK} />
               <Text style={styles.instructionText}>
                  For best accuracy, scan twice to confirm the signal.
               </Text>
@@ -380,12 +431,12 @@ const styles = StyleSheet.create({
     marginTop: 16,
     padding: 12,
     borderRadius: 12,
-    backgroundColor: '#FFF3E0', // Light orange background
+    backgroundColor: '#FFF7E3',
     borderWidth: 1,
-    borderColor: 'rgba(255, 152, 0, 0.2)',
+    borderColor: 'rgba(255, 226, 175, 0.7)',
   },
   instructionText: {
-    color: '#E65100', // Darker orange text
+    color: SCAN_ACCENT_DARK,
     fontSize: 13,
     fontWeight: '600',
     marginLeft: 10,

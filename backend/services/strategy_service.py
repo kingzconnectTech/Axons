@@ -541,10 +541,17 @@ def analyze_quick_2m(candles):
     if is_red(c1) and is_red(c2) and is_red(c3):
         if body(c1) > body(c2) * 0.5:
             return "PUT", 88, "3 Consecutive Red Candles with strong momentum"
-            
-    # Logic: 2 strong candles after consolidation?
-    # Keep it simple for "Quick" analysis as requested.
-    
+
+    avg_body_2 = (body(c1) + body(c2)) / 2.0
+
+    if is_green(c1) and is_green(c2) and avg_body_2 > 0:
+        if body(c1) >= avg_body_2 * 0.6:
+            return "CALL", 74, "2 Green candles with sustained upward momentum"
+
+    if is_red(c1) and is_red(c2) and avg_body_2 > 0:
+        if body(c1) >= avg_body_2 * 0.6:
+            return "PUT", 74, "2 Red candles with sustained downward momentum"
+
     return "NEUTRAL", 0, "No strong trend pattern detected (Side-ways)"
 
 def analyze_test_execution(candles):
