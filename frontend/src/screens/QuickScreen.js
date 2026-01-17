@@ -203,17 +203,17 @@ export default function QuickScreen({ navigation }) {
                 style={[
                   styles.analyzeButton,
                   {
-                    backgroundColor: SCAN_ACCENT,
+                    backgroundColor: '#5D2F77',
                     transform: [{ scale: loading ? pulseScale : 1 }],
                     opacity: loading ? glowOpacity : 1,
                   },
                 ]}
               >
                 {loading ? (
-                  <ActivityIndicator color={SCAN_ACCENT_DARK} size="small" />
+                  <ActivityIndicator color="white" size="small" />
                 ) : (
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <MaterialCommunityIcons name="lightning-bolt" size={24} color={SCAN_ACCENT_DARK} style={{ marginRight: 8 }} />
+                    <MaterialCommunityIcons name="lightning-bolt" size={24} color="white" style={{ marginRight: 8 }} />
                     <Text style={styles.buttonText}>SCAN NOW</Text>
                   </View>
                 )}

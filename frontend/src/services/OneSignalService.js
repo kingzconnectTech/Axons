@@ -30,7 +30,7 @@ export function initializeOneSignal() {
       });
     }
   } catch (e) {
-    console.warn('OneSignal initialize failed', e);
+    console.log('OneSignal initialize failed', e);
   }
 }
 
@@ -41,17 +41,15 @@ export async function getOneSignalPlayerId() {
       !OneSignal.User ||
       typeof OneSignal.User.getOnesignalIdAsync !== 'function'
     ) {
-      console.warn('OneSignal SDK not available, cannot get player id');
       return null;
     }
     const deviceState = await OneSignal.User.getOnesignalIdAsync();
     if (!deviceState) {
-      console.warn('OneSignal returned null player id');
       return null;
     }
     return deviceState;
   } catch (e) {
-    console.warn('OneSignal getOneSignalPlayerId failed', e);
+    console.log('OneSignal getOneSignalPlayerId failed', e);
     return null;
   }
 }
