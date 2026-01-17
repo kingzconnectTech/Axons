@@ -24,6 +24,7 @@ class SignalBotManager:
         self.last_signal = None
         self.push_token = None
         self.stop_event = threading.Event()
+        self.history = []
 
     @classmethod
     def get_instance(cls):
@@ -46,6 +47,7 @@ class SignalBotManager:
         self.stop_event.clear()
         self.stats = {"total": 0, "calls": 0, "puts": 0}
         self.last_signal = None
+        self.history = []
 
         self.thread = threading.Thread(target=self._run_loop, daemon=True)
         self.thread.start()
@@ -68,7 +70,8 @@ class SignalBotManager:
             "active": self.active,
             "params": self.params,
             "stats": self.stats,
-            "last_signal": self.last_signal
+            "last_signal": self.last_signal,
+            "history": self.history,
         }
 
     def _run_loop(self):
@@ -98,6 +101,7 @@ class SignalBotManager:
 
                 # 3. Handle Signal
                 if result["action"] in ["CALL", "PUT"]:
+                    ts = time.time()
                     self.stats["total"] += 1
                     if result["action"] == "CALL":
                         self.stats["calls"] += 1
@@ -105,6 +109,16 @@ class SignalBotManager:
                         self.stats["puts"] += 1
                     
                     logging.info(f"SIGNAL FOUND: {result['action']} ({result['confidence']}%)")
+
+                    self.history.append({
+                        "timestamp": ts,
+                        "pair": pair,
+                        "timeframe": timeframe,
+                        "action": result["action"],
+                        "status": None,
+                    })
+                    if len(self.history) > 100:
+                        self.history.pop(0)
                     
                     # Send Push Notification
                     if self.push_token:

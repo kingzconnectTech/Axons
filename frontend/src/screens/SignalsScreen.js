@@ -23,6 +23,7 @@ export default function SignalsScreen() {
   const [loading, setLoading] = useState(false);
   const [streaming, setStreaming] = useState(false);
   const [streamStats, setStreamStats] = useState({ total: 0 });
+  const [history, setHistory] = useState([]);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [lastSignalAction, setLastSignalAction] = useState('');
 
@@ -86,6 +87,12 @@ export default function SignalsScreen() {
       const response = await axios.get(`${API_URL}/status`);
       if (response.data.active) {
         setStreaming(true);
+        if (response.data.params) {
+          const params = response.data.params;
+          if (params.pair) setPair(params.pair);
+          if (typeof params.timeframe !== 'undefined') setTimeframe(params.timeframe);
+          if (params.strategy) setStrategy(params.strategy);
+        }
         // Sync stats/last signal if available
         if (response.data.last_signal) {
             setSignal(response.data.last_signal);
@@ -94,8 +101,12 @@ export default function SignalsScreen() {
             // Just update UI.
         }
         setStreamStats(response.data.stats);
+        if (response.data.history) {
+          setHistory(response.data.history);
+        }
       } else {
         setStreaming(false);
+        setHistory([]);
       }
     } catch (error) {
       console.log("Status check failed", error);
@@ -338,6 +349,62 @@ export default function SignalsScreen() {
             </LinearGradient>
           </Surface>
         )}
+
+        {/* History */}
+        {history.length > 0 && (
+          <Surface style={styles.card} elevation={4}>
+            <LinearGradient
+              colors={theme.dark ? ['#252D40', '#1F2636'] : ['#FFFFFF', '#F5F7FA']}
+              style={styles.cardGradient}
+            >
+              <View style={styles.cardHeader}>
+                <View style={[styles.iconBox, { backgroundColor: theme.colors.secondaryContainer }]}>
+                  <MaterialCommunityIcons name="history" size={24} color={theme.colors.secondary} />
+                </View>
+                <Text variant="titleLarge" style={{ color: theme.colors.onSurface, fontWeight: 'bold', marginLeft: 12 }}>
+                  Signal History
+                </Text>
+              </View>
+
+              {history.map((item, index) => (
+                <View key={`${item.timestamp}-${index}`} style={styles.historyRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text variant="bodyMedium" style={{ color: theme.colors.onSurface, fontWeight: 'bold' }}>
+                      {item.pair}
+                    </Text>
+                    <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                      {new Date(item.timestamp * 1000).toLocaleTimeString()} • {item.timeframe}m
+                    </Text>
+                  </View>
+                  <View style={styles.historyBadge}>
+                    <Text
+                      variant="bodyMedium"
+                      style={{
+                        color: item.action === 'CALL' ? theme.colors.secondary : theme.colors.error,
+                        fontWeight: 'bold',
+                      }}
+                    >
+                      {item.action}
+                    </Text>
+                  </View>
+                  <View style={styles.historyStatus}>
+                    <Text
+                      variant="bodySmall"
+                      style={{
+                        color: theme.colors.onSurfaceVariant,
+                        fontStyle: 'italic',
+                      }}
+                    >
+                      {item.status === 'WIN' || item.status === 'LOSS'
+                        ? item.status
+                        : 'Pending'}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </LinearGradient>
+          </Surface>
+        )}
       </View>
 
       {/* Modals */}
@@ -541,5 +608,24 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  historyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+  },
+  historyBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    marginRight: 8,
+  },
+  historyStatus: {
+    minWidth: 60,
+    alignItems: 'flex-end',
   },
 });

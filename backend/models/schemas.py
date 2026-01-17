@@ -12,11 +12,20 @@ class SignalBotStart(BaseModel):
     strategy: str
     push_token: Optional[str] = None
 
+class SignalHistoryItem(BaseModel):
+    timestamp: float
+    pair: str
+    timeframe: int
+    action: str  # "CALL", "PUT"
+    status: Optional[str] = None  # "WIN", "LOSS", or None/PENDING
+
+
 class SignalBotStatus(BaseModel):
     active: bool
     params: dict
     stats: dict
     last_signal: Optional[dict]
+    history: Optional[List[SignalHistoryItem]] = None
 
 class SignalResponse(BaseModel):
     pair: str
