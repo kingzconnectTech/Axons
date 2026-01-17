@@ -41,10 +41,15 @@ export async function getOneSignalPlayerId() {
       !OneSignal.User ||
       typeof OneSignal.User.getOnesignalIdAsync !== 'function'
     ) {
+      console.error('OneSignal SDK not available, cannot get player id');
       return null;
     }
     const deviceState = await OneSignal.User.getOnesignalIdAsync();
-    return deviceState || null;
+    if (!deviceState) {
+      console.error('OneSignal returned null player id');
+      return null;
+    }
+    return deviceState;
   } catch (e) {
     console.error('OneSignal getOneSignalPlayerId failed', e);
     return null;

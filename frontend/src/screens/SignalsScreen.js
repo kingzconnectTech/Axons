@@ -124,6 +124,9 @@ export default function SignalsScreen() {
     } else {
       try {
         const token = await getOneSignalPlayerId();
+        if (!token) {
+          alert('Push notifications are not enabled for this device or build. Streaming will start without push alerts.');
+        }
         await axios.post(`${API_URL}/start`, {
             pair,
             timeframe,
