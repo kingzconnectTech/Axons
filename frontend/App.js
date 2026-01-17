@@ -6,7 +6,7 @@ import { Provider as PaperProvider, MD3DarkTheme, MD3LightTheme, adaptNavigation
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeContext } from './src/context/ThemeContext';
 import { BotProvider } from './src/context/BotContext';
-import { registerForPushNotificationsAsync } from './src/services/NotificationService';
+import { initializeOneSignal } from './src/services/OneSignalService';
 import mobileAds from 'react-native-google-mobile-ads';
 
 import HomeScreen from './src/screens/HomeScreen';
@@ -96,7 +96,7 @@ export default function App() {
 
   useEffect(() => {
     loadThemePreference();
-    registerForPushNotificationsAsync();
+    initializeOneSignal();
     mobileAds().initialize().then(() => {});
   }, []);
 

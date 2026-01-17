@@ -44,6 +44,12 @@
             "./assets/axon-notification.mp3"
           ]
         }
+      ],
+      [
+        "onesignal-expo-plugin",
+        {
+          "mode": "development"
+        }
       ]
     ],
     "extra": {

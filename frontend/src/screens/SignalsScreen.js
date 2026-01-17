@@ -9,7 +9,7 @@ import { API_URLS } from '../config';
 import ParticlesBackground from '../components/ParticlesBackground';
 import SelectionModal from '../components/SelectionModal';
 import AdBanner from '../components/AdBanner';
-import { registerForPushNotificationsAsync } from '../services/NotificationService';
+import { getOneSignalPlayerId } from '../services/OneSignalService';
 
 const API_URL = API_URLS.SIGNALS;
 const { width } = Dimensions.get('window');
@@ -35,8 +35,22 @@ export default function SignalsScreen() {
   const interstitial = useInterstitialAd(INTERSTITIAL_UNIT_ID, {
     requestNonPersonalizedAdsOnly: true,
   });
-
-  const otcPairs = ['EURUSD-OTC', 'GBPUSD-OTC', 'EURJPY-OTC', 'AUDCAD-OTC'];
+  
+  const pairs = [
+    { label: 'EUR/USD OTC', value: 'EURUSD-OTC', icon: 'chart-line' },
+    { label: 'GBP/USD OTC', value: 'GBPUSD-OTC', icon: 'chart-line' },
+    { label: 'EUR/JPY OTC', value: 'EURJPY-OTC', icon: 'chart-line' },
+    { label: 'AUD/CAD OTC', value: 'AUDCAD-OTC', icon: 'chart-line' },
+    { label: 'EUR/USD', value: 'EURUSD', icon: 'chart-line' },
+    { label: 'EUR/GBP', value: 'EURGBP', icon: 'chart-line' },
+    { label: 'AUD/USD', value: 'AUDUSD', icon: 'chart-line' },
+    { label: 'USD/JPY', value: 'USDJPY', icon: 'chart-line' },
+    { label: 'GBP/USD', value: 'GBPUSD', icon: 'chart-line' },
+    { label: 'USD/CHF', value: 'USDCHF', icon: 'chart-line' },
+    { label: 'EUR/JPY', value: 'EURJPY', icon: 'chart-line' },
+    { label: 'GBP/JPY', value: 'GBPJPY', icon: 'chart-line' },
+    { label: 'USD/CAD', value: 'USDCAD', icon: 'chart-line' },
+  ];
   const strategies = [
     'RSI + Support & Resistance Reversal',
     'OTC Mean Reversion',
@@ -98,7 +112,7 @@ export default function SignalsScreen() {
       }
     } else {
       try {
-        const token = await registerForPushNotificationsAsync();
+        const token = await getOneSignalPlayerId();
         await axios.post(`${API_URL}/start`, {
             pair,
             timeframe,
@@ -208,9 +222,9 @@ export default function SignalsScreen() {
             <View style={styles.inputGroup}>
               {/* Pair Selection */}
               <TouchableOpacity onPress={() => setPairModalVisible(true)}>
-                <TextInput
+                  <TextInput
                   label="Asset Pair"
-                  value={pair}
+                  value={pairs.find(p => p.value === pair)?.label || pair}
                   mode="outlined"
                   editable={false}
                   style={styles.input}
@@ -331,7 +345,7 @@ export default function SignalsScreen() {
         visible={pairModalVisible}
         onClose={() => setPairModalVisible(false)}
         title="Select Asset Pair"
-        options={otcPairs.map(p => ({ label: p, value: p, icon: 'chart-line' }))}
+        options={pairs}
         value={pair}
         onSelect={setPair}
       />

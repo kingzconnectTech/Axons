@@ -8,3 +8,4 @@ python-dotenv
 sqlalchemy
 boto3
 exponent_server_sdk
+onesignal-sdk

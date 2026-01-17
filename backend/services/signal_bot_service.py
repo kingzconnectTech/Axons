@@ -1,6 +1,8 @@
 import threading
 import time
 import logging
+import os
+import requests
 from exponent_server_sdk import (
     PushClient,
     PushMessage,
@@ -128,33 +130,51 @@ class SignalBotManager:
                 time.sleep(5)
 
     def _send_push(self, action, confidence):
-        # Rate limit: Don't spam. Strategy might return same signal for the same candle multiple times if we poll every 5s.
-        # We should only send ONCE per candle.
-        # Check logic: if last_signal timestamp is fresh?
-        # Better: store `last_notified_ts`.
-        
         now = time.time()
         last_ts = getattr(self, 'last_notified_ts', 0)
-        
-        # 50 seconds cooldown (almost 1 candle)
         if now - last_ts < 50:
             return
 
+        app_id = os.environ.get("ONESIGNAL_APP_ID")
+        api_key = os.environ.get("ONESIGNAL_REST_API_KEY")
+
+        if not app_id or not api_key:
+            logging.error("OneSignal credentials not configured")
+            return
+
+        headers = {
+            "Content-Type": "application/json; charset=utf-8",
+            "Authorization": f"Basic {api_key}",
+        }
+
+        payload = {
+            "app_id": app_id,
+            "include_player_ids": [self.push_token],
+            "headings": {
+                "en": f"{'🟢' if action == 'CALL' else '🔴'} {action} Signal Detected!"
+            },
+            "contents": {
+                "en": f"{self.params['pair']}: {action} with {confidence:.1f}% confidence."
+            },
+            "data": {
+                "pair": self.params["pair"],
+                "action": action,
+                "confidence": confidence,
+            },
+        }
+
         try:
-            response = PushClient().publish(
-                PushMessage(
-                    to=self.push_token,
-                    title=f"{'🟢' if action == 'CALL' else '🔴'} {action} Signal Detected!",
-                    body=f"{self.params['pair']}: {action} with {confidence:.1f}% confidence.",
-                    data={"pair": self.params['pair'], "action": action, "confidence": confidence},
-                    sound="default",
-                    priority="high"
-                )
+            response = requests.post(
+                "https://onesignal.com/api/v1/notifications",
+                headers=headers,
+                json=payload,
+                timeout=10,
             )
-            self.last_notified_ts = now
-        except (PushServerError, PushTicketError) as exc:
-            logging.error(f"Push Notification Failed: {exc}")
-            # If token is invalid, maybe clear it?
-            # self.push_token = None
+            if response.status_code >= 200 and response.status_code < 300:
+                self.last_notified_ts = now
+            else:
+                logging.error(f"OneSignal push failed: {response.status_code} {response.text}")
+        except Exception as exc:
+            logging.error(f"OneSignal push exception: {exc}")
 
 signal_bot_manager = SignalBotManager.get_instance()
