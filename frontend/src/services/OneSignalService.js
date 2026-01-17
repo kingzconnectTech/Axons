@@ -3,18 +3,50 @@ import { Platform } from 'react-native';
 import { ONESIGNAL_APP_ID } from '../config';
 
 export function initializeOneSignal() {
-  OneSignal.initialize(ONESIGNAL_APP_ID);
-  OneSignal.Notifications.requestPermission(true);
+  try {
+    if (!OneSignal || typeof OneSignal.initialize !== 'function') {
+      return;
+    }
 
-  if (Platform.OS === 'android') {
-    OneSignal.Notifications.addForegroundWillDisplayListener(event => {
-      event.getNotification().display();
-    });
+    OneSignal.initialize(ONESIGNAL_APP_ID);
+
+    if (
+      OneSignal.Notifications &&
+      typeof OneSignal.Notifications.requestPermission === 'function'
+    ) {
+      OneSignal.Notifications.requestPermission(true);
+    }
+
+    if (
+      Platform.OS === 'android' &&
+      OneSignal.Notifications &&
+      typeof OneSignal.Notifications.addForegroundWillDisplayListener === 'function'
+    ) {
+      OneSignal.Notifications.addForegroundWillDisplayListener(event => {
+        const notification = event.getNotification();
+        if (notification && typeof notification.display === 'function') {
+          notification.display();
+        }
+      });
+    }
+  } catch (e) {
+    console.error('OneSignal initialize failed', e);
   }
 }
 
 export async function getOneSignalPlayerId() {
-  const deviceState = await OneSignal.User.getOnesignalIdAsync();
-  return deviceState || null;
+  try {
+    if (
+      !OneSignal ||
+      !OneSignal.User ||
+      typeof OneSignal.User.getOnesignalIdAsync !== 'function'
+    ) {
+      return null;
+    }
+    const deviceState = await OneSignal.User.getOnesignalIdAsync();
+    return deviceState || null;
+  } catch (e) {
+    console.error('OneSignal getOneSignalPlayerId failed', e);
+    return null;
+  }
 }
-

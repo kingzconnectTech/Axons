@@ -96,8 +96,21 @@ export default function App() {
 
   useEffect(() => {
     loadThemePreference();
-    initializeOneSignal();
-    mobileAds().initialize().then(() => {});
+    try {
+      initializeOneSignal();
+    } catch (e) {
+      console.error('initializeOneSignal threw', e);
+    }
+    try {
+      if (typeof mobileAds === 'function') {
+        const adsInstance = mobileAds();
+        if (adsInstance && typeof adsInstance.initialize === 'function') {
+          adsInstance.initialize().catch(() => {});
+        }
+      }
+    } catch (e) {
+      console.error('mobileAds initialize threw', e);
+    }
   }, []);
 
   useEffect(() => {
