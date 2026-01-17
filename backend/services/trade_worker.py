@@ -94,7 +94,9 @@ def run_trade_session(config, shared_stats, stop_event):
                                 if not candles:
                                     print(f"[Worker] No candles for {pair} {tf}m")
                                     continue
-                                curr_analysis = StrategyService.analyze(pair, candles, config.strategy)
+                                last_candle = candles[-1]
+                                spread = last_candle["max"] - last_candle["min"]
+                                curr_analysis = StrategyService.analyze(pair, candles, config.strategy, spread=spread)
                             else:
                                 m1_count = max(180, int(tf) * 80)
                                 m1_candles = iq.get_candles(pair, 60, m1_count, time.time())
@@ -105,7 +107,9 @@ def run_trade_session(config, shared_stats, stop_event):
                                 if not mN_candles or len(mN_candles) < 30:
                                     print(f"[Worker] Not enough resampled candles for {pair} {tf}m (auto)")
                                     continue
-                                curr_analysis = StrategyService.analyze(pair, mN_candles, config.strategy)
+                                last_candle = mN_candles[-1]
+                                spread = last_candle["max"] - last_candle["min"]
+                                curr_analysis = StrategyService.analyze(pair, mN_candles, config.strategy, spread=spread)
                             
                             if curr_analysis["action"] in ["CALL", "PUT"] and curr_analysis["confidence"] > best_analysis["confidence"]:
                                 best_analysis = curr_analysis
@@ -120,7 +124,9 @@ def run_trade_session(config, shared_stats, stop_event):
                             if not candles:
                                 print(f"[Worker] No candles for {pair} {target_timeframe}m")
                                 continue
-                            analysis = StrategyService.analyze(pair, candles, config.strategy)
+                            last_candle = candles[-1]
+                            spread = last_candle["max"] - last_candle["min"]
+                            analysis = StrategyService.analyze(pair, candles, config.strategy, spread=spread)
                         else:
                             m1_count = max(180, int(target_timeframe) * 80)
                             m1_candles = iq.get_candles(pair, 60, m1_count, time.time())
@@ -131,7 +137,9 @@ def run_trade_session(config, shared_stats, stop_event):
                             if not mN_candles or len(mN_candles) < 30:
                                 print(f"[Worker] Not enough resampled candles for {pair} {target_timeframe}m")
                                 continue
-                            analysis = StrategyService.analyze(pair, mN_candles, config.strategy)
+                            last_candle = mN_candles[-1]
+                            spread = last_candle["max"] - last_candle["min"]
+                            analysis = StrategyService.analyze(pair, mN_candles, config.strategy, spread=spread)
                         
                         # Debug
                         if analysis["action"] != "NEUTRAL":

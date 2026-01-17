@@ -57,7 +57,9 @@ def quick_scan():
         candles = iq_manager.get_candles(pair, 1, count=30)
         
         if candles:
-            analysis = StrategyService.analyze(pair, candles, "Quick 2M Strategy")
+            last_candle = candles[-1]
+            spread = last_candle["max"] - last_candle["min"]
+            analysis = StrategyService.analyze(pair, candles, "Quick 2M Strategy", spread=spread)
             results.append(SignalResponse(
                 pair=pair,
                 action=analysis["action"],
@@ -80,11 +82,19 @@ def get_signal(request: SignalRequest):
     supported = {1, 2, 5, 15, 60}
     if request.timeframe in supported:
         candles = iq_manager.get_candles(request.pair, request.timeframe)
-        result = StrategyService.analyze(request.pair, candles, request.strategy)
+        spread = 0.0
+        if candles:
+            last_candle = candles[-1]
+            spread = last_candle["max"] - last_candle["min"]
+        result = StrategyService.analyze(request.pair, candles, request.strategy, spread=spread)
     else:
         m1 = iq_manager.get_candles(request.pair, 1, count=max(120, request.timeframe * 60))
         mN = resample_to_n_minutes(m1, int(request.timeframe))
-        result = StrategyService.analyze(request.pair, mN, request.strategy)
+        spread = 0.0
+        if mN:
+            last_candle = mN[-1]
+            spread = last_candle["max"] - last_candle["min"]
+        result = StrategyService.analyze(request.pair, mN, request.strategy, spread=spread)
     
     return SignalResponse(
         pair=request.pair,

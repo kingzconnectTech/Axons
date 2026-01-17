@@ -1,5 +1,25 @@
+import time
 import pandas as pd
 import numpy as np
+
+# --- Candle Indexing Constants ---
+FORMING = -1  # Forming candle (DO NOT USE FOR SIGNALS)
+CONFIRM = -2  # Last closed candle (SIGNAL CANDLE)
+SETUP = -3    # Setup / Indecision candle
+# ---------------------------------
+
+PAIR_PROFILE = {
+    "default": {
+        "rsi_buy": 32,
+        "rsi_sell": 68,
+        "wick_ratio": 0.6,
+        "ema_atr_distance": 0.3,
+        "atr_volatility_limit": 1.2,
+    }
+}
+
+LAST_SIGNAL = {}
+COOLDOWN_SECONDS = 180
 
 def calculate_rsi(prices, period=14):
     if len(prices) < period:
@@ -10,12 +30,12 @@ def calculate_rsi(prices, period=14):
     
     rs = gain / loss
     rsi = 100 - (100 / (1 + rs))
-    return rsi.iloc[-1] if not rsi.empty else 50
+    return rsi.iloc[FORMING] if not rsi.empty else 50
 
 def calculate_sma(prices, period=14):
     if len(prices) < period:
-        return prices[-1]
-    return pd.Series(prices).rolling(window=period).mean().iloc[-1]
+        return prices[FORMING]
+    return pd.Series(prices).rolling(window=period).mean().iloc[FORMING]
 
 def calculate_bollinger_bands(prices, period=20, std_dev=2):
     if len(prices) < period:
@@ -32,8 +52,8 @@ def calculate_bollinger_bands(prices, period=20, std_dev=2):
 
 def calculate_ema(prices, period=50):
     if len(prices) < period:
-        return prices[-1]
-    return pd.Series(prices).ewm(span=period, adjust=False).mean().iloc[-1]
+        return prices[FORMING]
+    return pd.Series(prices).ewm(span=period, adjust=False).mean().iloc[FORMING]
 
 def calculate_atr(candles, period=14):
     if len(candles) < period + 1:
@@ -52,7 +72,7 @@ def calculate_atr(candles, period=14):
     tr3 = (lows - prev_closes).abs()
     
     tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
-    atr = tr.rolling(window=period).mean().iloc[-1]
+    atr = tr.rolling(window=period).mean().iloc[FORMING]
     
     return atr if not pd.isna(atr) else 0.0001
 
@@ -145,8 +165,14 @@ def identify_zones(candles, window=50):
            lows[i] < lows[i+1] and lows[i] < lows[i+2]:
             support_zones.append(lows[i])
             
-    # Cluster zones (optional optimization could go here, but raw lists work for now)
     return support_zones, resistance_zones
+
+def cluster_levels(levels, atr, tolerance=0.5):
+    clusters = []
+    for lvl in sorted(levels):
+        if not clusters or abs(lvl - clusters[-1]) > atr * tolerance:
+            clusters.append(lvl)
+    return clusters
 
 def resample_to_m5(m1_candles):
     """
@@ -199,7 +225,7 @@ def resample_to_n_minutes(m1_candles, n):
         })
     return mN
 
-def analyze_otc_mean_reversion(candles):
+def analyze_otc_mean_reversion(candles, cfg=None):
     """
     OTC Mean Reversion Strategy Logic
     """
@@ -209,18 +235,20 @@ def analyze_otc_mean_reversion(candles):
     close_prices = [c['close'] for c in candles]
     
     rsi_series = calculate_rsi_series(close_prices, 14)
-    current_rsi = rsi_series.iloc[-1]
-    prev_rsi = rsi_series.iloc[-2]
+    current_rsi = rsi_series.iloc[CONFIRM]
+    prev_rsi = rsi_series.iloc[SETUP]
     
-    ema_50 = calculate_ema(close_prices, 50)
+    # Calculate EMA on confirmed data or slice series
+    ema_series = pd.Series(close_prices).ewm(span=50, adjust=False).mean()
+    ema_50 = ema_series.iloc[CONFIRM]
     
     atr_series = calculate_atr_series(candles, 14)
-    current_atr = atr_series.iloc[-1]
+    current_atr = atr_series.iloc[CONFIRM]
     
-    atr_ma_20 = atr_series.rolling(window=20).mean().iloc[-1]
+    atr_ma_20 = atr_series.rolling(window=20).mean().iloc[CONFIRM]
     
-    # Current Candle (Assuming [-1] is the trigger candle)
-    c = candles[-1]
+    # Current Candle (Signal Candle is CONFIRM)
+    c = candles[CONFIRM]
     open_p = c['open']
     close_p = c['close']
     high_p = c['max']
@@ -237,9 +265,9 @@ def analyze_otc_mean_reversion(candles):
     upper_wick = high_p - max(open_p, close_p)
     upper_wick_ratio = upper_wick / candle_range
     
-    # 5-candle lookback (excluding current)
-    # candles[-6:-1] gives the 5 candles before current
-    prev_5_candles = candles[-6:-1]
+    # 5-candle lookback (excluding current CONFIRM candle)
+    # candles[CONFIRM-5 : CONFIRM] gives the 5 candles before CONFIRM
+    prev_5_candles = candles[CONFIRM-5:CONFIRM]
     if len(prev_5_candles) < 5:
         return "NEUTRAL", 0
         
@@ -249,7 +277,10 @@ def analyze_otc_mean_reversion(candles):
     action = "NEUTRAL"
     confidence = 0
     
-    if current_atr > atr_ma_20 * 1.2:
+    if cfg is None:
+        cfg = PAIR_PROFILE["default"]
+
+    if current_atr > atr_ma_20 * cfg["atr_volatility_limit"]:
         return "NEUTRAL", 0
         
     recent_ranges = [(x['max'] - x['min']) for x in prev_5_candles]
@@ -257,19 +288,17 @@ def analyze_otc_mean_reversion(candles):
     if candle_range > 1.8 * avg_range:
         return "NEUTRAL", 0
 
-    rsi_buy_cond = (current_rsi <= 32) and (current_rsi > prev_rsi)
+    rsi_buy_cond = (current_rsi <= cfg["rsi_buy"]) and (current_rsi > prev_rsi)
     
     if rsi_buy_cond:
         # 2. Current Low < lowest low of last 5
         if low_p < lowest_low_5:
-            # 3. Lower wick >= 60%
-            if lower_wick_ratio >= 0.6:
+            if lower_wick_ratio >= cfg["wick_ratio"]:
                 # 4. Bullish Rejection (Close > Open)
                 if close_p > open_p:
-                    # 5. Distance from EMA50 >= 0.3 * ATR
-                    # Buy means price is low, so EMA > Close
+                    # 5. Distance from EMA50 >= configured ATR multiple
                     dist = abs(ema_50 - close_p)
-                    if dist >= (0.3 * current_atr):
+                    if dist >= (cfg["ema_atr_distance"] * current_atr):
                         action = "CALL"
                         confidence = 88
                         
@@ -277,18 +306,16 @@ def analyze_otc_mean_reversion(candles):
                         if lower_wick_ratio >= 0.7: confidence += 5
                         if current_rsi <= 20: confidence += 5
 
-    rsi_sell_cond = (current_rsi >= 68) and (current_rsi < prev_rsi)
+    rsi_sell_cond = (current_rsi >= cfg["rsi_sell"]) and (current_rsi < prev_rsi)
     
     if rsi_sell_cond:
         # 2. Current High > highest high of last 5
         if high_p > highest_high_5:
-            # 3. Upper wick >= 60%
-            if upper_wick_ratio >= 0.6:
+            if upper_wick_ratio >= cfg["wick_ratio"]:
                 # 4. Bearish Rejection (Close < Open)
                 if close_p < open_p:
-                    # 5. Distance from EMA50 >= 0.3 * ATR
                     dist = abs(close_p - ema_50)
-                    if dist >= (0.3 * current_atr):
+                    if dist >= (cfg["ema_atr_distance"] * current_atr):
                         action = "PUT"
                         confidence = 88
                         
@@ -307,26 +334,27 @@ def analyze_otc_volatility_trap(candles):
     close_prices = [c['close'] for c in candles]
     
     upper_band, middle_band, lower_band = calculate_bollinger_bands(close_prices, 20, 2)
-    ema_20 = calculate_ema(close_prices, 20)
+    ema_20_series = pd.Series(close_prices).ewm(span=20, adjust=False).mean()
     atr_series = calculate_atr_series(candles, 14)
-    atr_ma_20 = atr_series.rolling(window=20).mean().iloc[-1]
+    atr_ma_20 = atr_series.rolling(window=20).mean().iloc[CONFIRM]
     
-    current_atr = atr_series.iloc[-1]
+    current_atr = atr_series.iloc[CONFIRM]
     
     bb_width = upper_band - lower_band
-    bb_width_ma_30 = bb_width.rolling(window=30).mean().iloc[-1]
-    current_bb_width = bb_width.iloc[-1]
+    bb_width_ma_30 = bb_width.rolling(window=30).mean().iloc[CONFIRM]
+    current_bb_width = bb_width.iloc[CONFIRM]
     
     # RSI for Upgrade
-    rsi = calculate_rsi(close_prices, 14)
+    rsi_series = calculate_rsi_series(close_prices, 14)
+    rsi = rsi_series.iloc[CONFIRM]
     
     # Candles
     # We need:
-    # Breakout Candle ([-2])
-    # Reclaim Candle ([-1])
+    # Breakout Candle (SETUP)
+    # Reclaim Candle (CONFIRM)
     
-    breakout_c = candles[-2]
-    reclaim_c = candles[-1]
+    breakout_c = candles[SETUP]
+    reclaim_c = candles[CONFIRM]
     
     # Breakout Candle Features
     breakout_open = breakout_c['open']
@@ -344,9 +372,9 @@ def analyze_otc_volatility_trap(candles):
     reclaim_low = reclaim_c['min']
     reclaim_range = reclaim_high - reclaim_low if reclaim_high != reclaim_low else 0.00001
     
-    idx_reclaim = -2
-    idx_breakout = -3
-    idx_prev_breakout = -4
+    idx_reclaim = CONFIRM
+    idx_breakout = SETUP
+    idx_prev_breakout = SETUP - 1
     
     if bb_width.iloc[idx_reclaim] >= bb_width_ma_30 * 1.1:
         return "NEUTRAL", 0
@@ -391,8 +419,6 @@ def analyze_otc_volatility_trap(candles):
     # 3. Two band breaks occur without a reclaim
     prev_breakout_close = prev_breakout_c['close']
     
-    # EMA Series (Need full series to get historical values)
-    ema_20_series = pd.Series(close_prices).ewm(span=20, adjust=False).mean()
     ema_val = ema_20_series.iloc[idx_reclaim]
 
     lb_breakout = lower_band.iloc[idx_breakout]
@@ -440,9 +466,9 @@ def analyze_otc_trend_pullback(candles):
     rsi_series = calculate_rsi_series(close_prices, 14)
     upper_band, middle_band, lower_band = calculate_bollinger_bands(close_prices, 20, 2)
     atr_series = calculate_atr_series(candles, 14)
-    atr_ma_20 = atr_series.rolling(window=20).mean().iloc[-1]
-    idx_confirm = -2
-    idx_pullback = -3
+    atr_ma_20 = atr_series.rolling(window=20).mean().iloc[CONFIRM]
+    idx_confirm = CONFIRM
+    idx_pullback = SETUP
     ema20_c = ema20_series.iloc[idx_confirm]
     ema50_c = ema50_series.iloc[idx_confirm]
     ema20_p = ema20_series.iloc[idx_pullback]
@@ -450,7 +476,7 @@ def analyze_otc_trend_pullback(candles):
     rsi_pull = rsi_series.iloc[idx_pullback]
     rsi_prev_pull = rsi_series.iloc[idx_pullback-1] if len(rsi_series) >= abs(idx_pullback-1) else rsi_pull
     bb_width = upper_band - lower_band
-    bb_width_ma_30 = bb_width.rolling(window=30).mean().iloc[-1]
+    bb_width_ma_30 = bb_width.rolling(window=30).mean().iloc[CONFIRM]
     c_confirm = candles[idx_confirm]
     c_pull = candles[idx_pullback]
     o_conf = c_confirm['open']
@@ -477,10 +503,10 @@ def analyze_otc_trend_pullback(candles):
     if atr_series.iloc[idx_confirm] > atr_ma_20 * 1.8:
         return "NEUTRAL", 0
     fail_count = 0
-    lookback = min(len(candles)-3, 12)
-    for i in range(-lookback, -3):
+    lookback = min(len(candles)+SETUP, 12) # candles-3 if SETUP is -3
+    for i in range(-lookback, SETUP):
         ema20_i = ema20_series.iloc[i]
-        ema20_i_next = ema20_series.iloc[i+1] if (i+1) < 0 else ema20_series.iloc[-1]
+        ema20_i_next = ema20_series.iloc[i+1] if (i+1) < 0 else ema20_series.iloc[FORMING]
         c_i = candles[i]
         c_i_next = candles[i+1]
         touched = (c_i['min'] <= ema20_i) or (c_i['max'] >= ema20_i)
@@ -523,10 +549,10 @@ def analyze_quick_2m(candles):
         return "NEUTRAL", 0, "Insufficient data"
     
     # Analyze last 3 CLOSED candles (excluding forming one if present, assume -1 is forming)
-    # We use -2, -3, -4 as the confirmed history
-    c1 = candles[-2] # Most recent closed
-    c2 = candles[-3]
-    c3 = candles[-4]
+    # We use CONFIRM, SETUP, SETUP-1 as the confirmed history
+    c1 = candles[CONFIRM] # Most recent closed
+    c2 = candles[SETUP]
+    c3 = candles[SETUP-1]
     
     def is_green(c): return c['close'] > c['open']
     def is_red(c): return c['close'] < c['open']
@@ -565,7 +591,7 @@ def analyze_test_execution(candles):
     if len(candles) < 2:
         return "NEUTRAL", 0
     
-    last_candle = candles[-2] # Use closed candle
+    last_candle = candles[CONFIRM] # Use closed candle
     open_p = last_candle['open']
     close_p = last_candle['close']
     
@@ -578,46 +604,65 @@ def analyze_test_execution(candles):
 
 class StrategyService:
     @staticmethod
-    def analyze(pair, candles, strategy_name):
+    def analyze(pair, candles, strategy_name, spread=None):
         if not candles or len(candles) < 20:
             return {"action": "NEUTRAL", "confidence": 0}
 
         close_prices = [c['close'] for c in candles]
+        is_real_pair = "-OTC" not in pair
+
+        if is_real_pair:
+            atr_series_filters = calculate_atr_series(candles, 14)
+            current_atr_f = atr_series_filters.iloc[CONFIRM]
+            atr_ma_50_f = atr_series_filters.rolling(window=50).mean().iloc[CONFIRM]
+
+            if spread is not None and current_atr_f > 0 and spread > current_atr_f * 0.25:
+                return {"action": "NEUTRAL", "confidence": 0}
+
+            if current_atr_f < atr_ma_50_f * 0.6:
+                return {"action": "NEUTRAL", "confidence": 0}
+
+        cfg = PAIR_PROFILE.get(pair, PAIR_PROFILE["default"])
         
         # ---------------------------------------------------------------------
         # STRATEGY: Test Execution Strategy
         # ---------------------------------------------------------------------
         if strategy_name == "Test Execution Strategy":
             action, confidence = analyze_test_execution(candles)
-            return {"action": action, "confidence": confidence}
+            result = {"action": action, "confidence": confidence}
+            return StrategyService._apply_cooldown(pair, strategy_name, result)
         
         # ---------------------------------------------------------------------
         # STRATEGY: OTC Mean Reversion
         # ---------------------------------------------------------------------
         if strategy_name == "OTC Mean Reversion":
-            action, confidence = analyze_otc_mean_reversion(candles)
-            return {"action": action, "confidence": confidence}
+            action, confidence = analyze_otc_mean_reversion(candles, cfg)
+            result = {"action": action, "confidence": confidence}
+            return StrategyService._apply_cooldown(pair, strategy_name, result)
 
         # ---------------------------------------------------------------------
         # STRATEGY: OTC Volatility Trap Break–Reclaim
         # ---------------------------------------------------------------------
         if strategy_name == "OTC Volatility Trap Break–Reclaim":
             action, confidence = analyze_otc_volatility_trap(candles)
-            return {"action": action, "confidence": confidence}
+            result = {"action": action, "confidence": confidence}
+            return StrategyService._apply_cooldown(pair, strategy_name, result)
         
         # ---------------------------------------------------------------------
         # STRATEGY: OTC Trend-Pullback Engine Strategy
         # ---------------------------------------------------------------------
         if strategy_name == "OTC Trend-Pullback Engine Strategy":
             action, confidence = analyze_otc_trend_pullback(candles)
-            return {"action": action, "confidence": confidence}
+            result = {"action": action, "confidence": confidence}
+            return StrategyService._apply_cooldown(pair, strategy_name, result)
 
         # ---------------------------------------------------------------------
         # STRATEGY: Quick 2M Strategy
         # ---------------------------------------------------------------------
         if strategy_name == "Quick 2M Strategy":
             action, confidence, reason = analyze_quick_2m(candles)
-            return {"action": action, "confidence": confidence, "reason": reason}
+            result = {"action": action, "confidence": confidence, "reason": reason}
+            return StrategyService._apply_cooldown(pair, strategy_name, result)
 
         # ---------------------------------------------------------------------
         # STRATEGY: RSI + Support & Resistance Reversal (M1 Binary)
@@ -628,49 +673,25 @@ class StrategyService:
         if strategy_name == target_strategy or strategy_name == "AGGRESIVE": # Overwriting AGGRESIVE for now or strictly matching
              
             # 1. Indicators
-            rsi = calculate_rsi(close_prices, 14)
+            # Use confirmed RSI to avoid repainting
+            rsi_series = calculate_rsi_series(close_prices, 14)
+            rsi = rsi_series.iloc[CONFIRM]
+
+            atr_series = calculate_atr_series(candles, 14)
+            current_atr = atr_series.iloc[CONFIRM]
             
             # 2. Structure (Support/Resistance)
             support_zones, resistance_zones = identify_zones(candles[-60:]) # Look at last 60 candles
+            support_zones = cluster_levels(support_zones, current_atr)
+            resistance_zones = cluster_levels(resistance_zones, current_atr)
             
-            # 3. Candles (Current is confirmation, Previous is Indecision)
-            # We analyze the LATEST COMPLETED candle for entry?
-            # Usually bots run on "tick" or "new candle". 
-            # If we assume 'candles' includes the currently forming candle as the last one:
-            # The strategy says "Entry is taken at the close of the bullish confirmation candle".
-            # So we should look at the LAST CLOSED candle (candles[-2]) as Confirmation, 
-            # and candles[-3] as Indecision. 
-            # OR, if the bot runs precisely at candle close, candles[-1] is the just-closed candle.
-            # Let's assume candles[-1] is the 'just closed' or 'current active'.
-            # If it's real-time, candles[-1] is usually forming.
-            # Strategy says: "A bullish confirmation candle CLOSES". 
-            # So we trigger when we detect the pattern on the JUST COMPLETED candle.
-            # Let's assume candles[-1] is the latest data point. If it's forming, we might be premature.
-            # However, for backtest/analysis APIs, usually last candle is "current".
-            # Let's check logic: "A bullish confirmation candle closes".
-            # We should look at candles[-1] (if it's the completed one) or candles[-2] (if -1 is forming).
-            # Standard practice: Check pattern on [-1] assuming we are checking "at close". 
-            # But if -1 is "forming", we can't know if it "closed" yet unless we track time.
-            # For this implementation, let's analyze the pattern on [-1] (latest available) 
-            # assuming the user invokes this when they want a signal.
+            # 3. Candles
+            # We use the standard indexing convention:
+            # CONFIRM (-2) = Last Closed Candle (Signal Candle)
+            # SETUP (-3) = Indecision Candle (Setup Candle)
             
-            # Actually, standard bot logic:
-            # -1 is Current (Forming).
-            # -2 is Last Closed.
-            # If we wait for -1 to close, we are technically trading on the open of Next.
-            # So we look for pattern on -2 (Confirmation) and -3 (Indecision).
-            
-            current_candle = candles[-1] # This might be forming.
-            # Let's look at the LAST TWO fully formed candles for the pattern?
-            # Or does the user want "Real-time" signal?
-            # "Entry is taken at the close of the bullish confirmation candle".
-            # This implies we trade on the OPEN of the NEXT candle immediately after confirmation closes.
-            # So we analyze [-1] (assuming it just closed or is about to).
-            
-            # Let's use [-1] as Confirmation and [-2] as Indecision.
-            
-            conf_candle = get_candle_features(candles[-1])
-            indec_candle = get_candle_features(candles[-2])
+            conf_candle = get_candle_features(candles[CONFIRM])
+            indec_candle = get_candle_features(candles[SETUP])
             
             action = "NEUTRAL"
             confidence = 0
@@ -723,8 +744,9 @@ class StrategyService:
 
             # --- FILTERS ---
             # 1. Trend Filter (Reject if RSI stuck in overbought/oversold for multiple candles)
-            # Check last 3 candles RSI
-            recent_rsis = [calculate_rsi(close_prices[:-(i)], 14) for i in range(3)]
+            # Check last 3 candles RSI (using closed data)
+            # i=1 -> [:-1] (CONFIRM), i=2 -> [:-2] (SETUP), i=3 -> [:-3] (SETUP-1)
+            recent_rsis = [calculate_rsi(close_prices[:-(i)], 14) for i in range(1, 4)]
             # If all are >= 65 (strong uptrend), risk for PUT
             # If all are <= 35 (strong downtrend), risk for CALL
             
@@ -744,9 +766,22 @@ class StrategyService:
                 else:
                      confidence += 3
 
-            return {
+            result = {
                 "action": action, 
-                "confidence": min(confidence, 100) # Cap at 100
+                "confidence": min(confidence, 100)
             }
+            return StrategyService._apply_cooldown(pair, strategy_name, result)
         
         return {"action": "NEUTRAL", "confidence": 0}
+
+    @staticmethod
+    def _apply_cooldown(pair, strategy_name, result):
+        key = f"{pair}:{strategy_name}"
+        action = result.get("action")
+        if action in ["CALL", "PUT"]:
+            now = time.time()
+            last_ts = LAST_SIGNAL.get(key)
+            if last_ts is not None and now - last_ts < COOLDOWN_SECONDS:
+                return {"action": "NEUTRAL", "confidence": 0}
+            LAST_SIGNAL[key] = now
+        return result

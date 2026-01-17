@@ -85,11 +85,19 @@ class SignalBotManager:
                 supported = {1, 2, 5, 15, 60}
                 if timeframe in supported:
                     candles = iq_manager.get_candles(pair, timeframe)
-                    result = StrategyService.analyze(pair, candles, strategy)
+                    spread = 0.0
+                    if candles:
+                        last_candle = candles[-1]
+                        spread = last_candle["max"] - last_candle["min"]
+                    result = StrategyService.analyze(pair, candles, strategy, spread=spread)
                 else:
                     m1 = iq_manager.get_candles(pair, 1, count=max(120, timeframe * 60))
                     mN = resample_to_n_minutes(m1, int(timeframe))
-                    result = StrategyService.analyze(pair, mN, strategy)
+                    spread = 0.0
+                    if mN:
+                        last_candle = mN[-1]
+                        spread = last_candle["max"] - last_candle["min"]
+                    result = StrategyService.analyze(pair, mN, strategy, spread=spread)
                 
                 # Update Last Signal
                 self.last_signal = {
