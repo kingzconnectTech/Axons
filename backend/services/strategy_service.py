@@ -15,6 +15,9 @@ PAIR_PROFILE = {
         "wick_ratio": 0.6,
         "ema_atr_distance": 0.3,
         "atr_volatility_limit": 1.2,
+        "max_spread_atr_factor": 0.25,
+        "spread_scale": 1.0,
+        "enable_spread_filter": True,
     }
 }
 
@@ -609,6 +612,7 @@ class StrategyService:
             return {"action": "NEUTRAL", "confidence": 0}
 
         close_prices = [c['close'] for c in candles]
+        cfg = PAIR_PROFILE.get(pair, PAIR_PROFILE["default"])
         is_real_pair = "-OTC" not in pair
 
         if is_real_pair:
@@ -616,13 +620,22 @@ class StrategyService:
             current_atr_f = atr_series_filters.iloc[CONFIRM]
             atr_ma_50_f = atr_series_filters.rolling(window=50).mean().iloc[CONFIRM]
 
-            if spread is not None and current_atr_f > 0 and spread > current_atr_f * 0.25:
-                return {"action": "NEUTRAL", "confidence": 0}
+            if spread is not None and current_atr_f > 0:
+                if cfg.get("enable_spread_filter", True):
+                    spread_scale = cfg.get(
+                        "spread_scale",
+                        PAIR_PROFILE["default"].get("spread_scale", 1.0),
+                    )
+                    max_factor = cfg.get(
+                        "max_spread_atr_factor",
+                        PAIR_PROFILE["default"].get("max_spread_atr_factor", 0.25),
+                    )
+                    effective_spread = spread * spread_scale
+                    if effective_spread > current_atr_f * max_factor:
+                        return {"action": "NEUTRAL", "confidence": 0}
 
             if current_atr_f < atr_ma_50_f * 0.6:
                 return {"action": "NEUTRAL", "confidence": 0}
-
-        cfg = PAIR_PROFILE.get(pair, PAIR_PROFILE["default"])
         
         # ---------------------------------------------------------------------
         # STRATEGY: Test Execution Strategy
