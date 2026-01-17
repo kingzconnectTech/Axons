@@ -136,7 +136,7 @@ export default function QuickScreen({ navigation }) {
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
       <LinearGradient
-        colors={[SCAN_ACCENT, theme.colors.background]}
+        colors={['#3E1E68', theme.colors.background]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 0.6 }}
         style={styles.headerGradient}
