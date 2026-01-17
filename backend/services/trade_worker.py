@@ -169,10 +169,19 @@ def run_trade_session(config, shared_stats, stop_event):
                 pair = best_opportunity["pair"]
                 action = best_opportunity["action"]
                 timeframe = best_opportunity["timeframe"]
+                confidence = best_opportunity["confidence"]
+
+                base_amount = config.amount
+                if confidence >= 90:
+                    stake_amount = base_amount * 2.0
+                elif confidence >= 80:
+                    stake_amount = base_amount * 1.5
+                else:
+                    stake_amount = base_amount
                 
-                print(f"[Worker] Executing trade: {pair} {action} {timeframe}m ({best_opportunity['confidence']}%)")
+                print(f"[Worker] Executing trade: {pair} {action} {timeframe}m ({confidence}%) | Amount: {stake_amount}")
                 
-                check, id = iq.buy(config.amount, pair, action, timeframe)
+                check, id = iq.buy(stake_amount, pair, action, timeframe)
                 if check:
                     print(f"[Worker] Trade placed for {config.email}: {action} (ID: {id})")
                     
@@ -205,9 +214,9 @@ def run_trade_session(config, shared_stats, stop_event):
                             shared_stats["profit"] += profit
                             shared_stats["consecutive_losses"] = 0
                         else:
-                            print(f"[Worker] Trade LOST: -{config.amount}")
+                            print(f"[Worker] Trade LOST: -{stake_amount}")
                             shared_stats["losses"] += 1
-                            shared_stats["profit"] -= config.amount
+                            shared_stats["profit"] -= stake_amount
                             shared_stats["consecutive_losses"] += 1
                             
                         # Refresh balance

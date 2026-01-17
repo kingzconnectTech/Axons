@@ -1,4 +1,5 @@
 import time
+from datetime import datetime
 import pandas as pd
 import numpy as np
 
@@ -18,11 +19,65 @@ PAIR_PROFILE = {
         "max_spread_atr_factor": 0.25,
         "spread_scale": 1.0,
         "enable_spread_filter": True,
+        "sr_lookback": 60,
+        "sr_rsi_buy": 45,
+        "sr_rsi_sell": 55,
+        "sr_rsi_strong_buy": 35,
+        "sr_rsi_extreme_buy": 30,
+        "sr_rsi_strong_sell": 65,
+        "sr_rsi_extreme_sell": 70,
+        "ny_overbought": 70,
+        "ny_oversold": 30,
     }
+}
+
+OTC_ONLY = {
+    "OTC Mean Reversion",
+    "OTC Volatility Trap Break–Reclaim",
+}
+
+REAL_ONLY = {
+    "Real Trend Pullback",
+    "London Breakout",
+    "NY Reversal",
+    "Real Strategy Voting",
+}
+
+REVERSAL_STRATEGIES = {
+    "RSI + Support & Resistance Reversal",
+    "NY Reversal",
+}
+
+STRATEGY_ALIASES = {
+    "AGGRESIVE": "RSI + Support & Resistance Reversal",
+    "OTC Trend Pullback": "OTC Trend-Pullback Engine Strategy",
+    "REAL_VOTING": "Real Strategy Voting",
 }
 
 LAST_SIGNAL = {}
 COOLDOWN_SECONDS = 180
+
+
+def detect_market_type(pair):
+    otc_keywords = ["OTC", "-OTC"]
+    upper_pair = pair.upper()
+    for k in otc_keywords:
+        if k in upper_pair:
+            return "OTC"
+    return "REAL"
+
+
+def get_session(timestamp):
+    ts = timestamp
+    if ts > 1e12:
+        ts = ts / 1000.0
+    dt = datetime.fromtimestamp(ts)
+    hour = dt.hour
+    if 7 <= hour <= 11:
+        return "LONDON"
+    if 13 <= hour <= 17:
+        return "NEW_YORK"
+    return "OFF_SESSION"
 
 def calculate_rsi(prices, period=14):
     if len(prices) < period:
@@ -33,7 +88,7 @@ def calculate_rsi(prices, period=14):
     
     rs = gain / loss
     rsi = 100 - (100 / (1 + rs))
-    return rsi.iloc[FORMING] if not rsi.empty else 50
+    return rsi.iloc[CONFIRM] if not rsi.empty else 50
 
 def calculate_sma(prices, period=14):
     if len(prices) < period:
@@ -247,7 +302,9 @@ def analyze_otc_mean_reversion(candles, cfg=None):
     
     atr_series = calculate_atr_series(candles, 14)
     current_atr = atr_series.iloc[CONFIRM]
-    
+    if current_atr <= 0:
+        return "NEUTRAL", 0
+
     atr_ma_20 = atr_series.rolling(window=20).mean().iloc[CONFIRM]
     
     # Current Candle (Signal Candle is CONFIRM)
@@ -342,6 +399,8 @@ def analyze_otc_volatility_trap(candles):
     atr_ma_20 = atr_series.rolling(window=20).mean().iloc[CONFIRM]
     
     current_atr = atr_series.iloc[CONFIRM]
+    if current_atr <= 0:
+        return "NEUTRAL", 0
     
     bb_width = upper_band - lower_band
     bb_width_ma_30 = bb_width.rolling(window=30).mean().iloc[CONFIRM]
@@ -503,6 +562,8 @@ def analyze_otc_trend_pullback(candles):
     downtrend = (ema20_c < ema50_c) and (ema20_c < ema20_c_prev1 < ema20_c_prev2) and (ema50_c < ema50_c_prev1 < ema50_c_prev2) and (c_conf < ema20_c)
     if bb_width.iloc[idx_confirm] < 0.7 * bb_width_ma_30:
         return "NEUTRAL", 0
+    if atr_series.iloc[idx_confirm] <= 0:
+        return "NEUTRAL", 0
     if atr_series.iloc[idx_confirm] > atr_ma_20 * 1.8:
         return "NEUTRAL", 0
     fail_count = 0
@@ -540,6 +601,125 @@ def analyze_otc_trend_pullback(candles):
             if spread > 0 and spread >= (atr_series.iloc[idx_confirm] * 0.3):
                 confidence += 5
     return action, min(confidence, 100)
+
+
+def analyze_real_trend_pullback(candles, cfg):
+    if len(candles) < 20:
+        return "NEUTRAL", 0
+    close_prices = [c["close"] for c in candles]
+    closes_series = pd.Series(close_prices)
+    ema20_series = closes_series.ewm(span=20, adjust=False).mean()
+    ema50_series = closes_series.ewm(span=50, adjust=False).mean()
+    ema200_series = closes_series.ewm(span=200, adjust=False).mean()
+    atr_series = calculate_atr_series(candles, 14)
+    current_atr = atr_series.iloc[CONFIRM]
+    if current_atr <= 0:
+        return "NEUTRAL", 0
+    c = candles[CONFIRM]
+    trend_up = ema50_series.iloc[CONFIRM] > ema200_series.iloc[CONFIRM]
+    trend_down = ema50_series.iloc[CONFIRM] < ema200_series.iloc[CONFIRM]
+    if not (trend_up or trend_down):
+        return "NEUTRAL", 0
+    pullback_dist = abs(c["close"] - ema20_series.iloc[CONFIRM])
+    if pullback_dist > current_atr * 1.2:
+        return "NEUTRAL", 0
+    body = abs(c["close"] - c["open"])
+    range_ = c["max"] - c["min"]
+    if range_ == 0:
+        return "NEUTRAL", 0
+    confidence = 70
+    if trend_up:
+        lower_wick = min(c["open"], c["close"]) - c["min"]
+        if c["close"] > ema20_series.iloc[CONFIRM] and lower_wick / range_ >= cfg["wick_ratio"]:
+            confidence += 15
+            return "CALL", min(confidence, 100)
+    if trend_down:
+        upper_wick = c["max"] - max(c["open"], c["close"])
+        if c["close"] < ema20_series.iloc[CONFIRM] and upper_wick / range_ >= cfg["wick_ratio"]:
+            confidence += 15
+            return "PUT", min(confidence, 100)
+    return "NEUTRAL", 0
+
+
+def analyze_london_breakout(candles, cfg):
+    if len(candles) < 25:
+        return "NEUTRAL", 0
+    atr_series = calculate_atr_series(candles, 14)
+    recent_atr = atr_series.iloc[CONFIRM]
+    if recent_atr <= 0:
+        return "NEUTRAL", 0
+    avg_atr = atr_series.rolling(30).mean().iloc[CONFIRM]
+    if recent_atr > avg_atr * 1.1:
+        return "NEUTRAL", 0
+    c = candles[CONFIRM]
+    ts = c.get("timestamp")
+    if ts is None:
+        return "NEUTRAL", 0
+    session = get_session(ts)
+    if session != "LONDON":
+        return "NEUTRAL", 0
+    if abs(c["close"] - c["open"]) < recent_atr * 0.25:
+        return "NEUTRAL", 0
+    asian_ts = candles[-20].get("timestamp")
+    if asian_ts is None:
+        return "NEUTRAL", 0
+    if get_session(asian_ts) != "OFF_SESSION":
+        return "NEUTRAL", 0
+    asian_slice = candles[-20:-5]
+    if len(asian_slice) < 5:
+        return "NEUTRAL", 0
+    asian_high = max(x["max"] for x in asian_slice)
+    asian_low = min(x["min"] for x in asian_slice)
+    confidence = 75
+    if c["close"] > asian_high and (c["close"] - c["open"]) > recent_atr * 0.4:
+        confidence += 10
+        return "CALL", min(confidence, 100)
+    if c["close"] < asian_low and (c["open"] - c["close"]) > recent_atr * 0.4:
+        confidence += 10
+        return "PUT", min(confidence, 100)
+    return "NEUTRAL", 0
+
+
+def analyze_ny_reversal(candles, cfg):
+    if len(candles) < 20:
+        return "NEUTRAL", 0
+    close_prices = [c["close"] for c in candles]
+    rsi_series = calculate_rsi_series(close_prices, 14)
+    atr_series = calculate_atr_series(candles, 14)
+    current_atr = atr_series.iloc[CONFIRM]
+    if current_atr <= 0:
+        return "NEUTRAL", 0
+    c = candles[CONFIRM]
+    ts = c.get("timestamp")
+    if ts is None:
+        return "NEUTRAL", 0
+    session = get_session(ts)
+    if session != "NEW_YORK":
+        return "NEUTRAL", 0
+    if len(candles) < 16:
+        return "NEUTRAL", 0
+    origin = candles[-15]
+    move = abs(c["close"] - origin["open"])
+    if move < current_atr * 1.5:
+        return "NEUTRAL", 0
+    range_ = c["max"] - c["min"]
+    if range_ == 0:
+        return "NEUTRAL", 0
+    confidence = 70
+    rsi_value = rsi_series.iloc[CONFIRM]
+    ny_overbought = cfg.get("ny_overbought", 70)
+    ny_oversold = cfg.get("ny_oversold", 30)
+    if rsi_value > ny_overbought:
+        upper_wick = c["max"] - max(c["open"], c["close"])
+        if upper_wick / range_ >= cfg["wick_ratio"]:
+            confidence += 20
+            return "PUT", min(confidence, 100)
+    if rsi_value < ny_oversold:
+        lower_wick = min(c["open"], c["close"]) - c["min"]
+        if lower_wick / range_ >= cfg["wick_ratio"]:
+            confidence += 20
+            return "CALL", min(confidence, 100)
+    return "NEUTRAL", 0
 
 def analyze_quick_2m(candles):
     """
@@ -611,14 +791,25 @@ class StrategyService:
         if not candles or len(candles) < 20:
             return {"action": "NEUTRAL", "confidence": 0}
 
-        close_prices = [c['close'] for c in candles]
+        close_prices = [c["close"] for c in candles]
+        canonical_name = STRATEGY_ALIASES.get(strategy_name, strategy_name)
         cfg = PAIR_PROFILE.get(pair, PAIR_PROFILE["default"])
-        is_real_pair = "-OTC" not in pair
+        market_type = detect_market_type(pair)
+        is_real_pair = market_type == "REAL"
+
+        if canonical_name in OTC_ONLY and market_type != "OTC":
+            return {"action": "NEUTRAL", "confidence": 0}
+
+        if canonical_name in REAL_ONLY and market_type != "REAL":
+            return {"action": "NEUTRAL", "confidence": 0}
 
         if is_real_pair:
             atr_series_filters = calculate_atr_series(candles, 14)
             current_atr_f = atr_series_filters.iloc[CONFIRM]
             atr_ma_50_f = atr_series_filters.rolling(window=50).mean().iloc[CONFIRM]
+
+            if pd.isna(atr_ma_50_f) or atr_ma_50_f <= 0:
+                return {"action": "NEUTRAL", "confidence": 0}
 
             if spread is not None and current_atr_f > 0:
                 if cfg.get("enable_spread_filter", True):
@@ -634,67 +825,158 @@ class StrategyService:
                     if effective_spread > current_atr_f * max_factor:
                         return {"action": "NEUTRAL", "confidence": 0}
 
-            if current_atr_f < atr_ma_50_f * 0.6:
+            if canonical_name not in {"London Breakout", "Real Trend Pullback"}:
+                if current_atr_f < atr_ma_50_f * 0.6:
+                    return {"action": "NEUTRAL", "confidence": 0}
+
+            confirm_candle = candles[CONFIRM]
+            ts = confirm_candle.get("timestamp")
+            if ts is None:
                 return {"action": "NEUTRAL", "confidence": 0}
-        
+            session = get_session(ts)
+            if session == "OFF_SESSION" and canonical_name not in REVERSAL_STRATEGIES:
+                return {"action": "NEUTRAL", "confidence": 0}
+
         # ---------------------------------------------------------------------
         # STRATEGY: Test Execution Strategy
         # ---------------------------------------------------------------------
-        if strategy_name == "Test Execution Strategy":
+        if canonical_name == "Test Execution Strategy":
             action, confidence = analyze_test_execution(candles)
             result = {"action": action, "confidence": confidence}
-            return StrategyService._apply_cooldown(pair, strategy_name, result)
+            result = StrategyService._apply_real_trend_filter(
+                pair, canonical_name, result, close_prices
+            )
+            return StrategyService._apply_cooldown(pair, canonical_name, result)
         
         # ---------------------------------------------------------------------
         # STRATEGY: OTC Mean Reversion
         # ---------------------------------------------------------------------
-        if strategy_name == "OTC Mean Reversion":
+        if canonical_name == "OTC Mean Reversion":
             action, confidence = analyze_otc_mean_reversion(candles, cfg)
             result = {"action": action, "confidence": confidence}
-            return StrategyService._apply_cooldown(pair, strategy_name, result)
+            result = StrategyService._apply_real_trend_filter(
+                pair, canonical_name, result, close_prices
+            )
+            return StrategyService._apply_cooldown(pair, canonical_name, result)
 
         # ---------------------------------------------------------------------
         # STRATEGY: OTC Volatility Trap Break–Reclaim
         # ---------------------------------------------------------------------
-        if strategy_name == "OTC Volatility Trap Break–Reclaim":
+        if canonical_name == "OTC Volatility Trap Break–Reclaim":
             action, confidence = analyze_otc_volatility_trap(candles)
             result = {"action": action, "confidence": confidence}
-            return StrategyService._apply_cooldown(pair, strategy_name, result)
+            result = StrategyService._apply_real_trend_filter(
+                pair, canonical_name, result, close_prices
+            )
+            return StrategyService._apply_cooldown(pair, canonical_name, result)
         
         # ---------------------------------------------------------------------
         # STRATEGY: OTC Trend-Pullback Engine Strategy
         # ---------------------------------------------------------------------
-        if strategy_name == "OTC Trend-Pullback Engine Strategy":
+        if canonical_name == "OTC Trend-Pullback Engine Strategy":
             action, confidence = analyze_otc_trend_pullback(candles)
             result = {"action": action, "confidence": confidence}
-            return StrategyService._apply_cooldown(pair, strategy_name, result)
+            result = StrategyService._apply_real_trend_filter(
+                pair, canonical_name, result, close_prices
+            )
+            return StrategyService._apply_cooldown(pair, canonical_name, result)
+
+        # ---------------------------------------------------------------------
+        # STRATEGY: Real Trend Pullback
+        # ---------------------------------------------------------------------
+        if canonical_name == "Real Trend Pullback":
+            action, confidence = analyze_real_trend_pullback(candles, cfg)
+            result = {"action": action, "confidence": confidence}
+            result = StrategyService._apply_real_trend_filter(
+                pair, canonical_name, result, close_prices
+            )
+            return StrategyService._apply_cooldown(pair, canonical_name, result)
+
+        # ---------------------------------------------------------------------
+        # STRATEGY: London Breakout
+        # ---------------------------------------------------------------------
+        if canonical_name == "London Breakout":
+            action, confidence = analyze_london_breakout(candles, cfg)
+            result = {"action": action, "confidence": confidence}
+            result = StrategyService._apply_real_trend_filter(
+                pair, canonical_name, result, close_prices
+            )
+            return StrategyService._apply_cooldown(pair, canonical_name, result)
+
+        # ---------------------------------------------------------------------
+        # STRATEGY: NY Reversal
+        # ---------------------------------------------------------------------
+        if canonical_name == "NY Reversal":
+            action, confidence = analyze_ny_reversal(candles, cfg)
+            result = {"action": action, "confidence": confidence}
+            result = StrategyService._apply_real_trend_filter(
+                pair, canonical_name, result, close_prices
+            )
+            return StrategyService._apply_cooldown(pair, canonical_name, result)
+
+        if canonical_name == "Real Strategy Voting":
+            trend_action, trend_confidence = analyze_real_trend_pullback(candles, cfg)
+            london_action, london_confidence = analyze_london_breakout(candles, cfg)
+            ny_action, ny_confidence = analyze_ny_reversal(candles, cfg)
+
+            final_action = "NEUTRAL"
+            final_confidence = 0
+
+            if london_action in ["CALL", "PUT"] and trend_action == london_action:
+                final_action = london_action
+                base_conf = max(london_confidence, trend_confidence)
+                final_confidence = min(100, base_conf + 5)
+            elif trend_action in ["CALL", "PUT"] and ny_action == trend_action:
+                final_action = trend_action
+                base_conf = max(trend_confidence, ny_confidence)
+                final_confidence = min(100, base_conf + 3)
+
+            if final_action == "NEUTRAL":
+                return {"action": "NEUTRAL", "confidence": 0}
+
+            result = {"action": final_action, "confidence": final_confidence}
+            result = StrategyService._apply_real_trend_filter(
+                pair, canonical_name, result, close_prices
+            )
+            return StrategyService._apply_cooldown(pair, canonical_name, result)
 
         # ---------------------------------------------------------------------
         # STRATEGY: Quick 2M Strategy
         # ---------------------------------------------------------------------
-        if strategy_name == "Quick 2M Strategy":
+        if canonical_name == "Quick 2M Strategy":
             action, confidence, reason = analyze_quick_2m(candles)
             result = {"action": action, "confidence": confidence, "reason": reason}
-            return StrategyService._apply_cooldown(pair, strategy_name, result)
+            result = StrategyService._apply_real_trend_filter(
+                pair, canonical_name, result, close_prices
+            )
+            return StrategyService._apply_cooldown(pair, canonical_name, result)
 
         # ---------------------------------------------------------------------
         # STRATEGY: RSI + Support & Resistance Reversal (M1 Binary)
         # ---------------------------------------------------------------------
         target_strategy = "RSI + Support & Resistance Reversal"
         
-        # Match simplified names if needed
-        if strategy_name == target_strategy or strategy_name == "AGGRESIVE": # Overwriting AGGRESIVE for now or strictly matching
+        if canonical_name == target_strategy:
              
             # 1. Indicators
             # Use confirmed RSI to avoid repainting
             rsi_series = calculate_rsi_series(close_prices, 14)
             rsi = rsi_series.iloc[CONFIRM]
 
+            sr_rsi_buy = cfg.get("sr_rsi_buy", 45)
+            sr_rsi_sell = cfg.get("sr_rsi_sell", 55)
+            sr_rsi_strong_buy = cfg.get("sr_rsi_strong_buy", 35)
+            sr_rsi_extreme_buy = cfg.get("sr_rsi_extreme_buy", 30)
+            sr_rsi_strong_sell = cfg.get("sr_rsi_strong_sell", 65)
+            sr_rsi_extreme_sell = cfg.get("sr_rsi_extreme_sell", 70)
+
             atr_series = calculate_atr_series(candles, 14)
             current_atr = atr_series.iloc[CONFIRM]
+            if current_atr <= 0:
+                return {"action": "NEUTRAL", "confidence": 0}
             
-            # 2. Structure (Support/Resistance)
-            support_zones, resistance_zones = identify_zones(candles[-60:]) # Look at last 60 candles
+            lookback = cfg.get("sr_lookback", 60)
+            support_zones, resistance_zones = identify_zones(candles[-lookback:])
             support_zones = cluster_levels(support_zones, current_atr)
             resistance_zones = cluster_levels(resistance_zones, current_atr)
             
@@ -716,19 +998,18 @@ class StrategyService:
                               is_near_zone(conf_candle['low'], support_zones)
             
             if touched_support:
-                if rsi <= 45:
+                if rsi <= sr_rsi_buy:
                     if indec_candle['body_ratio'] <= 0.45:
                         if conf_candle['is_bullish'] and \
                            conf_candle['body_ratio'] >= 0.40 and \
                            conf_candle['close'] > indec_candle['midpoint']:
                             
                             action = "CALL"
-                            # Tiered confidence: stronger when RSI is deeper and candles are cleaner
-                            if rsi <= 35 and indec_candle['body_ratio'] <= 0.30 and conf_candle['body_ratio'] >= 0.50:
+                            if rsi <= sr_rsi_strong_buy and indec_candle['body_ratio'] <= 0.30 and conf_candle['body_ratio'] >= 0.50:
                                 confidence = 88
                             else:
                                 confidence = 78
-                            if rsi <= 30:
+                            if rsi <= sr_rsi_extreme_buy:
                                 confidence += 4
                             if conf_candle['close'] > indec_candle['high']:
                                 confidence += 4
@@ -739,18 +1020,18 @@ class StrategyService:
                                  is_near_zone(conf_candle['high'], resistance_zones)
                                  
             if touched_resistance:
-                if rsi >= 55:
+                if rsi >= sr_rsi_sell:
                     if indec_candle['body_ratio'] <= 0.45:
                         if not conf_candle['is_bullish'] and \
                            conf_candle['body_ratio'] >= 0.40 and \
                            conf_candle['close'] < indec_candle['midpoint']:
                             
                             action = "PUT"
-                            if rsi >= 65 and indec_candle['body_ratio'] <= 0.30 and conf_candle['body_ratio'] >= 0.50:
+                            if rsi >= sr_rsi_strong_sell and indec_candle['body_ratio'] <= 0.30 and conf_candle['body_ratio'] >= 0.50:
                                 confidence = 88
                             else:
                                 confidence = 78
-                            if rsi >= 70:
+                            if rsi >= sr_rsi_extreme_sell:
                                 confidence += 4
                             if conf_candle['close'] < indec_candle['low']:
                                 confidence += 4
@@ -759,7 +1040,11 @@ class StrategyService:
             # 1. Trend Filter (Reject if RSI stuck in overbought/oversold for multiple candles)
             # Check last 3 candles RSI (using closed data)
             # i=1 -> [:-1] (CONFIRM), i=2 -> [:-2] (SETUP), i=3 -> [:-3] (SETUP-1)
-            recent_rsis = [calculate_rsi(close_prices[:-(i)], 14) for i in range(1, 4)]
+            recent_rsis = [
+                rsi_series.iloc[CONFIRM],
+                rsi_series.iloc[SETUP],
+                rsi_series.iloc[SETUP - 1],
+            ]
             # If all are >= 65 (strong uptrend), risk for PUT
             # If all are <= 35 (strong downtrend), risk for CALL
             
@@ -779,11 +1064,15 @@ class StrategyService:
                 else:
                      confidence += 3
 
+            clamped_confidence = max(confidence, 0)
             result = {
-                "action": action, 
-                "confidence": min(confidence, 100)
+                "action": action,
+                "confidence": min(clamped_confidence, 100),
             }
-            return StrategyService._apply_cooldown(pair, strategy_name, result)
+            result = StrategyService._apply_real_trend_filter(
+                pair, canonical_name, result, close_prices
+            )
+            return StrategyService._apply_cooldown(pair, canonical_name, result)
         
         return {"action": "NEUTRAL", "confidence": 0}
 
@@ -797,4 +1086,38 @@ class StrategyService:
             if last_ts is not None and now - last_ts < COOLDOWN_SECONDS:
                 return {"action": "NEUTRAL", "confidence": 0}
             LAST_SIGNAL[key] = now
+        confidence = result.get("confidence", 0)
+        result["confidence"] = max(0, min(confidence, 100))
+        return result
+
+    @staticmethod
+    def _apply_real_trend_filter(pair, strategy_name, result, close_prices):
+        market_type = detect_market_type(pair)
+        if market_type != "REAL":
+            return result
+
+        action = result.get("action")
+        if action not in ["CALL", "PUT"]:
+            return result
+
+        if strategy_name in REVERSAL_STRATEGIES:
+            return result
+
+        if not close_prices or len(close_prices) < 200:
+            return {"action": "NEUTRAL", "confidence": 0}
+
+        closes_series = pd.Series(close_prices)
+        ema50_series = closes_series.ewm(span=50, adjust=False).mean()
+        ema200_series = closes_series.ewm(span=200, adjust=False).mean()
+        ema50 = ema50_series.iloc[CONFIRM]
+        ema200 = ema200_series.iloc[CONFIRM]
+
+        trend_up = ema50 > ema200
+        trend_down = ema50 < ema200
+
+        if action == "CALL" and trend_down:
+            return {"action": "NEUTRAL", "confidence": 0}
+        if action == "PUT" and trend_up:
+            return {"action": "NEUTRAL", "confidence": 0}
+
         return result

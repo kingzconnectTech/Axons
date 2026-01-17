@@ -31,7 +31,11 @@ export default function AutoTradeScreen() {
     'OTC Mean Reversion',
     'OTC Volatility Trap Break–Reclaim',
     'OTC Trend-Pullback Engine Strategy',
-    'Test Execution Strategy'
+    'Test Execution Strategy',
+    'Real Trend Pullback',
+    'London Breakout',
+    'NY Reversal',
+    'Real Strategy Voting'
   ];
   const [stopLoss, setStopLoss] = useState('10');
   const [takeProfit, setTakeProfit] = useState('20');

@@ -57,7 +57,15 @@ class IQSessionManager:
         # usually timeframe is 60 for 1m, 300 for 5m
         # user passes timeframe in minutes
         tf_seconds = int(timeframe * 60)
-        return iq.get_candles(pair, tf_seconds, count, time.time())
+        raw = iq.get_candles(pair, tf_seconds, count, time.time())
+        candles = []
+        for c in raw or []:
+            ts = c.get("timestamp", c.get("from"))
+            normalized = dict(c)
+            if ts is not None:
+                normalized["timestamp"] = int(ts)
+            candles.append(normalized)
+        return candles
 
     def get_balance(self, email):
         with self.session_lock:

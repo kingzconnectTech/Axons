@@ -56,7 +56,11 @@ export default function SignalsScreen() {
     'RSI + Support & Resistance Reversal',
     'OTC Mean Reversion',
     'OTC Volatility Trap Break–Reclaim',
-    'OTC Trend-Pullback Engine Strategy'
+    'OTC Trend-Pullback Engine Strategy',
+    'Real Trend Pullback',
+    'London Breakout',
+    'NY Reversal',
+    'Real Strategy Voting'
   ];
   const timeframes = [1, 2, 3, 4, 5, 15];
 
