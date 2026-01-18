@@ -42,7 +42,7 @@
         "expo-notifications",
         {
           "sounds": [
-            "./assets/axon-notification.mp3"
+            "./assets/axon_notification.mp3"
           ]
         }
       ],
