@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeContext } from './src/context/ThemeContext';
 import { BotProvider } from './src/context/BotContext';
 import { initializeOneSignal } from './src/services/OneSignalService';
-import mobileAds from 'react-native-google-mobile-ads';
+import mobileAds from './src/utils/SafeMobileAds';
 import { registerForPushNotificationsAsync } from './src/services/NotificationService';
 import { API_URLS } from './src/config';
 import NoInternetScreen from './src/screens/NoInternetScreen';
