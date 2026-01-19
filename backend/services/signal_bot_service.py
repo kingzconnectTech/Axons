@@ -154,46 +154,40 @@ class SignalBotManager:
         if now - last_ts < 50:
             return
 
-        app_id = os.environ.get("ONESIGNAL_APP_ID")
-        api_key = os.environ.get("ONESIGNAL_REST_API_KEY")
-
-        if not app_id or not api_key:
-            logging.error("OneSignal credentials not configured")
+        if not self.push_token:
             return
-
-        headers = {
-            "Content-Type": "application/json; charset=utf-8",
-            "Authorization": f"Basic {api_key}",
-        }
-
-        payload = {
-            "app_id": app_id,
-            "include_player_ids": [self.push_token],
-            "headings": {
-                "en": f"{'🟢' if action == 'CALL' else '🔴'} {action} Signal Detected!"
-            },
-            "contents": {
-                "en": f"{pair}: {action} with {confidence:.1f}% confidence."
-            },
-            "data": {
-                "pair": pair,
-                "action": action,
-                "confidence": confidence,
-            },
-        }
-
+            
         try:
-            response = requests.post(
-                "https://onesignal.com/api/v1/notifications",
-                headers=headers,
-                json=payload,
-                timeout=10,
+            # Check if token is valid Expo token
+            if not self.push_token.startswith('ExponentPushToken') and not self.push_token.startswith('ExpoPushToken'):
+                logging.warning(f"Invalid Expo Push Token: {self.push_token}")
+                # return # Continue anyway, maybe it's a different format we support later?
+
+            response = PushClient().publish(
+                PushMessage(
+                    to=self.push_token,
+                    title=f"{'🟢' if action == 'CALL' else '🔴'} {action} Signal Detected!",
+                    body=f"{pair}: {action} with {confidence:.1f}% confidence.",
+                    data={
+                        "pair": pair,
+                        "action": action,
+                        "confidence": confidence,
+                    },
+                    sound="default", # Or "axon_notification" if supported
+                    priority="high"
+                )
             )
-            if response.status_code >= 200 and response.status_code < 300:
+            
+            try:
+                response.validate_response()
                 self.last_notified_ts = now
-            else:
-                logging.error(f"OneSignal push failed: {response.status_code} {response.text}")
+                logging.info(f"Push notification sent to {self.push_token}")
+            except PushServerError as exc:
+                logging.error(f"Push Server Error: {exc.errors}")
+            except Exception as exc:
+                logging.error(f"Push Error: {exc}")
+                
         except Exception as exc:
-            logging.error(f"OneSignal push exception: {exc}")
+            logging.error(f"Push notification exception: {exc}")
 
 signal_bot_manager = SignalBotManager.get_instance()
