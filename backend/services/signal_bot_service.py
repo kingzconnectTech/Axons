@@ -173,8 +173,9 @@ class SignalBotManager:
                         "action": action,
                         "confidence": confidence,
                     },
-                    sound="default", # Or "axon_notification" if supported
-                    priority="high"
+                    sound="axon_notification", 
+                    priority="high",
+                    channel_id="default"
                 )
             )
             
@@ -182,6 +183,10 @@ class SignalBotManager:
                 response.validate_response()
                 self.last_notified_ts = now
                 logging.info(f"Push notification sent to {self.push_token}")
+                # Log ticket IDs for debugging
+                for ticket in response.tickets:
+                    if ticket.status == 'ok':
+                        logging.info(f"Expo Ticket ID: {ticket.id}")
             except PushServerError as exc:
                 logging.error(f"Push Server Error: {exc.errors}")
             except Exception as exc:
