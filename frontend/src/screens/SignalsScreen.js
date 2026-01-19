@@ -11,9 +11,25 @@ import SelectionModal from '../components/SelectionModal';
 import AdBanner from '../components/AdBanner';
 import { getOneSignalPlayerId } from '../services/OneSignalService';
 import { isNotificationPermissionGranted } from '../services/NotificationService';
+import Constants from 'expo-constants';
 
 const API_URL = API_URLS.SIGNALS;
 const { width } = Dimensions.get('window');
+
+// Mock Ad Hook for Expo Go to prevent crashes
+const useMockInterstitialAd = () => {
+  return {
+    load: () => console.log('Ad load mocked (Expo Go)'),
+    show: () => console.log('Ad show mocked (Expo Go)'),
+    isLoaded: false,
+    isClosed: true,
+    error: null,
+  };
+};
+
+// Determine which hook to use
+const isExpoGo = Constants.appOwnership === 'expo';
+const useAdHook = isExpoGo ? useMockInterstitialAd : useInterstitialAd;
 
 export default function SignalsScreen() {
   const theme = useTheme();
@@ -35,7 +51,7 @@ export default function SignalsScreen() {
   const [strategyInfoVisible, setStrategyInfoVisible] = useState(false);
 
   const INTERSTITIAL_UNIT_ID = __DEV__ ? TestIds.INTERSTITIAL : 'ca-app-pub-3940256099942544/1033173712';
-  const interstitial = useInterstitialAd(INTERSTITIAL_UNIT_ID, {
+  const interstitial = useAdHook(INTERSTITIAL_UNIT_ID, {
     requestNonPersonalizedAdsOnly: true,
   });
   
