@@ -29,7 +29,9 @@ export async function registerForPushNotificationsAsync() {
     return null;
   }
 
-  const tokenData = await Notifications.getExpoPushTokenAsync();
+  const tokenData = await Notifications.getExpoPushTokenAsync({
+    projectId: '13ba9648-45b1-4723-a646-1291ddef18d9', // EAS Project ID
+  });
   return tokenData?.data ?? null;
 }
 
