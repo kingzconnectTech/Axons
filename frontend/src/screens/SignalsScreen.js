@@ -32,6 +32,10 @@ export default function SignalsScreen() {
   const [timeframeModalVisible, setTimeframeModalVisible] = useState(false);
   const [pendingToggle, setPendingToggle] = useState(false);
   const [strategyInfoVisible, setStrategyInfoVisible] = useState(false);
+  
+  // Generic Toast State
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
 
   const INTERSTITIAL_UNIT_ID = __DEV__ ? TestIds.INTERSTITIAL : 'ca-app-pub-3940256099942544/1033173712';
   const interstitial = useInterstitialAd(INTERSTITIAL_UNIT_ID, {
@@ -158,15 +162,29 @@ export default function SignalsScreen() {
         alert('Failed to stop stream');
       }
     } else {
+      setLoading(true);
       try {
         const permissionGranted = await isNotificationPermissionGranted();
         if (!permissionGranted) {
-          alert('Notifications are disabled for this app. Streaming will continue without push alerts. You can enable notifications in your system settings.');
+          setToastMessage('Notifications disabled. Enable in settings for alerts.');
+          setToastVisible(true);
         }
-        const token = await registerForPushNotificationsAsync();
-        if (!token) {
-          alert('Failed to get push token. Streaming will start without push alerts.');
+        
+        let tokenResult = await registerForPushNotificationsAsync();
+        let token = null;
+
+        if (tokenResult && typeof tokenResult === 'object' && tokenResult.error) {
+            console.warn("Push Token Error:", tokenResult.error);
+            setToastMessage(`Push Error: ${tokenResult.error}`);
+            setToastVisible(true);
+        } else if (typeof tokenResult === 'string') {
+            token = tokenResult;
+        } else {
+             // null result
+             setToastMessage('Push notifications unavailable on this device.');
+             setToastVisible(true);
         }
+
         await axios.post(`${API_URL}/start`, {
             pairs: selectedPairs,
             timeframe,
@@ -177,7 +195,9 @@ export default function SignalsScreen() {
         setStreamStats({ total: 0 });
       } catch (e) {
         console.error(e);
-        alert(`Failed to start stream: ${e.message}`);
+        alert(`Failed to start stream: ${e.message}\nURL: ${API_URL}/start`);
+      } finally {
+        setLoading(false);
       }
     }
   };
@@ -339,17 +359,30 @@ export default function SignalsScreen() {
               </View>
 
               {!streaming ? (
-                <Button 
-                  mode="contained" 
-                  onPress={toggleStream} 
-                  loading={loading}
-                  style={styles.analyzeButton}
-                  contentStyle={{ height: 56 }}
-                  labelStyle={{ fontSize: 18, fontWeight: 'bold', letterSpacing: 1 }}
-                  icon="play-circle"
-                >
-                  START STREAM
-                </Button>
+                <View>
+                  <Button 
+                    mode="contained" 
+                    onPress={toggleStream} 
+                    loading={loading}
+                    style={styles.analyzeButton}
+                    contentStyle={{ height: 56 }}
+                    labelStyle={{ fontSize: 18, fontWeight: 'bold', letterSpacing: 1 }}
+                    icon="play-circle"
+                  >
+                    START STREAM
+                  </Button>
+                  <Button 
+                    mode="outlined" 
+                    onPress={handleAnalyze} 
+                    loading={loading}
+                    style={[styles.analyzeButton, { marginTop: 12, borderColor: theme.colors.primary }]}
+                    contentStyle={{ height: 48 }}
+                    labelStyle={{ fontSize: 16, fontWeight: 'bold', letterSpacing: 1, color: theme.colors.primary }}
+                    icon="radar"
+                  >
+                    MANUAL SCAN
+                  </Button>
+                </View>
               ) : (
                 <Button 
                   mode="contained" 
@@ -528,6 +561,16 @@ export default function SignalsScreen() {
       </Modal>
 
       <AdBanner />
+
+      {/* Generic Toast Snackbar */}
+      <Snackbar
+        visible={toastVisible}
+        onDismiss={() => setToastVisible(false)}
+        duration={3000}
+        style={{ backgroundColor: '#333', marginBottom: 80, borderRadius: 8 }}
+      >
+        <Text style={{ color: 'white' }}>{toastMessage}</Text>
+      </Snackbar>
 
       {/* In-App Notification Snackbar */}
       <Snackbar

@@ -36,7 +36,7 @@ export async function registerForPushNotificationsAsync() {
     });
   } catch (error) {
     console.warn('Error fetching push token:', error);
-    return null;
+    return { error: error.message };
   }
   return tokenData?.data ?? null;
 }
