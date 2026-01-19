@@ -11,7 +11,7 @@ router = APIRouter()
 @router.post("/start")
 def start_signal_stream(data: SignalBotStart):
     success, msg = signal_bot_manager.start_stream(
-        data.pair, data.timeframe, data.strategy, data.push_token
+        data.pairs, data.timeframe, data.strategy, data.push_token
     )
     if not success:
         raise HTTPException(status_code=400, detail=msg)
@@ -79,27 +79,53 @@ def quick_scan():
 
 @router.post("/analyze", response_model=SignalResponse)
 def get_signal(request: SignalRequest):
-    supported = {1, 2, 5, 15, 60}
-    if request.timeframe in supported:
-        candles = iq_manager.get_candles(request.pair, request.timeframe)
-        spread = 0.0
-        if candles:
-            last_candle = candles[-1]
-            spread = last_candle["max"] - last_candle["min"]
-        result = StrategyService.analyze(request.pair, candles, request.strategy, spread=spread)
-    else:
-        m1 = iq_manager.get_candles(request.pair, 1, count=max(120, request.timeframe * 60))
-        mN = resample_to_n_minutes(m1, int(request.timeframe))
-        spread = 0.0
-        if mN:
-            last_candle = mN[-1]
-            spread = last_candle["max"] - last_candle["min"]
-        result = StrategyService.analyze(request.pair, mN, request.strategy, spread=spread)
+    best_result = None
     
+    for pair in request.pairs:
+        supported = {1, 2, 5, 15, 60}
+        if request.timeframe in supported:
+            candles = iq_manager.get_candles(pair, request.timeframe)
+            spread = 0.0
+            if candles:
+                last_candle = candles[-1]
+                spread = last_candle["max"] - last_candle["min"]
+            result = StrategyService.analyze(pair, candles, request.strategy, spread=spread)
+        else:
+            m1 = iq_manager.get_candles(pair, 1, count=max(120, request.timeframe * 60))
+            mN = resample_to_n_minutes(m1, int(request.timeframe))
+            spread = 0.0
+            if mN:
+                last_candle = mN[-1]
+                spread = last_candle["max"] - last_candle["min"]
+            result = StrategyService.analyze(pair, mN, request.strategy, spread=spread)
+        
+        # Logic to pick the best result
+        # If we find a CALL or PUT, we prefer it over NEUTRAL
+        # If we have multiple CALL/PUT, we pick the one with higher confidence
+        if result["action"] in ["CALL", "PUT"]:
+            if best_result is None or best_result["action"] == "NEUTRAL":
+                best_result = {**result, "pair": pair}
+            elif result["confidence"] > best_result["confidence"]:
+                best_result = {**result, "pair": pair}
+        
+        # If best_result is still None (first iteration), set it
+        if best_result is None:
+            best_result = {**result, "pair": pair}
+            
+    if best_result is None:
+        # Should not happen if request.pairs is not empty
+        # Default fallback
+        best_result = {
+            "pair": request.pairs[0] if request.pairs else "Unknown",
+            "action": "NEUTRAL",
+            "confidence": 0,
+            "reason": "No pairs provided or analysis failed"
+        }
+
     return SignalResponse(
-        pair=request.pair,
-        action=result["action"],
-        confidence=result["confidence"],
+        pair=best_result["pair"],
+        action=best_result["action"],
+        confidence=best_result["confidence"],
         timestamp=time.time(),
-        reason=result.get("reason")
+        reason=best_result.get("reason")
     )

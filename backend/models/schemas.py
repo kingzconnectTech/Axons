@@ -2,12 +2,12 @@ from pydantic import BaseModel
 from typing import Optional, List
 
 class SignalRequest(BaseModel):
-    pair: str
+    pairs: List[str]
     timeframe: int  # in minutes
     strategy: str
 
 class SignalBotStart(BaseModel):
-    pair: str
+    pairs: List[str]
     timeframe: int
     strategy: str
     push_token: Optional[str] = None
