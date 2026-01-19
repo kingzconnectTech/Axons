@@ -251,10 +251,17 @@ export default function QuickScreen({ navigation }) {
             />
             
             <View style={styles.resultHeader}>
-              <View style={[styles.badge, { backgroundColor: getActionColor(result.action) + '20' }]}>
-                 <Text style={{ color: getActionColor(result.action), fontWeight: '900', letterSpacing: 1 }}>
-                    {result.action === 'NEUTRAL' ? 'WAIT' : 'SIGNAL FOUND'}
-                 </Text>
+              <View>
+                  <View style={[styles.badge, { backgroundColor: getActionColor(result.action) + '20', alignSelf: 'flex-start' }]}>
+                     <Text style={{ color: getActionColor(result.action), fontWeight: '900', letterSpacing: 1 }}>
+                        {result.action === 'NEUTRAL' ? 'WAIT' : 'SIGNAL FOUND'}
+                     </Text>
+                  </View>
+                  {result.pair && (
+                      <Text style={{ color: theme.colors.onSurface, fontSize: 20, fontWeight: 'bold', marginTop: 8 }}>
+                          {result.pair.replace('-OTC', ' (OTC)')}
+                      </Text>
+                  )}
               </View>
               <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 12 }}>
                  {new Date(result.timestamp * 1000).toLocaleTimeString()}

@@ -376,8 +376,15 @@ export default function SignalsScreen() {
                style={styles.resultGradient}
             >
               <View style={styles.resultHeader}>
-                <Text variant="titleMedium" style={{ color: theme.colors.onSurfaceVariant, fontWeight: 'bold' }}>LATEST SIGNAL</Text>
-                <Surface style={{ borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: 'rgba(255,255,255,0.1)' }}>
+                <View>
+                    <Text variant="titleMedium" style={{ color: theme.colors.onSurfaceVariant, fontWeight: 'bold' }}>LATEST SIGNAL</Text>
+                    {signal.pair && (
+                        <Text variant="titleLarge" style={{ color: theme.colors.onSurface, fontWeight: '900', marginTop: 4 }}>
+                            {signal.pair.replace('-OTC', ' (OTC)')}
+                        </Text>
+                    )}
+                </View>
+                <Surface style={{ borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: 'rgba(255,255,255,0.1)', alignSelf: 'flex-start' }}>
                   <Text variant="bodySmall" style={{ color: theme.colors.onSurface }}>{new Date().toLocaleTimeString()}</Text>
                 </Surface>
               </View>
