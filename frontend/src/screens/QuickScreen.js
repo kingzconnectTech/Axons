@@ -198,7 +198,7 @@ export default function QuickScreen({ navigation }) {
                 <View style={{ flex: 1, marginLeft: 16 }}>
                    <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant, letterSpacing: 1 }}>SELECTED ASSET</Text>
                    <Text variant="headlineSmall" style={{ color: theme.colors.onSurface, fontWeight: 'bold' }}>
-                      {selectedPairs.length > 1 ? `${selectedPairs.length} Pairs Selected` : (pairs.find(p => p.value === selectedPairs[0])?.label || selectedPairs[0])}
+                      {!selectedPairs || selectedPairs.length === 0 ? 'Select Pairs' : (selectedPairs.length > 1 ? `${selectedPairs.length} Pairs Selected` : (pairs.find(p => p.value === selectedPairs[0])?.label || selectedPairs[0] || ''))}
                    </Text>
                 </View>
                 <MaterialCommunityIcons name="chevron-down" size={28} color={theme.colors.onSurfaceVariant} />

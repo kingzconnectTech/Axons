@@ -1,12 +1,18 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
+import Constants from 'expo-constants';
 
 const adUnitId = __DEV__ ? TestIds.ADAPTIVE_BANNER : 'ca-app-pub-3940256099942544/9214589741';
 
 export default function AdBanner() {
   const bannerRef = useRef(null);
   const [failed, setFailed] = useState(false);
+
+  // Prevent crash in Expo Go
+  if (Constants.appOwnership === 'expo') {
+    return null;
+  }
 
   return (
     <View style={styles.container}>

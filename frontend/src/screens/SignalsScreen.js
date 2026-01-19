@@ -284,7 +284,13 @@ export default function SignalsScreen() {
               <TouchableOpacity onPress={() => setPairModalVisible(true)}>
                   <TextInput
                   label="Asset Pairs"
-                  value={selectedPairs.length > 1 ? `${selectedPairs.length} Pairs Selected` : (pairs.find(p => p.value === selectedPairs[0])?.label || selectedPairs[0])}
+                  value={
+                    !selectedPairs || selectedPairs.length === 0 
+                      ? '' 
+                      : (selectedPairs.length > 1 
+                          ? `${selectedPairs.length} Pairs Selected` 
+                          : (pairs.find(p => p.value === selectedPairs[0])?.label || selectedPairs[0] || ''))
+                  }
                   mode="outlined"
                   editable={false}
                   style={styles.input}
