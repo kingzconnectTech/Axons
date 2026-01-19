@@ -21,7 +21,7 @@ export default function QuickScreen({ navigation }) {
   const theme = useTheme();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
-  const [selectedPair, setSelectedPair] = useState('EURUSD-OTC');
+  const [selectedPairs, setSelectedPairs] = useState(['EURUSD-OTC']);
   const [modalVisible, setModalVisible] = useState(false);
   const [scanAnim] = useState(new Animated.Value(0));
   const scanLoop = useRef(null);
@@ -48,6 +48,20 @@ export default function QuickScreen({ navigation }) {
     { label: 'EUR/JPY OTC', value: 'EURJPY-OTC' },
     { label: 'AUD/CAD OTC', value: 'AUDCAD-OTC' },
   ];
+
+  const togglePair = (pairValue) => {
+    if (selectedPairs.includes(pairValue)) {
+        if (selectedPairs.length > 1) {
+            setSelectedPairs(selectedPairs.filter(p => p !== pairValue));
+        }
+    } else {
+        if (selectedPairs.length < 3) {
+            setSelectedPairs([...selectedPairs, pairValue]);
+        } else {
+            alert('Maximum 3 pairs allowed for Flash Scan');
+        }
+    }
+  };
 
   useEffect(() => {
     if (loading) {
@@ -92,7 +106,7 @@ export default function QuickScreen({ navigation }) {
     setResult(null);
     try {
       const response = await axios.post(`${API_URLS.SIGNALS}/analyze`, {
-        pair: selectedPair,
+        pairs: selectedPairs,
         timeframe: 1,
         strategy: 'Quick 2M Strategy'
       });
@@ -155,10 +169,10 @@ export default function QuickScreen({ navigation }) {
             {popularPairs.map((p) => (
                 <Chip 
                     key={p.value} 
-                    selected={selectedPair === p.value}
-                    onPress={() => setSelectedPair(p.value)}
-                    style={[styles.chip, selectedPair === p.value && { backgroundColor: SCAN_ACCENT }]}
-                    textStyle={{ color: selectedPair === p.value ? SCAN_ACCENT_DARK : theme.colors.onSurface }}
+                    selected={selectedPairs.includes(p.value)}
+                    onPress={() => togglePair(p.value)}
+                    style={[styles.chip, selectedPairs.includes(p.value) && { backgroundColor: SCAN_ACCENT }]}
+                    textStyle={{ color: selectedPairs.includes(p.value) ? SCAN_ACCENT_DARK : theme.colors.onSurface }}
                     mode="outlined"
                 >
                     {p.label}
@@ -184,7 +198,7 @@ export default function QuickScreen({ navigation }) {
                 <View style={{ flex: 1, marginLeft: 16 }}>
                    <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant, letterSpacing: 1 }}>SELECTED ASSET</Text>
                    <Text variant="headlineSmall" style={{ color: theme.colors.onSurface, fontWeight: 'bold' }}>
-                      {pairs.find(p => p.value === selectedPair)?.label || selectedPair}
+                      {selectedPairs.length > 1 ? `${selectedPairs.length} Pairs Selected` : (pairs.find(p => p.value === selectedPairs[0])?.label || selectedPairs[0])}
                    </Text>
                 </View>
                 <MaterialCommunityIcons name="chevron-down" size={28} color={theme.colors.onSurfaceVariant} />
@@ -283,10 +297,12 @@ export default function QuickScreen({ navigation }) {
       <SelectionModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
-        title="Select Asset Pair"
+        title="Select Asset Pairs"
         options={pairs}
-        value={selectedPair}
-        onSelect={setSelectedPair}
+        value={selectedPairs}
+        onSelect={setSelectedPairs}
+        multi={true}
+        maxSelect={3}
         icon="chart-line"
       />
     </View>

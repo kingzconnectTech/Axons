@@ -17,7 +17,7 @@ const { width } = Dimensions.get('window');
 
 export default function SignalsScreen() {
   const theme = useTheme();
-  const [pair, setPair] = useState('EURUSD-OTC');
+  const [selectedPairs, setSelectedPairs] = useState(['EURUSD-OTC']);
   const [timeframe, setTimeframe] = useState(1);
   const [strategy, setStrategy] = useState('RSI + Support & Resistance Reversal');
   const [signal, setSignal] = useState(null);
@@ -32,6 +32,7 @@ export default function SignalsScreen() {
   const [strategyModalVisible, setStrategyModalVisible] = useState(false);
   const [timeframeModalVisible, setTimeframeModalVisible] = useState(false);
   const [pendingToggle, setPendingToggle] = useState(false);
+  const [strategyInfoVisible, setStrategyInfoVisible] = useState(false);
 
   const INTERSTITIAL_UNIT_ID = __DEV__ ? TestIds.INTERSTITIAL : 'ca-app-pub-3940256099942544/1033173712';
   const interstitial = useInterstitialAd(INTERSTITIAL_UNIT_ID, {
@@ -54,14 +55,46 @@ export default function SignalsScreen() {
     { label: 'USD/CAD', value: 'USDCAD', icon: 'chart-line' },
   ];
   const strategies = [
-    'RSI + Support & Resistance Reversal',
-    'OTC Mean Reversion',
-    'OTC Volatility Trap Break–Reclaim',
-    'OTC Trend-Pullback Engine Strategy',
-    'Real Trend Pullback',
-    'London Breakout',
-    'NY Reversal',
-    'Real Strategy Voting'
+    { 
+        value: 'RSI + Support & Resistance Reversal', 
+        label: 'RSI + Support & Resistance Reversal',
+        description: 'Combines RSI overbought/oversold conditions with key support/resistance levels to identify potential reversal points.' 
+    },
+    { 
+        value: 'OTC Mean Reversion', 
+        label: 'OTC Mean Reversion',
+        description: 'Capitalizes on the tendency of OTC asset prices to revert to their historical average after extreme moves.' 
+    },
+    { 
+        value: 'OTC Volatility Trap Break–Reclaim', 
+        label: 'OTC Volatility Trap Break–Reclaim',
+        description: 'Identifies false breakouts (traps) in volatile OTC markets and signals entries when price reclaims the range.' 
+    },
+    { 
+        value: 'OTC Trend-Pullback Engine Strategy', 
+        label: 'OTC Trend-Pullback Engine Strategy',
+        description: 'Follows strong OTC trends and enters on pullbacks to the moving average or dynamic support zones.' 
+    },
+    { 
+        value: 'Real Trend Pullback', 
+        label: 'Real Trend Pullback',
+        description: 'Classic trend-following strategy for real markets, entering trades in the direction of the trend after a corrective pullback.' 
+    },
+    { 
+        value: 'London Breakout', 
+        label: 'London Breakout',
+        description: 'Captures momentum generated during the opening of the London session, trading breakouts from the Asian session range.' 
+    },
+    { 
+        value: 'NY Reversal', 
+        label: 'NY Reversal',
+        description: 'Looks for reversal patterns during the New York session, often occurring after the initial morning momentum fades.' 
+    },
+    { 
+        value: 'Real Strategy Voting', 
+        label: 'Real Strategy Voting',
+        description: 'Aggregates signals from multiple strategies and executes based on a "voting" consensus for higher probability.' 
+    }
   ];
   const timeframes = [1, 2, 3, 4, 5, 15];
 
@@ -94,16 +127,15 @@ export default function SignalsScreen() {
         setStreaming(true);
         if (response.data.params) {
           const params = response.data.params;
-          if (params.pair) setPair(params.pair);
+          if (params.pairs) setSelectedPairs(params.pairs);
+          else if (params.pair) setSelectedPairs([params.pair]);
+          
           if (typeof params.timeframe !== 'undefined') setTimeframe(params.timeframe);
           if (params.strategy) setStrategy(params.strategy);
         }
         // Sync stats/last signal if available
         if (response.data.last_signal) {
             setSignal(response.data.last_signal);
-            // If it's a new signal we haven't seen? 
-            // The backend handles notifications now.
-            // Just update UI.
         }
         setStreamStats(response.data.stats);
         if (response.data.history) {
@@ -137,7 +169,7 @@ export default function SignalsScreen() {
           alert('Push notifications are not enabled for this device or build. Streaming will start without push alerts.');
         }
         await axios.post(`${API_URL}/start`, {
-            pair,
+            pairs: selectedPairs,
             timeframe,
             strategy,
             push_token: token
@@ -166,7 +198,7 @@ export default function SignalsScreen() {
     setLoading(true);
     try {
       const response = await axios.post(`${API_URL}/analyze`, {
-        pair,
+        pairs: selectedPairs,
         timeframe,
         strategy
       });
@@ -177,6 +209,11 @@ export default function SignalsScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const getSelectedStrategyDescription = () => {
+      const s = strategies.find(s => s.value === strategy);
+      return s ? s.description : 'No description available.';
   };
 
   return (
@@ -246,8 +283,8 @@ export default function SignalsScreen() {
               {/* Pair Selection */}
               <TouchableOpacity onPress={() => setPairModalVisible(true)}>
                   <TextInput
-                  label="Asset Pair"
-                  value={pairs.find(p => p.value === pair)?.label || pair}
+                  label="Asset Pairs"
+                  value={selectedPairs.length > 1 ? `${selectedPairs.length} Pairs Selected` : (pairs.find(p => p.value === selectedPairs[0])?.label || selectedPairs[0])}
                   mode="outlined"
                   editable={false}
                   style={styles.input}
@@ -274,16 +311,25 @@ export default function SignalsScreen() {
 
                  {/* Strategy Selection */}
                 <TouchableOpacity onPress={() => setStrategyModalVisible(true)} style={styles.half}>
-                  <TextInput
-                    label="Strategy"
-                    value={strategy}
-                    mode="outlined"
-                    editable={false}
-                    style={styles.input}
-                    theme={{ colors: { outline: theme.dark ? '#3E4C69' : theme.colors.outline, background: theme.dark ? '#161B29' : theme.colors.surface } }}
-                    textColor={theme.colors.onSurface}
-                    right={<TextInput.Icon icon="chevron-down" color={theme.colors.onSurfaceVariant} />}
-                  />
+                  <View>
+                    <TextInput
+                        label="Strategy"
+                        value={strategy}
+                        mode="outlined"
+                        editable={false}
+                        style={styles.input}
+                        theme={{ colors: { outline: theme.dark ? '#3E4C69' : theme.colors.outline, background: theme.dark ? '#161B29' : theme.colors.surface } }}
+                        textColor={theme.colors.onSurface}
+                        right={
+                            <TextInput.Icon 
+                                icon="information" 
+                                color={theme.colors.primary} 
+                                onPress={() => setStrategyInfoVisible(true)}
+                                forceTextInputFocus={false}
+                            />
+                        }
+                    />
+                  </View>
                 </TouchableOpacity>
               </View>
 
@@ -423,10 +469,11 @@ export default function SignalsScreen() {
       <SelectionModal
         visible={pairModalVisible}
         onClose={() => setPairModalVisible(false)}
-        title="Select Asset Pair"
+        title="Select Asset Pairs"
         options={pairs}
-        value={pair}
-        onSelect={setPair}
+        value={selectedPairs}
+        onSelect={setSelectedPairs}
+        multi={true}
       />
       <SelectionModal
         visible={timeframeModalVisible}
@@ -441,11 +488,32 @@ export default function SignalsScreen() {
         visible={strategyModalVisible}
         onClose={() => setStrategyModalVisible(false)}
         title="Select Strategy"
-        options={strategies.map(s => ({ label: s, value: s, icon: 'robot' }))}
+        options={strategies.map(s => ({ ...s, icon: 'robot' }))}
         value={strategy}
         onSelect={setStrategy}
         icon="robot-outline"
       />
+
+      <Modal
+        visible={strategyInfoVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setStrategyInfoVisible(false)}
+      >
+        <View style={{flex:1, backgroundColor:'rgba(0,0,0,0.7)', justifyContent:'center', alignItems:'center', padding:20}}>
+            <Surface style={{padding:24, borderRadius:24, width:'100%', maxWidth:400, backgroundColor: theme.colors.surface}} elevation={5}>
+                <View style={{flexDirection:'row', alignItems:'center', marginBottom:16}}>
+                    <MaterialCommunityIcons name="information" size={28} color={theme.colors.primary} />
+                    <Text variant="titleLarge" style={{fontWeight:'bold', marginLeft:12, flex:1, color:theme.colors.onSurface}}>{strategy}</Text>
+                </View>
+                <View style={{height:1, backgroundColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', marginBottom:16}} />
+                <Text variant="bodyLarge" style={{color:theme.colors.onSurfaceVariant, lineHeight:24}}>
+                    {getSelectedStrategyDescription()}
+                </Text>
+                <Button mode="contained" onPress={() => setStrategyInfoVisible(false)} style={{marginTop:24, borderRadius:12}}>Close</Button>
+            </Surface>
+        </View>
+      </Modal>
 
       <AdBanner />
 

@@ -4,7 +4,7 @@ import { Text, Surface, Button, useTheme, Divider, RadioButton, Checkbox } from 
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-export default function SelectionModal({ visible, onClose, title, options, value, onSelect, icon = "format-list-bulleted", multi = false }) {
+export default function SelectionModal({ visible, onClose, title, options, value, onSelect, icon = "format-list-bulleted", multi = false, maxSelect = null }) {
   const theme = useTheme();
 
   const handleSelect = (optionValue) => {
@@ -13,6 +13,10 @@ export default function SelectionModal({ visible, onClose, title, options, value
       if (currentValues.includes(optionValue)) {
         onSelect(currentValues.filter(v => v !== optionValue));
       } else {
+        if (maxSelect && currentValues.length >= maxSelect) {
+            alert(`Maximum ${maxSelect} options allowed`);
+            return;
+        }
         onSelect([...currentValues, optionValue]);
       }
     } else {

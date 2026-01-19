@@ -20,6 +20,7 @@
     },
     "android": {
       "package": "com.axon.techboi",
+      "googleServicesFile": "./google-services.json",
       "permissions": ["NOTIFIACTIONS"],
       "icon": "./assets/Axon.png",
       "adaptiveIcon": {
