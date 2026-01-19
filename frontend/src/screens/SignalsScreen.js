@@ -177,7 +177,7 @@ export default function SignalsScreen() {
         setStreamStats({ total: 0 });
       } catch (e) {
         console.error(e);
-        alert('Failed to start stream');
+        alert(`Failed to start stream: ${e.message}`);
       }
     }
   };

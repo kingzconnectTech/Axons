@@ -29,9 +29,15 @@ export async function registerForPushNotificationsAsync() {
     return null;
   }
 
-  const tokenData = await Notifications.getExpoPushTokenAsync({
-    projectId: '13ba9648-45b1-4723-a646-1291ddef18d9', // EAS Project ID
-  });
+  let tokenData;
+  try {
+    tokenData = await Notifications.getExpoPushTokenAsync({
+      projectId: '13ba9648-45b1-4723-a646-1291ddef18d9', // EAS Project ID
+    });
+  } catch (error) {
+    console.warn('Error fetching push token:', error);
+    return null;
+  }
   return tokenData?.data ?? null;
 }
 
