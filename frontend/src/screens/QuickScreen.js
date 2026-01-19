@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   actionContainer: {
-    alignItems: 'center',
+    alignItems: 'stretch',
     marginBottom: 32,
   },
   analyzeButton: {
@@ -436,7 +436,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 226, 175, 0.7)',
   },
   instructionText: {
-    color: SCAN_ACCENT_DARK,
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '600',
     marginLeft: 10,

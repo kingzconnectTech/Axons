@@ -10,6 +10,7 @@ import ParticlesBackground from '../components/ParticlesBackground';
 import SelectionModal from '../components/SelectionModal';
 import AdBanner from '../components/AdBanner';
 import { getOneSignalPlayerId } from '../services/OneSignalService';
+import { isNotificationPermissionGranted } from '../services/NotificationService';
 
 const API_URL = API_URLS.SIGNALS;
 const { width } = Dimensions.get('window');
@@ -127,6 +128,10 @@ export default function SignalsScreen() {
       }
     } else {
       try {
+        const permissionGranted = await isNotificationPermissionGranted();
+        if (!permissionGranted) {
+          alert('Notifications are disabled for this app. Streaming will continue without push alerts. You can enable notifications in your system settings.');
+        }
         const token = await getOneSignalPlayerId();
         if (!token) {
           alert('Push notifications are not enabled for this device or build. Streaming will start without push alerts.');

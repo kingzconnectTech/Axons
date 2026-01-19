@@ -8,6 +8,9 @@ import { ThemeContext } from './src/context/ThemeContext';
 import { BotProvider } from './src/context/BotContext';
 import { initializeOneSignal } from './src/services/OneSignalService';
 import mobileAds from 'react-native-google-mobile-ads';
+import { registerForPushNotificationsAsync } from './src/services/NotificationService';
+import { API_URLS } from './src/config';
+import NoInternetScreen from './src/screens/NoInternetScreen';
 
 import HomeScreen from './src/screens/HomeScreen';
 import SignalsScreen from './src/screens/SignalsScreen';
@@ -93,9 +96,12 @@ const customLightTheme = {
 export default function App() {
   const [isDark, setIsDark] = useState(true);
   const [showIntro, setShowIntro] = useState(true);
+  const [isOnline, setIsOnline] = useState(true);
+  const [checkingConnectivity, setCheckingConnectivity] = useState(true);
 
   useEffect(() => {
     loadThemePreference();
+    checkInternet();
     try {
       initializeOneSignal();
     } catch (e) {
@@ -110,6 +116,11 @@ export default function App() {
       }
     } catch (e) {
       console.error('mobileAds initialize threw', e);
+    }
+    try {
+      registerForPushNotificationsAsync().catch(() => {});
+    } catch (e) {
+      console.error('registerForPushNotificationsAsync threw', e);
     }
   }, []);
 
@@ -126,6 +137,24 @@ export default function App() {
       }
     } catch (e) {
       console.log('Failed to load theme preference');
+    }
+  };
+
+  const checkInternet = async () => {
+    setCheckingConnectivity(true);
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      await fetch(`${API_URLS.MARKET}/prices?pairs=EURUSD`, {
+        method: 'GET',
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      setIsOnline(true);
+    } catch (e) {
+      setIsOnline(false);
+    } finally {
+      setCheckingConnectivity(false);
     }
   };
 
@@ -149,35 +178,39 @@ export default function App() {
       <BotProvider>
         <View style={styles.root}>
           <PaperProvider theme={theme}>
-            <NavigationContainer theme={theme}>
-              <StatusBar 
-                barStyle={isDark ? "light-content" : "dark-content"} 
-                backgroundColor={theme.colors.background} 
-              />
-              <Stack.Navigator 
-                initialRouteName="Home"
-                screenOptions={{
-                  headerStyle: {
-                    backgroundColor: theme.colors.background,
-                    elevation: 0,
-                    shadowOpacity: 0,
-                    borderBottomWidth: 0,
-                  },
-                  headerTintColor: theme.colors.onSurface,
-                  headerTitleStyle: {
-                    fontWeight: 'bold',
-                    color: theme.colors.onSurface,
-                  },
-                  cardStyle: { backgroundColor: theme.colors.background }
-                }}
-              >
-                <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-                <Stack.Screen name="Signals" component={SignalsScreen} options={{ title: 'AXON Trading Assistant' }} />
-                <Stack.Screen name="AutoTrade" component={AutoTradeScreen} options={{ title: 'AXON Trading Assistant (Coming Soon)' }} />
-                <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
-                <Stack.Screen name="Quick" component={QuickScreen} options={{ title: 'AXON Flash Scan' }} />
-              </Stack.Navigator>
-            </NavigationContainer>
+            <StatusBar 
+              barStyle={isDark ? "light-content" : "dark-content"} 
+              backgroundColor={theme.colors.background} 
+            />
+            {isOnline ? (
+              <NavigationContainer theme={theme}>
+                <Stack.Navigator 
+                  initialRouteName="Home"
+                  screenOptions={{
+                    headerStyle: {
+                      backgroundColor: theme.colors.background,
+                      elevation: 0,
+                      shadowOpacity: 0,
+                      borderBottomWidth: 0,
+                    },
+                    headerTintColor: theme.colors.onSurface,
+                    headerTitleStyle: {
+                      fontWeight: 'bold',
+                      color: theme.colors.onSurface,
+                    },
+                    cardStyle: { backgroundColor: theme.colors.background }
+                  }}
+                >
+                  <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+                  <Stack.Screen name="Signals" component={SignalsScreen} options={{ title: 'AXON Trading Assistant' }} />
+                  <Stack.Screen name="AutoTrade" component={AutoTradeScreen} options={{ title: 'AXON Trading Assistant (Coming Soon)' }} />
+                  <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
+                  <Stack.Screen name="Quick" component={QuickScreen} options={{ title: 'AXON Flash Scan' }} />
+                </Stack.Navigator>
+              </NavigationContainer>
+            ) : (
+              <NoInternetScreen onRetry={checkInternet} loading={checkingConnectivity} />
+            )}
           </PaperProvider>
           {showIntro && (
             <View style={styles.introOverlay}>

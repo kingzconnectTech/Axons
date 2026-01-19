@@ -20,6 +20,7 @@
     },
     "android": {
       "package": "com.axon.techboi",
+      "permissions": ["NOTIFIACTIONS"],
       "icon": "./assets/Axon.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/Axon.png",
