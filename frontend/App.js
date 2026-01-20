@@ -189,14 +189,29 @@ export default function App() {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
-      await fetch(`${API_URLS.MARKET}/prices?pairs=EURUSD`, {
-        method: 'GET',
+      // Check a reliable public endpoint (Google) to verify Internet connectivity
+      await fetch('https://www.google.com', {
+        method: 'HEAD',
         signal: controller.signal,
+        mode: 'no-cors' // Important for simple connectivity check
       });
       clearTimeout(timeoutId);
       setIsOnline(true);
     } catch (e) {
-      setIsOnline(false);
+      console.log('Internet check failed:', e);
+      // Fallback: If Google fails, try the backend just in case (e.g. strict firewall)
+      try {
+        const controller2 = new AbortController();
+        const timeoutId2 = setTimeout(() => controller2.abort(), 3000);
+        await fetch(`${API_URLS.MARKET}/prices?pairs=EURUSD`, {
+            method: 'GET',
+            signal: controller2.signal,
+        });
+        clearTimeout(timeoutId2);
+        setIsOnline(true);
+      } catch (e2) {
+        setIsOnline(false);
+      }
     } finally {
       setCheckingConnectivity(false);
     }
