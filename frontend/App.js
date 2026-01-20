@@ -11,8 +11,8 @@ import { requestUserPermission, getToken, onTokenRefresh, onForegroundMessage, o
 import mobileAds from './src/utils/SafeMobileAds';
 import { API_URLS } from './src/config';
 import axios from 'axios';
-import NetInfo from '@react-native-community/netinfo';
 import NoInternetScreen from './src/screens/NoInternetScreen';
+import NetInfo from '@react-native-community/netinfo';
 
 import HomeScreen from './src/screens/HomeScreen';
 import SignalsScreen from './src/screens/SignalsScreen';
@@ -117,10 +117,8 @@ const NotificationInitializer = () => {
     });
 
     const unsubscribeMessage = onForegroundMessage(remoteMessage => {
-        Alert.alert(
-            remoteMessage.notification?.title || 'New Notification',
-            remoteMessage.notification?.body || 'You have a new message!'
-        );
+        console.log('Foreground message received:', remoteMessage);
+        // Notification is handled by Notifee in NotificationService
     });
 
     const unsubscribeOpened = onNotificationOpenedApp(remoteMessage => {
@@ -184,35 +182,13 @@ export default function App() {
   const checkInternet = async () => {
     setCheckingConnectivity(true);
     try {
-      // Use NetInfo for reliable connectivity check
       const state = await NetInfo.fetch();
-      
-      // We check if connected. 
-      // Note: isInternetReachable can be null initially, but isConnected is the primary check.
-      // If connected but no internet, we might want to try fallback, but NetInfo is generally accurate.
-      if (state.isConnected) {
-        setIsOnline(true);
-      } else {
-        // Double check with fallback if NetInfo says disconnected? 
-        // Usually if NetInfo says disconnected, it is disconnected.
-        setIsOnline(false);
-      }
+      // On Android, isInternetReachable can be null initially, fallback to isConnected
+      const online = state.isConnected && (state.isInternetReachable !== false); 
+      setIsOnline(!!online);
     } catch (e) {
-      console.log('NetInfo check failed:', e);
-      // Fallback: Try fetching a reliable endpoint
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-        await fetch('https://www.google.com', {
-            method: 'HEAD',
-            signal: controller.signal,
-            mode: 'no-cors'
-        });
-        clearTimeout(timeoutId);
-        setIsOnline(true);
-      } catch (e2) {
-        setIsOnline(false);
-      }
+      console.log('Internet check failed:', e);
+      setIsOnline(false);
     } finally {
       setCheckingConnectivity(false);
     }

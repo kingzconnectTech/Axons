@@ -9,17 +9,13 @@ let messaging;
 if (!isExpoGo) {
     try {
         messaging = require('@react-native-firebase/messaging').default;
+        // REQUIRED RULE (FCM): setBackgroundMessageHandler must be registered at the JS entry point
+        messaging().setBackgroundMessageHandler(async remoteMessage => {
+            console.log('Message handled in the background!', remoteMessage);
+        });
     } catch (e) {
         console.warn("Firebase messaging module not found:", e);
     }
-}
-
-// CRITICAL: Set background handler outside of any component or function export
-// This must be at the top level of the file
-if (messaging) {
-    messaging().setBackgroundMessageHandler(async remoteMessage => {
-        console.log('Message handled in the background!', remoteMessage);
-    });
 }
 
 const getMessaging = () => {
@@ -69,6 +65,7 @@ export const requestUserPermission = async () => {
     }
   }
 
+  // Ensure messaging().requestPermission() is called directly
   const authStatus = await getMessaging().requestPermission();
   const enabled =
     authStatus === 1 || // AuthorizationStatus.AUTHORIZED
@@ -77,13 +74,6 @@ export const requestUserPermission = async () => {
   if (enabled) {
     console.log('Authorization status:', authStatus);
   }
-  
-  // Create default channel for Notifee
-  await notifee.createChannel({
-    id: 'default',
-    name: 'Default Channel',
-    importance: AndroidImportance.HIGH,
-  });
 };
 
 export const getToken = async () => {
@@ -108,19 +98,31 @@ export const onForegroundMessage = (callback) => {
     return getMessaging().onMessage(async remoteMessage => {
         console.log('A new FCM message arrived!', remoteMessage);
         
-        // Display notification using Notifee for better UX
-        try {
-            await notifee.displayNotification({
-                title: remoteMessage.notification?.title,
-                body: remoteMessage.notification?.body,
-                android: {
-                    channelId: 'default',
+        // Use Notifee for better foreground notifications
+        if (remoteMessage.notification) {
+            try {
+                await notifee.requestPermission();
+
+                // Create a channel (required for Android)
+                const channelId = await notifee.createChannel({
+                    id: 'default',
+                    name: 'Default Channel',
                     importance: AndroidImportance.HIGH,
-                    // smallIcon: 'ic_launcher', // Optional: customize icon
-                },
-            });
-        } catch (e) {
-            console.error("Notifee error:", e);
+                });
+
+                // Display a notification
+                await notifee.displayNotification({
+                    title: remoteMessage.notification.title,
+                    body: remoteMessage.notification.body,
+                    android: {
+                        channelId,
+                        importance: AndroidImportance.HIGH,
+                        // smallIcon: 'ic_launcher', // Optional: customize icon
+                    },
+                });
+            } catch (e) {
+                console.error("Failed to display foreground notification via Notifee:", e);
+            }
         }
 
         if (callback) callback(remoteMessage);
