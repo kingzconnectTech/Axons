@@ -1,5 +1,46 @@
-import messaging from '@react-native-firebase/messaging';
 import { PermissionsAndroid, Platform } from 'react-native';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
+
+// Detect if running in Expo Go
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+let messaging;
+if (!isExpoGo) {
+    try {
+        messaging = require('@react-native-firebase/messaging').default;
+    } catch (e) {
+        console.warn("Firebase messaging module not found:", e);
+    }
+}
+
+const getMessaging = () => {
+    if (isExpoGo || !messaging) {
+        console.warn("Firebase Messaging is not available in Expo Go. Please use a development build.");
+        return {
+            requestPermission: async () => 1, // Authorized
+            getToken: async () => "EXPO_GO_DUMMY_TOKEN",
+            onTokenRefresh: () => () => {},
+            onMessage: () => () => {},
+            setBackgroundMessageHandler: () => {},
+            onNotificationOpenedApp: () => () => {},
+            getInitialNotification: async () => null,
+        };
+    }
+    try {
+        return messaging();
+    } catch (e) {
+        console.error("Failed to initialize Firebase Messaging:", e);
+        return {
+            requestPermission: async () => 1,
+            getToken: async () => null,
+            onTokenRefresh: () => () => {},
+            onMessage: () => () => {},
+            setBackgroundMessageHandler: () => {},
+            onNotificationOpenedApp: () => () => {},
+            getInitialNotification: async () => null,
+        };
+    }
+};
 
 export const requestUserPermission = async () => {
   if (Platform.OS === 'android') {
@@ -19,10 +60,10 @@ export const requestUserPermission = async () => {
     }
   }
 
-  const authStatus = await messaging().requestPermission();
+  const authStatus = await getMessaging().requestPermission();
   const enabled =
-    authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-    authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+    authStatus === 1 || // AuthorizationStatus.AUTHORIZED
+    authStatus === 2; // AuthorizationStatus.PROVISIONAL
 
   if (enabled) {
     console.log('Authorization status:', authStatus);
@@ -31,7 +72,7 @@ export const requestUserPermission = async () => {
 
 export const getToken = async () => {
     try {
-        const token = await messaging().getToken();
+        const token = await getMessaging().getToken();
         console.log('FCM Token:', token);
         return token;
     } catch (error) {
@@ -41,14 +82,14 @@ export const getToken = async () => {
 };
 
 export const onTokenRefresh = (callback) => {
-    return messaging().onTokenRefresh(token => {
+    return getMessaging().onTokenRefresh(token => {
         console.log('FCM Token Refreshed:', token);
         if (callback) callback(token);
     });
 };
 
 export const onForegroundMessage = (callback) => {
-    return messaging().onMessage(async remoteMessage => {
+    return getMessaging().onMessage(async remoteMessage => {
         console.log('A new FCM message arrived!', remoteMessage);
         if (callback) callback(remoteMessage);
     });
@@ -56,7 +97,7 @@ export const onForegroundMessage = (callback) => {
 
 // Background Message Handler
 export const setBackgroundHandler = () => {
-    messaging().setBackgroundMessageHandler(async remoteMessage => {
+    getMessaging().setBackgroundMessageHandler(async remoteMessage => {
         console.log('Message handled in the background!', remoteMessage);
         // You can perform background tasks here if needed
     });
@@ -64,7 +105,7 @@ export const setBackgroundHandler = () => {
 
 // Handle Notification Opened (Background State)
 export const onNotificationOpenedApp = (callback) => {
-    return messaging().onNotificationOpenedApp(remoteMessage => {
+    return getMessaging().onNotificationOpenedApp(remoteMessage => {
         console.log('Notification caused app to open from background state:', remoteMessage.notification);
         if (callback) callback(remoteMessage);
     });
@@ -73,7 +114,7 @@ export const onNotificationOpenedApp = (callback) => {
 // Handle Notification Opened (Quit State)
 export const getInitialNotification = async () => {
     try {
-        const remoteMessage = await messaging().getInitialNotification();
+        const remoteMessage = await getMessaging().getInitialNotification();
         if (remoteMessage) {
             console.log('Notification caused app to open from quit state:', remoteMessage.notification);
             return remoteMessage;

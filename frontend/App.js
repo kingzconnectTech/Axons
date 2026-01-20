@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler';
 import React, { useState, useEffect, useMemo } from 'react';
 import { Image, StatusBar, StyleSheet, View, Alert } from 'react-native';
 import { NavigationContainer, DarkTheme as NavDarkTheme, DefaultTheme as NavDefaultTheme } from '@react-navigation/native';
@@ -155,11 +156,12 @@ export default function App() {
     requestUserPermission();
 
     try {
-      if (typeof mobileAds === 'function') {
-        const adsInstance = mobileAds();
-        if (adsInstance && typeof adsInstance.initialize === 'function') {
-          adsInstance.initialize().catch(() => {});
-        }
+      if (typeof mobileAds.initialize === 'function') {
+        mobileAds.initialize().then(() => {
+             console.log('Mobile Ads Initialized');
+        }).catch(e => {
+             console.log('Mobile Ads Init failed', e);
+        });
       }
     } catch (e) {
       console.error('mobileAds initialize threw', e);

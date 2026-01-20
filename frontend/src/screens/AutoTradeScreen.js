@@ -9,7 +9,7 @@ import { API_URLS } from '../config';
 import ParticlesBackground from '../components/ParticlesBackground';
 import SelectionModal from '../components/SelectionModal';
 import { useBot } from '../context/BotContext';
-import { useInterstitialAd, TestIds } from 'react-native-google-mobile-ads';
+import { useInterstitialAd, TestIds } from '../utils/SafeMobileAds';
 
 const API_URL = API_URLS.AUTOTRADE;
 const { width } = Dimensions.get('window');

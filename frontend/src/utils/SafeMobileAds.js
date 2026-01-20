@@ -1,5 +1,10 @@
-import Constants from 'expo-constants';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { useMemo } from 'react';
+
+// Detect if running in Expo Go
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+console.log('[SafeMobileAds] isExpoGo:', isExpoGo);
 
 // Default mock implementations
 let mobileAds = {
@@ -38,9 +43,6 @@ let useInterstitialAd = () => {
     error: null,
   }), []);
 };
-
-const isExpoGo = Constants.appOwnership === 'expo';
-console.log('[SafeMobileAds] appOwnership:', Constants.appOwnership, 'isExpoGo:', isExpoGo);
 
 if (!isExpoGo) {
   try {
