@@ -1,5 +1,6 @@
 import { PermissionsAndroid, Platform } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
+import notifee, { AndroidImportance } from '@notifee/react-native';
 
 // Detect if running in Expo Go
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
@@ -11,6 +12,14 @@ if (!isExpoGo) {
     } catch (e) {
         console.warn("Firebase messaging module not found:", e);
     }
+}
+
+// CRITICAL: Set background handler outside of any component or function export
+// This must be at the top level of the file
+if (messaging) {
+    messaging().setBackgroundMessageHandler(async remoteMessage => {
+        console.log('Message handled in the background!', remoteMessage);
+    });
 }
 
 const getMessaging = () => {
@@ -68,6 +77,13 @@ export const requestUserPermission = async () => {
   if (enabled) {
     console.log('Authorization status:', authStatus);
   }
+  
+  // Create default channel for Notifee
+  await notifee.createChannel({
+    id: 'default',
+    name: 'Default Channel',
+    importance: AndroidImportance.HIGH,
+  });
 };
 
 export const getToken = async () => {
@@ -91,15 +107,23 @@ export const onTokenRefresh = (callback) => {
 export const onForegroundMessage = (callback) => {
     return getMessaging().onMessage(async remoteMessage => {
         console.log('A new FCM message arrived!', remoteMessage);
-        if (callback) callback(remoteMessage);
-    });
-};
+        
+        // Display notification using Notifee for better UX
+        try {
+            await notifee.displayNotification({
+                title: remoteMessage.notification?.title,
+                body: remoteMessage.notification?.body,
+                android: {
+                    channelId: 'default',
+                    importance: AndroidImportance.HIGH,
+                    // smallIcon: 'ic_launcher', // Optional: customize icon
+                },
+            });
+        } catch (e) {
+            console.error("Notifee error:", e);
+        }
 
-// Background Message Handler
-export const setBackgroundHandler = () => {
-    getMessaging().setBackgroundMessageHandler(async remoteMessage => {
-        console.log('Message handled in the background!', remoteMessage);
-        // You can perform background tasks here if needed
+        if (callback) callback(remoteMessage);
     });
 };
 

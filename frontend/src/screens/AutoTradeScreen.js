@@ -123,10 +123,30 @@ export default function AutoTradeScreen() {
         const savedAmount = await AsyncStorage.getItem('default_amount');
         const savedCurr = await AsyncStorage.getItem('user_currency');
         
+        // Load extended settings
+        const savedAccountType = await AsyncStorage.getItem('user_account_type');
+        const savedPairs = await AsyncStorage.getItem('user_pairs');
+        const savedTimeframe = await AsyncStorage.getItem('user_timeframe');
+        const savedStrategy = await AsyncStorage.getItem('user_strategy');
+        const savedStopLoss = await AsyncStorage.getItem('user_stop_loss');
+        const savedTakeProfit = await AsyncStorage.getItem('user_take_profit');
+        const savedMaxLosses = await AsyncStorage.getItem('user_max_losses');
+        const savedMaxTrades = await AsyncStorage.getItem('user_max_trades');
+
         if (savedEmail) setEmail(savedEmail);
         if (savedPassword) setPassword(savedPassword);
         if (savedAmount) setAmount(savedAmount);
         if (savedCurr) setSavedCurrency(savedCurr);
+        
+        if (savedAccountType) setAccountType(savedAccountType);
+        if (savedPairs) setPairs(JSON.parse(savedPairs));
+        if (savedTimeframe) setTimeframe(savedTimeframe);
+        if (savedStrategy) setStrategy(savedStrategy);
+        if (savedStopLoss) setStopLoss(savedStopLoss);
+        if (savedTakeProfit) setTakeProfit(savedTakeProfit);
+        if (savedMaxLosses) setMaxLosses(savedMaxLosses);
+        if (savedMaxTrades) setMaxTrades(savedMaxTrades);
+
       } catch (e) {
         console.log("Failed to load credentials");
       }
@@ -198,6 +218,14 @@ export default function AutoTradeScreen() {
       await AsyncStorage.setItem('user_email', email);
       await AsyncStorage.setItem('user_password', password);
       await AsyncStorage.setItem('default_amount', amount);
+      await AsyncStorage.setItem('user_account_type', accountType);
+      await AsyncStorage.setItem('user_pairs', JSON.stringify(pairs));
+      await AsyncStorage.setItem('user_timeframe', timeframe);
+      await AsyncStorage.setItem('user_strategy', strategy);
+      await AsyncStorage.setItem('user_stop_loss', stopLoss);
+      await AsyncStorage.setItem('user_take_profit', takeProfit);
+      await AsyncStorage.setItem('user_max_losses', maxLosses);
+      await AsyncStorage.setItem('user_max_trades', maxTrades);
       
       // Update global context to ensure polling continues in background/other screens
       setGlobalEmail(email);

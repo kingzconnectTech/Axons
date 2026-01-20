@@ -13,12 +13,24 @@ export const BotProvider = ({ children }) => {
   const [fcmToken, setFcmToken] = useState(null);
 
   useEffect(() => {
-    // Load email initially
-    const loadEmail = async () => {
-      const savedEmail = await AsyncStorage.getItem('user_email');
+    // Load email initially or generate anonymous ID
+    const loadIdentity = async () => {
+      let savedEmail = await AsyncStorage.getItem('user_email');
+      
+      if (!savedEmail) {
+        // Fallback to anonymous ID
+        savedEmail = await AsyncStorage.getItem('device_uuid');
+        
+        if (!savedEmail) {
+          // Generate new anonymous ID
+          savedEmail = `anon_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+          await AsyncStorage.setItem('device_uuid', savedEmail);
+        }
+      }
+      
       if (savedEmail) setEmail(savedEmail);
     };
-    loadEmail();
+    loadIdentity();
   }, []);
 
   const fetchStatus = async () => {

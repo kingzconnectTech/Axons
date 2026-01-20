@@ -7,10 +7,11 @@ import { Provider as PaperProvider, MD3DarkTheme, MD3LightTheme, adaptNavigation
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeContext } from './src/context/ThemeContext';
 import { BotProvider, useBot } from './src/context/BotContext';
-import { requestUserPermission, getToken, onTokenRefresh, onForegroundMessage, setBackgroundHandler, onNotificationOpenedApp, getInitialNotification } from './src/services/NotificationService';
+import { requestUserPermission, getToken, onTokenRefresh, onForegroundMessage, onNotificationOpenedApp, getInitialNotification } from './src/services/NotificationService';
 import mobileAds from './src/utils/SafeMobileAds';
 import { API_URLS } from './src/config';
 import axios from 'axios';
+import NetInfo from '@react-native-community/netinfo';
 import NoInternetScreen from './src/screens/NoInternetScreen';
 
 import HomeScreen from './src/screens/HomeScreen';
@@ -18,9 +19,6 @@ import SignalsScreen from './src/screens/SignalsScreen';
 import AutoTradeScreen from './src/screens/AutoTradeScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import QuickScreen from './src/screens/QuickScreen';
-
-// Register background handler
-setBackgroundHandler();
 
 const Stack = createStackNavigator();
 
@@ -102,6 +100,7 @@ const NotificationInitializer = () => {
 
   useEffect(() => {
     const init = async () => {
+      await requestUserPermission();
       const token = await getToken();
       if (token) setFcmToken(token);
 
@@ -153,35 +152,6 @@ export default function App() {
     loadThemePreference();
     checkInternet();
     
-    const registerDevice = async () => {
-      try {
-        await requestUserPermission();
-        const token = await getToken();
-        if (token) {
-          let email = await AsyncStorage.getItem('user_email');
-          if (!email) {
-             // Generate or retrieve anonymous ID
-             email = await AsyncStorage.getItem('device_uuid');
-             if (!email) {
-               email = `anon_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-               await AsyncStorage.setItem('device_uuid', email);
-             }
-          }
-          
-          console.log('Registering device with ID:', email);
-          await axios.post(`${API_URLS.AUTOTRADE}/token`, {
-            email: email,
-            token: token
-          });
-          console.log('Device registered successfully');
-        }
-      } catch (e) {
-        console.log('Device registration failed:', e);
-      }
-    };
-
-    registerDevice();
-
     try {
       if (typeof mobileAds.initialize === 'function') {
         mobileAds.initialize().then(() => {
@@ -214,27 +184,31 @@ export default function App() {
   const checkInternet = async () => {
     setCheckingConnectivity(true);
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-      // Check a reliable public endpoint (Google) to verify Internet connectivity
-      await fetch('https://www.google.com', {
-        method: 'HEAD',
-        signal: controller.signal,
-        mode: 'no-cors' // Important for simple connectivity check
-      });
-      clearTimeout(timeoutId);
-      setIsOnline(true);
+      // Use NetInfo for reliable connectivity check
+      const state = await NetInfo.fetch();
+      
+      // We check if connected. 
+      // Note: isInternetReachable can be null initially, but isConnected is the primary check.
+      // If connected but no internet, we might want to try fallback, but NetInfo is generally accurate.
+      if (state.isConnected) {
+        setIsOnline(true);
+      } else {
+        // Double check with fallback if NetInfo says disconnected? 
+        // Usually if NetInfo says disconnected, it is disconnected.
+        setIsOnline(false);
+      }
     } catch (e) {
-      console.log('Internet check failed:', e);
-      // Fallback: If Google fails, try the backend just in case (e.g. strict firewall)
+      console.log('NetInfo check failed:', e);
+      // Fallback: Try fetching a reliable endpoint
       try {
-        const controller2 = new AbortController();
-        const timeoutId2 = setTimeout(() => controller2.abort(), 3000);
-        await fetch(`${API_URLS.MARKET}/prices?pairs=EURUSD`, {
-            method: 'GET',
-            signal: controller2.signal,
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        await fetch('https://www.google.com', {
+            method: 'HEAD',
+            signal: controller.signal,
+            mode: 'no-cors'
         });
-        clearTimeout(timeoutId2);
+        clearTimeout(timeoutId);
         setIsOnline(true);
       } catch (e2) {
         setIsOnline(false);
