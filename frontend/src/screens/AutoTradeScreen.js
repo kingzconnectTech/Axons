@@ -16,7 +16,7 @@ const { width } = Dimensions.get('window');
 
 export default function AutoTradeScreen() {
   const theme = useTheme();
-  const { isBotRunning, fetchStatus: refreshGlobalStatus } = useBot();
+  const { isBotRunning, fetchStatus: refreshGlobalStatus, setEmail: setGlobalEmail } = useBot();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [accountType, setAccountType] = useState('PRACTICE');
@@ -194,6 +194,14 @@ export default function AutoTradeScreen() {
   const executeStartTrade = async () => {
     setLoading(true);
     try {
+      // Save credentials for persistence
+      await AsyncStorage.setItem('user_email', email);
+      await AsyncStorage.setItem('user_password', password);
+      await AsyncStorage.setItem('default_amount', amount);
+      
+      // Update global context to ensure polling continues in background/other screens
+      setGlobalEmail(email);
+
       await axios.post(`${API_URL}/start`, {
         email,
         password,

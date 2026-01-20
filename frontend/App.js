@@ -10,6 +10,7 @@ import { BotProvider, useBot } from './src/context/BotContext';
 import { requestUserPermission, getToken, onTokenRefresh, onForegroundMessage, setBackgroundHandler, onNotificationOpenedApp, getInitialNotification } from './src/services/NotificationService';
 import mobileAds from './src/utils/SafeMobileAds';
 import { API_URLS } from './src/config';
+import axios from 'axios';
 import NoInternetScreen from './src/screens/NoInternetScreen';
 
 import HomeScreen from './src/screens/HomeScreen';
@@ -152,8 +153,34 @@ export default function App() {
     loadThemePreference();
     checkInternet();
     
-    // Request notification permission
-    requestUserPermission();
+    const registerDevice = async () => {
+      try {
+        await requestUserPermission();
+        const token = await getToken();
+        if (token) {
+          let email = await AsyncStorage.getItem('user_email');
+          if (!email) {
+             // Generate or retrieve anonymous ID
+             email = await AsyncStorage.getItem('device_uuid');
+             if (!email) {
+               email = `anon_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+               await AsyncStorage.setItem('device_uuid', email);
+             }
+          }
+          
+          console.log('Registering device with ID:', email);
+          await axios.post(`${API_URLS.AUTOTRADE}/token`, {
+            email: email,
+            token: token
+          });
+          console.log('Device registered successfully');
+        }
+      } catch (e) {
+        console.log('Device registration failed:', e);
+      }
+    };
+
+    registerDevice();
 
     try {
       if (typeof mobileAds.initialize === 'function') {
