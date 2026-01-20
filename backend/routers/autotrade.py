@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from models.schemas import AutoTradeConfig, TradeStatus
+from models.schemas import AutoTradeConfig, TradeStatus, TokenUpdate
 from services.queue_service import queue_service
 from services.status_store import status_store
 
@@ -18,6 +18,14 @@ def stop_autotrade(email: str):
     try:
         queue_service.enqueue_stop(email)
         return {"status": "queued_stop"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/token")
+def update_token(data: TokenUpdate):
+    try:
+        status_store.update_token(data.email, data.token)
+        return {"status": "token_updated"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

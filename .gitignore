@@ -11,3 +11,5 @@ frontend/ios/
 .expo/
 # google-services.json
 *firebase-adminsdk*.json
+google-services.json
+firebase-service-account.json

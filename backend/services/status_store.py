@@ -50,4 +50,39 @@ class StatusStore:
             print(f"[StatusStore] Error reading status for {email}: {e}")
             return None
 
+    def update_token(self, email, token):
+        try:
+            self.table.update_item(
+                Key={self.partition_key: email},
+                UpdateExpression="set fcm_token = :t, updated_at = :u",
+                ExpressionAttributeValues={
+                    ':t': token,
+                    ':u': int(time.time())
+                },
+                ReturnValues="UPDATED_NEW"
+            )
+        except ClientError as e:
+            print(f"[StatusStore] Error updating token for {email}: {e}")
+
+    def get_all_tokens(self):
+        try:
+            response = self.table.scan(
+                ProjectionExpression="fcm_token"
+            )
+            items = response.get('Items', [])
+            
+            while 'LastEvaluatedKey' in response:
+                response = self.table.scan(
+                    ProjectionExpression="fcm_token",
+                    ExclusiveStartKey=response['LastEvaluatedKey']
+                )
+                items.extend(response.get('Items', []))
+                
+            # Filter out items without fcm_token and deduplicate
+            tokens = {item['fcm_token'] for item in items if 'fcm_token' in item and item['fcm_token']}
+            return list(tokens)
+        except ClientError as e:
+            print(f"[StatusStore] Error scanning tokens: {e}")
+            return []
+
 status_store = StatusStore()

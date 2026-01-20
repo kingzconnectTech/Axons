@@ -3,12 +3,10 @@
     "expo": "~54.0.31",
     "expo-constants": "^18.0.13",
     "expo-device": "^8.0.10",
-    "expo-notifications": "^0.32.16",
-    "firebase-admin": "^13.6.0",
     "react": "19.1.0",
     "react-native": "0.81.5"
   },
-  "name": "Axon",
+  "name": "axon",
   "version": "1.0.0",
   "scripts": {
     "android": "expo run:android",

@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Image, StatusBar, StyleSheet, View } from 'react-native';
+import { Image, StatusBar, StyleSheet, View, Alert } from 'react-native';
 import { NavigationContainer, DarkTheme as NavDarkTheme, DefaultTheme as NavDefaultTheme } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Provider as PaperProvider, MD3DarkTheme, MD3LightTheme, adaptNavigationTheme } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeContext } from './src/context/ThemeContext';
-import { BotProvider } from './src/context/BotContext';
-// import { initializeOneSignal } from './src/services/OneSignalService';
+import { BotProvider, useBot } from './src/context/BotContext';
+import { requestUserPermission, getToken, onTokenRefresh, onForegroundMessage, setBackgroundHandler, onNotificationOpenedApp, getInitialNotification } from './src/services/NotificationService';
 import mobileAds from './src/utils/SafeMobileAds';
 import { API_URLS } from './src/config';
 import NoInternetScreen from './src/screens/NoInternetScreen';
@@ -16,6 +16,9 @@ import SignalsScreen from './src/screens/SignalsScreen';
 import AutoTradeScreen from './src/screens/AutoTradeScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import QuickScreen from './src/screens/QuickScreen';
+
+// Register background handler
+setBackgroundHandler();
 
 const Stack = createStackNavigator();
 
@@ -92,20 +95,65 @@ const customLightTheme = {
   roundness: 12,
 };
 
+const NotificationInitializer = () => {
+  const { setFcmToken } = useBot();
+
+  useEffect(() => {
+    const init = async () => {
+      const token = await getToken();
+      if (token) setFcmToken(token);
+
+      // Check if app was opened from quit state by notification
+      const initialNotification = await getInitialNotification();
+      if (initialNotification) {
+          console.log('App opened from quit state via notification', initialNotification);
+      }
+    };
+    init();
+
+    const unsubscribe = onTokenRefresh(token => {
+      setFcmToken(token);
+    });
+
+    const unsubscribeMessage = onForegroundMessage(remoteMessage => {
+        Alert.alert(
+            remoteMessage.notification?.title || 'New Notification',
+            remoteMessage.notification?.body || 'You have a new message!'
+        );
+    });
+
+    const unsubscribeOpened = onNotificationOpenedApp(remoteMessage => {
+        console.log('App opened from background via notification', remoteMessage);
+    });
+
+    return () => {
+        unsubscribe();
+        unsubscribeMessage();
+        unsubscribeOpened();
+    };
+  }, []);
+
+  return null;
+};
+
 export default function App() {
   const [isDark, setIsDark] = useState(true);
   const [showIntro, setShowIntro] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
   const [checkingConnectivity, setCheckingConnectivity] = useState(true);
-
+  
+  // We need to access context, but App component wraps Providers.
+  // We should move logic to a child component or handle it here if we refactor.
+  // For now, let's keep it simple and just log/store in global if needed, 
+  // or better, create a separate component for initialization inside providers.
+  
   useEffect(() => {
     loadThemePreference();
     checkInternet();
-    try {
-      initializeOneSignal();
-    } catch (e) {
-      console.error('initializeOneSignal threw', e);
-    }
+    
+    // Request notification permission
+    requestUserPermission();
+
     try {
       if (typeof mobileAds === 'function') {
         const adsInstance = mobileAds();
@@ -170,6 +218,7 @@ export default function App() {
   return (
     <ThemeContext.Provider value={themeContext}>
       <BotProvider>
+        <NotificationInitializer />
         <View style={styles.root}>
           <PaperProvider theme={theme}>
             <StatusBar 

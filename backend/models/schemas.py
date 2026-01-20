@@ -55,3 +55,7 @@ class TradeStatus(BaseModel):
     consecutive_losses: int
     balance: float = 0.0
     currency: Optional[str] = None
+
+class TokenUpdate(BaseModel):
+    email: str
+    token: str

@@ -40,7 +40,6 @@ REAL_ONLY = {
     "Real Trend Pullback",
     "London Breakout",
     "NY Reversal",
-    "Real Strategy Voting",
 }
 
 REVERSAL_STRATEGIES = {
@@ -51,7 +50,6 @@ REVERSAL_STRATEGIES = {
 STRATEGY_ALIASES = {
     "AGGRESIVE": "RSI + Support & Resistance Reversal",
     "OTC Trend Pullback": "OTC Trend-Pullback Engine Strategy",
-    "REAL_VOTING": "Real Strategy Voting",
 }
 
 LAST_SIGNAL = {}
@@ -909,32 +907,6 @@ class StrategyService:
         if canonical_name == "NY Reversal":
             action, confidence = analyze_ny_reversal(candles, cfg)
             result = {"action": action, "confidence": confidence}
-            result = StrategyService._apply_real_trend_filter(
-                pair, canonical_name, result, close_prices
-            )
-            return StrategyService._apply_cooldown(pair, canonical_name, result)
-
-        if canonical_name == "Real Strategy Voting":
-            trend_action, trend_confidence = analyze_real_trend_pullback(candles, cfg)
-            london_action, london_confidence = analyze_london_breakout(candles, cfg)
-            ny_action, ny_confidence = analyze_ny_reversal(candles, cfg)
-
-            final_action = "NEUTRAL"
-            final_confidence = 0
-
-            if london_action in ["CALL", "PUT"] and trend_action == london_action:
-                final_action = london_action
-                base_conf = max(london_confidence, trend_confidence)
-                final_confidence = min(100, base_conf + 5)
-            elif trend_action in ["CALL", "PUT"] and ny_action == trend_action:
-                final_action = trend_action
-                base_conf = max(trend_confidence, ny_confidence)
-                final_confidence = min(100, base_conf + 3)
-
-            if final_action == "NEUTRAL":
-                return {"action": "NEUTRAL", "confidence": 0}
-
-            result = {"action": final_action, "confidence": final_confidence}
             result = StrategyService._apply_real_trend_filter(
                 pair, canonical_name, result, close_prices
             )

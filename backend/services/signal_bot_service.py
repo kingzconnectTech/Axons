@@ -5,6 +5,8 @@ import os
 import requests
 from services.iq_service import iq_manager
 from services.strategy_service import StrategyService, resample_to_n_minutes
+from services.notification_service import notification_service
+from services.status_store import status_store
 
 class SignalBotManager:
     _instance = None
@@ -114,6 +116,24 @@ class SignalBotManager:
                             self.stats["puts"] += 1
                         
                         logging.info(f"SIGNAL FOUND: {pair} {result['action']} ({result['confidence']}%)")
+                        
+                        # Send Notification
+                        try:
+                            tokens = status_store.get_all_tokens()
+                            if tokens:
+                                notification_service.send_multicast(
+                                    tokens=tokens,
+                                    title=f"New Signal: {pair.replace('-OTC', '')}",
+                                    body=f"{result['action']} Signal Detected! Confidence: {result['confidence']}%",
+                                    data={
+                                        "pair": pair,
+                                        "action": result["action"],
+                                        "confidence": str(result["confidence"]),
+                                        "timestamp": str(ts)
+                                    }
+                                )
+                        except Exception as e:
+                            logging.error(f"Failed to send notification: {e}")
 
                         self.history.append({
                             "timestamp": ts,
