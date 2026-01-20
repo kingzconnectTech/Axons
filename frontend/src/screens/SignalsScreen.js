@@ -60,42 +60,37 @@ export default function SignalsScreen() {
     { 
         value: 'RSI + Support & Resistance Reversal', 
         label: 'RSI + Support & Resistance Reversal',
-        description: 'Combines RSI overbought/oversold conditions with key support/resistance levels to identify potential reversal points.' 
+        description: 'Combines RSI overbought/oversold conditions with key support/resistance levels. (Active: 24/7 Market Hours)' 
     },
     { 
         value: 'OTC Mean Reversion', 
         label: 'OTC Mean Reversion',
-        description: 'Capitalizes on the tendency of OTC asset prices to revert to their historical average after extreme moves.' 
+        description: 'Capitalizes on the tendency of OTC asset prices to revert to their historical average. (Active: 24/7)' 
     },
     { 
         value: 'OTC Volatility Trap Break–Reclaim', 
         label: 'OTC Volatility Trap Break–Reclaim',
-        description: 'Identifies false breakouts (traps) in volatile OTC markets and signals entries when price reclaims the range.' 
+        description: 'Identifies false breakouts (traps) in volatile OTC markets and signals entries on reclaim. (Active: 24/7)' 
     },
     { 
         value: 'OTC Trend-Pullback Engine Strategy', 
         label: 'OTC Trend-Pullback Engine Strategy',
-        description: 'Follows strong OTC trends and enters on pullbacks to the moving average or dynamic support zones.' 
+        description: 'Follows strong OTC trends and enters on pullbacks to dynamic support zones. (Active: 24/7)' 
     },
     { 
         value: 'Real Trend Pullback', 
         label: 'Real Trend Pullback',
-        description: 'Classic trend-following strategy for real markets, entering trades in the direction of the trend after a corrective pullback.' 
+        description: 'Classic trend-following strategy. Active during London (07-11 UTC) & NY (13-17 UTC) sessions.' 
     },
     { 
         value: 'London Breakout', 
         label: 'London Breakout',
-        description: 'Captures momentum generated during the opening of the London session, trading breakouts from the Asian session range.' 
+        description: 'Captures momentum from the Asian range breakout. Active during London session (07:00-11:00 UTC).' 
     },
     { 
         value: 'NY Reversal', 
         label: 'NY Reversal',
-        description: 'Looks for reversal patterns during the New York session, often occurring after the initial morning momentum fades.' 
-    },
-    { 
-        value: 'Real Strategy Voting', 
-        label: 'Real Strategy Voting',
-        description: 'Aggregates signals from multiple strategies and executes based on a "voting" consensus for higher probability.' 
+        description: 'Looks for reversal patterns after morning momentum fades. Active during NY session (13:00-17:00 UTC).' 
     }
   ];
   const timeframes = [1, 2, 3, 4, 5, 15];
@@ -121,6 +116,41 @@ export default function SignalsScreen() {
     
     return () => clearInterval(statusInterval);
   }, []);
+
+  const getStrategyOptions = () => {
+    const currentHour = new Date().getUTCHours();
+    return strategies.map(s => {
+      let disabled = false;
+      let disabledReason = '';
+
+      if (s.value === 'London Breakout') {
+        if (currentHour < 7 || currentHour >= 11) {
+            disabled = true;
+            disabledReason = 'Active only 07:00 - 11:00 UTC';
+        }
+      } else if (s.value === 'NY Reversal') {
+        if (currentHour < 13 || currentHour >= 17) {
+            disabled = true;
+            disabledReason = 'Active only 13:00 - 17:00 UTC';
+        }
+      } else if (s.value === 'Real Trend Pullback') {
+         // Active London (7-11) OR NY (13-17)
+         const isLondon = currentHour >= 7 && currentHour < 11;
+         const isNY = currentHour >= 13 && currentHour < 17;
+         if (!isLondon && !isNY) {
+             disabled = true;
+             disabledReason = 'Active only during London & NY sessions';
+         }
+      }
+
+      return {
+        ...s,
+        icon: 'robot',
+        disabled,
+        disabledReason
+      };
+    });
+  };
 
   const checkStatus = async () => {
     try {
@@ -500,7 +530,7 @@ export default function SignalsScreen() {
         visible={strategyModalVisible}
         onClose={() => setStrategyModalVisible(false)}
         title="Select Strategy"
-        options={strategies.map(s => ({ ...s, icon: 'robot' }))}
+        options={getStrategyOptions()}
         value={strategy}
         onSelect={setStrategy}
         icon="robot-outline"

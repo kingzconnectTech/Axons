@@ -64,30 +64,41 @@ export default function SelectionModal({ visible, onClose, title, options, value
                   return (
                     <TouchableOpacity
                       key={option.value}
+                      disabled={option.disabled}
                       style={[
                         styles.optionItem,
-                        isSelected && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: theme.colors.primary, borderWidth: 1 }
+                        isSelected && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: theme.colors.primary, borderWidth: 1 },
+                        option.disabled && { opacity: 0.5, backgroundColor: 'rgba(0,0,0,0.2)' }
                       ]}
-                      onPress={() => handleSelect(option.value)}
+                      onPress={() => !option.disabled && handleSelect(option.value)}
                     >
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                         {multi ? (
                           <Checkbox
                             status={isSelected ? 'checked' : 'unchecked'}
-                            onPress={() => handleSelect(option.value)}
+                            onPress={() => !option.disabled && handleSelect(option.value)}
                             color={theme.colors.primary}
+                            disabled={option.disabled}
                           />
                         ) : (
                           <RadioButton
                             value={option.value}
                             status={isSelected ? 'checked' : 'unchecked'}
-                            onPress={() => handleSelect(option.value)}
+                            onPress={() => !option.disabled && handleSelect(option.value)}
                             color={theme.colors.primary}
+                            disabled={option.disabled}
                           />
                         )}
-                        <Text variant="bodyLarge" style={{ color: isSelected ? theme.colors.primary : theme.colors.onSurface, marginLeft: 8, fontWeight: isSelected ? 'bold' : 'normal' }}>
-                          {option.label}
-                        </Text>
+                        <View style={{ flex: 1 }}>
+                            <Text variant="bodyLarge" style={{ color: isSelected ? theme.colors.primary : theme.colors.onSurface, marginLeft: 8, fontWeight: isSelected ? 'bold' : 'normal' }}>
+                            {option.label}
+                            </Text>
+                            {option.disabled && option.disabledReason && (
+                                <Text variant="bodySmall" style={{ color: theme.colors.error, marginLeft: 8 }}>
+                                    {option.disabledReason}
+                                </Text>
+                            )}
+                        </View>
                       </View>
                       {option.icon && (
                         <MaterialCommunityIcons name={option.icon} size={20} color={isSelected ? theme.colors.primary : theme.colors.onSurfaceVariant} />

@@ -34,8 +34,7 @@ export default function AutoTradeScreen() {
     'Test Execution Strategy',
     'Real Trend Pullback',
     'London Breakout',
-    'NY Reversal',
-    'Real Strategy Voting'
+    'NY Reversal'
   ];
   const [stopLoss, setStopLoss] = useState('10');
   const [takeProfit, setTakeProfit] = useState('20');
@@ -69,11 +68,41 @@ export default function AutoTradeScreen() {
   // Options for modals
   const pairOptions = otcPairs.map(p => ({ label: p, value: p, icon: 'currency-usd' }));
   
-  const strategyOptions = strategies.map(s => ({
-    label: s,
-    value: s,
-    icon: 'chart-bell-curve-cumulative'
-  }));
+  const getStrategyOptions = () => {
+    const currentHour = new Date().getUTCHours();
+    return strategies.map(s => {
+      let disabled = false;
+      let disabledReason = '';
+
+      if (s === 'London Breakout') {
+        if (currentHour < 7 || currentHour >= 11) {
+            disabled = true;
+            disabledReason = 'Active only 07:00 - 11:00 UTC';
+        }
+      } else if (s === 'NY Reversal') {
+        if (currentHour < 13 || currentHour >= 17) {
+            disabled = true;
+            disabledReason = 'Active only 13:00 - 17:00 UTC';
+        }
+      } else if (s === 'Real Trend Pullback') {
+         // Active London (7-11) OR NY (13-17)
+         const isLondon = currentHour >= 7 && currentHour < 11;
+         const isNY = currentHour >= 13 && currentHour < 17;
+         if (!isLondon && !isNY) {
+             disabled = true;
+             disabledReason = 'Active only during London & NY sessions';
+         }
+      }
+
+      return {
+        label: s,
+        value: s,
+        icon: 'chart-bell-curve-cumulative',
+        disabled,
+        disabledReason
+      };
+    });
+  };
 
   const timeframeOptions = [
     { label: 'Auto (Best)', value: '0', icon: 'robot' },
@@ -439,7 +468,7 @@ export default function AutoTradeScreen() {
         visible={strategyModalVisible}
         onClose={() => setStrategyModalVisible(false)}
         title="Select Strategy"
-        options={strategyOptions}
+        options={getStrategyOptions()}
         value={strategy}
         onSelect={setStrategy}
         icon="strategy"
