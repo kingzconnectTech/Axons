@@ -7,5 +7,5 @@ backend/__pycache__/
 .env
 backend/.env
 frontend/.env
-google-services.json
+# google-services.json
 *firebase-adminsdk*.json
