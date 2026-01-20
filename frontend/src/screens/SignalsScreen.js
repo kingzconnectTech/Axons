@@ -348,17 +348,7 @@ export default function SignalsScreen() {
                   >
                     START STREAM
                   </Button>
-                  <Button 
-                    mode="outlined" 
-                    onPress={handleAnalyze} 
-                    loading={loading}
-                    style={[styles.analyzeButton, { marginTop: 12, borderColor: theme.colors.primary }]}
-                    contentStyle={{ height: 48 }}
-                    labelStyle={{ fontSize: 16, fontWeight: 'bold', letterSpacing: 1, color: theme.colors.primary }}
-                    icon="radar"
-                  >
-                    MANUAL SCAN
-                  </Button>
+                
                 </View>
               ) : (
                 <Button 
