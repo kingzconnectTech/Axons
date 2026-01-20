@@ -1,17 +1,13 @@
 !google-services.json
 node_modules/
+/node_modules/
+**/node_modules/
 .expo/
 dist/
 web-build/
 
 # Android
-android/.gradle
-android/app/build
-android/build
-android/android-build-log.txt
-android/build-log.txt
-android/*.txt
-android/app/*.txt
+android/
 
 # iOS
 ios/build

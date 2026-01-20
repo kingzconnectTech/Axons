@@ -7,7 +7,7 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/intro.gif",
+      "image": "./assets/Axon.png",
       "resizeMode": "contain",
       "backgroundColor": "#3E1E68"
     },
@@ -20,8 +20,6 @@
     },
     "android": {
       "package": "com.axon.techboi",
-      "googleServicesFile": "./google-services.json",
-      "permissions": ["NOTIFICATIONS"],
       "icon": "./assets/Axon.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/Axon.png",
@@ -39,14 +37,6 @@
             "useFrameworks": "static"
           }
         }
-      ],
-      [
-        "expo-notifications",
-        {
-          "sounds": [
-            "./assets/axon_notification.mp3"
-          ]
-        }
       ]
     ],
     "extra": {
@@ -54,12 +44,6 @@
         "projectId": "13ba9648-45b1-4723-a646-1291ddef18d9"
       }
     },
-    "owner": "kingzconnect"
-  },
-  "react-native-google-mobile-ads": {
-    "android_app_id": "ca-app-pub-4647863166992264~5710161013",
-    "delay_app_measurement_init": false,
-    "optimize_initialization": true,
-    "optimize_ad_loading": true
+  "owner": "kingzconnect"
   }
 }

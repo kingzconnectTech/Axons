@@ -1,64 +1,21 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Text, TextInput, Button, Surface, useTheme, Switch, Divider } from 'react-native-paper';
+import { Text, Button, Surface, useTheme, Switch, Divider } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ThemeContext } from '../context/ThemeContext';
-import { isNotificationPermissionGranted, registerForPushNotificationsAsync } from '../services/NotificationService';
 
 export default function SettingsScreen({ navigation }) {
   const theme = useTheme();
   const { isDark, toggleTheme } = useContext(ThemeContext);
   
   // State for settings
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [systemNotificationsEnabled, setSystemNotificationsEnabled] = useState(null);
-  const [checkingNotificationPermission, setCheckingNotificationPermission] = useState(false);
-
-  // Load settings on mount
-  useEffect(() => {
-    loadSettings();
-    refreshNotificationPermission();
-  }, []);
-
-  const loadSettings = async () => {
-    try {
-      const savedNotifs = await AsyncStorage.getItem('notifications_enabled');
-      if (savedNotifs !== null) setNotificationsEnabled(JSON.parse(savedNotifs));
-    } catch (error) {
-      console.error('Failed to load settings:', error);
-    }
-  };
-
-  const refreshNotificationPermission = async () => {
-    try {
-      setCheckingNotificationPermission(true);
-      const granted = await isNotificationPermissionGranted();
-      setSystemNotificationsEnabled(granted);
-    } catch (error) {
-      setSystemNotificationsEnabled(null);
-    } finally {
-      setCheckingNotificationPermission(false);
-    }
-  };
 
   const saveSettings = async () => {
     setIsLoading(true);
     try {
-      await AsyncStorage.setItem('notifications_enabled', JSON.stringify(notificationsEnabled));
-      if (notificationsEnabled) {
-        await registerForPushNotificationsAsync();
-        await refreshNotificationPermission();
-        const granted = await isNotificationPermissionGranted();
-        if (!granted) {
-          Alert.alert(
-            'Notifications Disabled',
-            'System notification permission is not granted. Enable notifications in your device settings for AXON to send alerts.'
-          );
-        }
-      }
       Alert.alert('Success', 'Settings saved successfully!');
     } catch (error) {
       Alert.alert('Error', 'Failed to save settings');
@@ -91,33 +48,6 @@ export default function SettingsScreen({ navigation }) {
             <Switch
               value={isDark}
               onValueChange={toggleTheme}
-              color={theme.colors.primary}
-            />
-          </View>
-          <Divider style={styles.divider} />
-
-          <View style={styles.row}>
-            <View style={{ flex: 1, marginRight: 12 }}>
-              <Text variant="bodyLarge" style={{ color: theme.colors.onSurface }}>Enable Notifications</Text>
-              <Text
-                variant="bodySmall"
-                style={{
-                  color: theme.colors.onSurfaceVariant,
-                  marginTop: 4,
-                }}
-              >
-                {checkingNotificationPermission
-                  ? 'Checking permission...'
-                  : systemNotificationsEnabled === null
-                  ? 'Permission status unknown'
-                  : systemNotificationsEnabled
-                  ? 'System permission: On'
-                  : 'System permission: Off'}
-              </Text>
-            </View>
-            <Switch
-              value={notificationsEnabled}
-              onValueChange={setNotificationsEnabled}
               color={theme.colors.primary}
             />
           </View>

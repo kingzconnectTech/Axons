@@ -10,7 +10,6 @@ class SignalBotStart(BaseModel):
     pairs: List[str]
     timeframe: int
     strategy: str
-    push_token: Optional[str] = None
 
 class SignalHistoryItem(BaseModel):
     timestamp: float

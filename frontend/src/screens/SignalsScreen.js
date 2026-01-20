@@ -9,7 +9,6 @@ import { API_URLS } from '../config';
 import ParticlesBackground from '../components/ParticlesBackground';
 import SelectionModal from '../components/SelectionModal';
 import AdBanner from '../components/AdBanner';
-import { registerForPushNotificationsAsync, isNotificationPermissionGranted } from '../services/NotificationService';
 
 const API_URL = API_URLS.SIGNALS;
 const { width } = Dimensions.get('window');
@@ -164,32 +163,10 @@ export default function SignalsScreen() {
     } else {
       setLoading(true);
       try {
-        const permissionGranted = await isNotificationPermissionGranted();
-        if (!permissionGranted) {
-          setToastMessage('Notifications disabled. Enable in settings for alerts.');
-          setToastVisible(true);
-        }
-        
-        let tokenResult = await registerForPushNotificationsAsync();
-        let token = null;
-
-        if (tokenResult && typeof tokenResult === 'object' && tokenResult.error) {
-            console.warn("Push Token Error:", tokenResult.error);
-            setToastMessage(`Push Error: ${tokenResult.error}`);
-            setToastVisible(true);
-        } else if (typeof tokenResult === 'string') {
-            token = tokenResult;
-        } else {
-             // null result
-             setToastMessage('Push notifications unavailable on this device.');
-             setToastVisible(true);
-        }
-
         await axios.post(`${API_URL}/start`, {
             pairs: selectedPairs,
             timeframe,
-            strategy,
-            push_token: token
+            strategy
         });
         setStreaming(true);
         setStreamStats({ total: 0 });

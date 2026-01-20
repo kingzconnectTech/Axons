@@ -192,12 +192,10 @@ export default function HomeScreen({ navigation }) {
             <QuickActionCard title="Signals" icon="radar" route="Signals" color="#2196f3" />
             <View style={{ width: 16 }} />
             <QuickActionCard 
-              title="Auto Trade (Coming Soon)" 
+              title="Auto Trade" 
               icon="robot" 
               route="AutoTrade" 
               color="#4caf50"
-              disabled={true}
-              badge={{ text: 'COMING SOON', color: '#9e9e9e' }}
             />
             <View style={{ width: 16 }} />
             <QuickActionCard title="Flash" icon="flash" route="Quick" color="#FF9800" />

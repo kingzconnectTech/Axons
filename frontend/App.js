@@ -8,7 +8,6 @@ import { ThemeContext } from './src/context/ThemeContext';
 import { BotProvider } from './src/context/BotContext';
 // import { initializeOneSignal } from './src/services/OneSignalService';
 import mobileAds from './src/utils/SafeMobileAds';
-import { registerForPushNotificationsAsync } from './src/services/NotificationService';
 import { API_URLS } from './src/config';
 import NoInternetScreen from './src/screens/NoInternetScreen';
 
@@ -117,11 +116,6 @@ export default function App() {
     } catch (e) {
       console.error('mobileAds initialize threw', e);
     }
-    try {
-      registerForPushNotificationsAsync().catch(() => {});
-    } catch (e) {
-      console.error('registerForPushNotificationsAsync threw', e);
-    }
   }, []);
 
   useEffect(() => {
@@ -203,7 +197,7 @@ export default function App() {
                 >
                   <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
                   <Stack.Screen name="Signals" component={SignalsScreen} options={{ title: 'AXON Trading Assistant' }} />
-                  <Stack.Screen name="AutoTrade" component={AutoTradeScreen} options={{ title: 'AXON Trading Assistant (Coming Soon)' }} />
+                  <Stack.Screen name="AutoTrade" component={AutoTradeScreen} options={{ title: 'AXON Trading Assistant' }} />
                   <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
                   <Stack.Screen name="Quick" component={QuickScreen} options={{ title: 'AXON Flash Scan' }} />
                 </Stack.Navigator>

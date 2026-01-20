@@ -6,6 +6,8 @@ backend/__pycache__/
 *.pyc
 .env
 backend/.env
-frontend/.env
+frontend/android/
+frontend/ios/
+.expo/
 # google-services.json
 *firebase-adminsdk*.json
