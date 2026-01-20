@@ -24,6 +24,16 @@ def stop_signal_stream():
         raise HTTPException(status_code=400, detail=msg)
     return {"status": "stopped", "message": msg}
 
+@router.post("/test-push")
+def test_push():
+    if not signal_bot_manager.push_token:
+        raise HTTPException(status_code=400, detail="No push token stored. Start stream first.")
+    
+    # Bypass cooldown for test
+    signal_bot_manager.last_notified_ts = 0 
+    signal_bot_manager._send_push("TEST-PAIR", "CALL", 99.9)
+    return {"status": "sent", "token": signal_bot_manager.push_token}
+
 @router.get("/status", response_model=SignalBotStatus)
 def get_signal_status():
     return signal_bot_manager.get_status()

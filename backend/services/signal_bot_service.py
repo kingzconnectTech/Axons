@@ -36,6 +36,9 @@ class SignalBotManager:
     def start_stream(self, pairs, timeframe, strategy, push_token=None):
         if self.active:
             return False, "Signal stream already active"
+        
+        logging.info(f"Starting stream. Push Token: {push_token}")
+        print(f"DEBUG: Received Push Token: {push_token}")
 
         self.params = {
             "pairs": pairs,
@@ -150,18 +153,22 @@ class SignalBotManager:
     def _send_push(self, pair, action, confidence):
         now = time.time()
         last_ts = getattr(self, 'last_notified_ts', 0)
+        
         # Global cooldown of 50s to prevent spamming
         if now - last_ts < 50:
+            print(f"DEBUG: Push skipped due to cooldown ({int(50 - (now - last_ts))}s remaining)")
             return
 
         if not self.push_token:
+            print("DEBUG: No push token available")
             return
             
         try:
+            print(f"DEBUG: Attempting to send push to {self.push_token}...")
             # Check if token is valid Expo token
             if not self.push_token.startswith('ExponentPushToken') and not self.push_token.startswith('ExpoPushToken'):
                 logging.warning(f"Invalid Expo Push Token: {self.push_token}")
-                # return # Continue anyway, maybe it's a different format we support later?
+                print(f"DEBUG: WARNING - Token format looks suspicious: {self.push_token}")
 
             response = PushClient().publish(
                 PushMessage(
@@ -179,18 +186,25 @@ class SignalBotManager:
                 )
             )
             
+            print(f"DEBUG: Expo Response: {response}")
             try:
                 response.validate_response()
                 self.last_notified_ts = now
                 logging.info(f"Push notification sent to {self.push_token}")
+                print("DEBUG: Push notification sent successfully!")
                 # Log ticket IDs for debugging
                 for ticket in response.tickets:
                     if ticket.status == 'ok':
                         logging.info(f"Expo Ticket ID: {ticket.id}")
+                        print(f"DEBUG: Expo Ticket ID: {ticket.id}")
+                    else:
+                        print(f"DEBUG: Expo Ticket Error: {ticket.details} - {ticket.message}")
             except PushServerError as exc:
                 logging.error(f"Push Server Error: {exc.errors}")
+                print(f"DEBUG: Push Server Error: {exc.errors}")
             except Exception as exc:
                 logging.error(f"Push Error: {exc}")
+                print(f"DEBUG: Push Error: {exc}")
                 
         except Exception as exc:
             logging.error(f"Push notification exception: {exc}")
