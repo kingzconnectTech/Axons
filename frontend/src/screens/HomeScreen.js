@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import { View, ScrollView, StyleSheet, Dimensions, TouchableOpacity, Modal } from 'react-native';
 import { Text, Surface, useTheme, Button } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LineChart } from 'react-native-chart-kit';
 
 import ParticlesBackground from '../components/ParticlesBackground';
@@ -52,6 +53,35 @@ export default function HomeScreen({ navigation }) {
     'AUDCAD': { price: 0.8950, change: 0.10 }
   });
   const [trendData, setTrendData] = useState(MOCK_CHART_DATA.datasets[0].data);
+
+  // Daily Disclaimer Logic
+  useEffect(() => {
+    const checkDailyDisclaimer = async () => {
+      try {
+        const today = new Date().toDateString();
+        const lastShown = await AsyncStorage.getItem('last_disclaimer_date');
+        
+        if (lastShown !== today) {
+          setShowDisclaimer(true);
+        }
+      } catch (error) {
+        console.log('Failed to check disclaimer status', error);
+      }
+    };
+    
+    checkDailyDisclaimer();
+  }, []);
+
+  const handleAcceptDisclaimer = async () => {
+    try {
+      const today = new Date().toDateString();
+      await AsyncStorage.setItem('last_disclaimer_date', today);
+      setShowDisclaimer(false);
+    } catch (error) {
+      console.log('Failed to save disclaimer status', error);
+      setShowDisclaimer(false);
+    }
+  };
 
   // Live Market Fetch
   useEffect(() => {

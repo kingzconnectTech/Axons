@@ -436,6 +436,7 @@ export default function AutoTradeScreen() {
             <AnimatedBorderButton
               borderRadius={16}
               colors={['#00E676', '#FFFFFF', '#00E676']}
+              duration={loading ? 500 : 2000}
             >
               <Button 
                 mode="contained" 
@@ -453,6 +454,7 @@ export default function AutoTradeScreen() {
             <AnimatedBorderButton
               borderRadius={16}
               colors={['#FF5252', '#FFFFFF', '#FF5252']}
+              duration={500}
             >
               <Button 
                 mode="contained" 

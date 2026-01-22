@@ -93,6 +93,7 @@ export default function LoginScreen({ navigation }) {
               containerStyle={{ marginTop: 24 }}
               borderRadius={12}
               colors={[theme.colors.primary, '#FFFFFF', theme.colors.primary]}
+              duration={loading ? 500 : 2000}
             >
               <Button
                 mode="contained"

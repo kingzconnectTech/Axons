@@ -70,6 +70,11 @@ export default function RegisterScreen({ navigation }) {
       await userCredential.user.updateProfile({
         displayName: name,
       });
+      
+      // Save extra profile info locally
+      const dob = `${day}/${month}/${year}`;
+      await AsyncStorage.setItem(`user_dob_${userCredential.user.uid}`, dob);
+      
       // Navigation handled by App.js auth listener
     } catch (e) {
       console.log(e);
@@ -185,6 +190,7 @@ export default function RegisterScreen({ navigation }) {
                 containerStyle={{ marginTop: 24 }}
                 borderRadius={12}
                 colors={[theme.colors.secondary, '#FFFFFF', theme.colors.secondary]}
+                duration={loading ? 500 : 2000}
               >
                 <Button
                   mode="contained"

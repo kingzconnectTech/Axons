@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Text, Button, Surface, useTheme, Switch, Divider } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
+import { Text, Button, Surface, useTheme, Switch, Divider, Avatar } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
@@ -52,6 +52,38 @@ export default function SettingsScreen({ navigation }) {
               color={theme.colors.primary}
             />
           </View>
+        </Surface>
+
+        <Surface style={[styles.section, { backgroundColor: theme.colors.surface }]} elevation={2}>
+          <View style={styles.sectionHeader}>
+            <MaterialCommunityIcons name="shield-account" size={24} color={theme.colors.secondary} />
+            <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+              Legal & Support
+            </Text>
+          </View>
+          <Divider style={styles.divider} />
+          
+          <Button 
+            mode="text" 
+            onPress={() => navigation.navigate('PrivacyPolicy')} 
+            style={styles.linkButton}
+            contentStyle={{ justifyContent: 'flex-start' }}
+            textColor={theme.colors.primary}
+            icon="file-document-outline"
+          >
+            Privacy Policy
+          </Button>
+
+          <Button 
+            mode="text" 
+            onPress={() => Linking.openURL('mailto:support@axon.com')} 
+            style={styles.linkButton}
+            contentStyle={{ justifyContent: 'flex-start' }}
+            textColor={theme.colors.primary}
+            icon="email-outline"
+          >
+            Contact Us
+          </Button>
         </Surface>
 
         <Button
@@ -106,6 +138,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
+  },
+  profileHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    marginTop: 4,
+  },
+  profileInfo: {
+    marginLeft: 16,
+    flex: 1,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
   },
   sectionTitle: {
     marginLeft: 10,

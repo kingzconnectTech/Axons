@@ -356,6 +356,7 @@ export default function SignalsScreen() {
                   containerStyle={{ marginTop: 16 }}
                   borderRadius={16}
                   colors={['#FF5252', '#FFFFFF', '#FF5252']}
+                  duration={500}
                 >
                   <Button 
                     mode="contained" 

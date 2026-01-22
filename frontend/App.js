@@ -22,6 +22,7 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import QuickScreen from './src/screens/QuickScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
+import PrivacyPolicyScreen from './src/screens/PrivacyPolicyScreen';
 
 const Stack = createStackNavigator();
 
@@ -267,6 +268,7 @@ export default function App() {
                       <Stack.Screen name="Signals" component={SignalsScreen} options={{ title: 'AXON Trading Assistant' }} />
                       <Stack.Screen name="AutoTrade" component={AutoTradeScreen} options={{ title: 'AXON Trading Assistant' }} />
                       <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
+                      <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ title: 'Privacy Policy' }} />
                       <Stack.Screen name="Quick" component={QuickScreen} options={{ title: 'AXON Flash Scan' }} />
                     </>
                   )}
