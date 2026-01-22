@@ -73,6 +73,7 @@ export const BotProvider = ({ children }) => {
   const syncDeviceToken = async () => {
     if (email && fcmToken) {
       try {
+        console.log(`[BotContext] Syncing token for ${email}...`);
         await axios.post(`${API_URLS.AUTOTRADE}/token`, {
           email: email,
           token: fcmToken
@@ -80,7 +81,20 @@ export const BotProvider = ({ children }) => {
         console.log("[BotContext] FCM Token synced with backend");
         return true;
       } catch (error) {
-        console.log("[BotContext] Failed to sync FCM Token:", error.message);
+        console.error("[BotContext] Failed to sync FCM Token:", error.message);
+        // Retry once after 5 seconds if failed
+        setTimeout(async () => {
+             try {
+                 console.log("[BotContext] Retrying token sync...");
+                 await axios.post(`${API_URLS.AUTOTRADE}/token`, {
+                    email: email,
+                    token: fcmToken
+                 });
+                 console.log("[BotContext] Retry successful");
+             } catch (retryError) {
+                 console.error("[BotContext] Retry failed:", retryError.message);
+             }
+        }, 5000);
         return false;
       }
     }

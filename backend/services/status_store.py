@@ -47,6 +47,8 @@ class StatusStore:
 
     def _save_local(self):
         try:
+            abs_path = os.path.abspath(self.local_file)
+            print(f"[StatusStore] Saving to {abs_path}")
             with open(self.local_file, 'w') as f:
                 json.dump(self.local_data, f, indent=2)
         except Exception as e:

@@ -24,9 +24,11 @@ def stop_autotrade(email: str):
 @router.post("/token")
 def update_token(data: TokenUpdate):
     try:
+        print(f"[AutoTrade] Received token update for {data.email}")
         status_store.update_token(data.email, data.token)
         return {"status": "token_updated"}
     except Exception as e:
+        print(f"[AutoTrade] Token update failed: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/status/{email}", response_model=TradeStatus)

@@ -327,6 +327,21 @@ class StrategyService:
             close_prices = [c["close"] for c in candles]
             upper, mid, lower = calculate_bollinger_bands(close_prices)
 
+            # Check forming candle (current live price) for faster reaction
+            curr = get_candle_features(candles[FORMING]) 
+            curr_price = curr['close']
+
+            # If current price breaks band aggressively, signal immediately
+            # CALL: Price snaps below lower band
+            if curr_price < lower.iloc[FORMING] and curr['is_bullish']: 
+                # Basic snap check: it dipped below and is now green (snapping back)
+                return {"action": "CALL", "confidence": 85, "reason": "Bollinger Snap (Live)"}
+
+            # PUT: Price snaps above upper band
+            if curr_price > upper.iloc[FORMING] and not curr['is_bullish']:
+                return {"action": "PUT", "confidence": 85, "reason": "Bollinger Snap (Live)"}
+
+            # Fallback to confirmed candle logic (standard)
             conf = get_candle_features(candles[CONFIRM])
             close_price = conf['close']
 

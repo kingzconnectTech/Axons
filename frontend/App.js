@@ -114,8 +114,20 @@ const NotificationInitializer = () => {
     const init = async () => {
       await setupNotificationChannel();
       await requestUserPermission();
-      const token = await getToken();
-      if (token) setFcmToken(token);
+      
+      let token = await getToken();
+      if (!token) {
+          console.log("Retrying token fetch in 3s...");
+          await new Promise(r => setTimeout(r, 3000));
+          token = await getToken();
+      }
+      
+      if (token) {
+          console.log("Token fetched successfully:", token);
+          setFcmToken(token);
+      } else {
+          console.error("Failed to fetch token after retry.");
+      }
 
       // Check if app was opened from quit state by notification (FCM)
       const initialNotification = await getInitialNotification();
