@@ -2,7 +2,6 @@ import { AppRegistry } from 'react-native';
 import messaging from '@react-native-firebase/messaging';
 import notifee, { AndroidImportance } from '@notifee/react-native';
 import App from './App';
-import { name as appName } from './app.json';
 
 // REQUIRED RULE (FCM): setBackgroundMessageHandler must be registered at the JS entry point
 let lastId = null;
@@ -24,11 +23,17 @@ messaging().setBackgroundMessageHandler(async remoteMessage => {
   await notifee.displayNotification({
     title,
     body,
+    data: remoteMessage.data,
     android: {
       channelId: 'default',
       importance: AndroidImportance.HIGH,
+      smallIcon: 'ic_launcher', // fallback to launcher icon
+      pressAction: {
+        id: 'default',
+      },
     },
   });
 });
 
-AppRegistry.registerComponent(appName, () => App);
+// "main" is the default component name for Expo Prebuild projects
+AppRegistry.registerComponent('main', () => App);

@@ -8,7 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
 import { ThemeContext } from './src/context/ThemeContext';
 import { BotProvider, useBot } from './src/context/BotContext';
-import { requestUserPermission, getToken, onTokenRefresh, onForegroundMessage, onNotificationOpenedApp, getInitialNotification, setupNotificationChannel } from './src/services/NotificationService';
+import { requestUserPermission, getToken, onTokenRefresh, onForegroundMessage, onNotificationOpenedApp, getInitialNotification, setupNotificationChannel, onNotifeeForegroundEvent, getInitialNotifeeNotification } from './src/services/NotificationService';
 import mobileAds from './src/utils/SafeMobileAds';
 import { API_URLS } from './src/config';
 import axios from 'axios';
@@ -103,16 +103,30 @@ const NotificationInitializer = () => {
   const { setFcmToken } = useBot();
 
   useEffect(() => {
+    const handleNotificationPress = (notification) => {
+        Alert.alert(
+            notification.title || 'Notification',
+            notification.body || 'No details available',
+            [{ text: 'OK' }]
+        );
+    };
+
     const init = async () => {
       await setupNotificationChannel();
       await requestUserPermission();
       const token = await getToken();
       if (token) setFcmToken(token);
 
-      // Check if app was opened from quit state by notification
+      // Check if app was opened from quit state by notification (FCM)
       const initialNotification = await getInitialNotification();
       if (initialNotification) {
           console.log('App opened from quit state via notification', initialNotification);
+      }
+
+      // Check if app was opened from quit state by Notifee notification
+      const initialNotifee = await getInitialNotifeeNotification();
+      if (initialNotifee) {
+          handleNotificationPress(initialNotifee);
       }
     };
     init();
@@ -130,10 +144,15 @@ const NotificationInitializer = () => {
         console.log('App opened from background via notification', remoteMessage);
     });
 
+    const unsubscribeNotifee = onNotifeeForegroundEvent(notification => {
+        handleNotificationPress(notification);
+    });
+
     return () => {
         unsubscribe();
         unsubscribeMessage();
         unsubscribeOpened();
+        unsubscribeNotifee();
     };
   }, []);
 

@@ -1,5 +1,5 @@
 import { PermissionsAndroid, Platform } from 'react-native';
-import notifee, { AndroidImportance } from '@notifee/react-native';
+import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
 import messaging from '@react-native-firebase/messaging';
 
 export const setupNotificationChannel = async () => {
@@ -77,9 +77,14 @@ export const onForegroundMessage = (callback) => {
             await notifee.displayNotification({
                 title,
                 body,
+                data: remoteMessage.data,
                 android: {
                     channelId: 'default',
                     importance: AndroidImportance.HIGH,
+                    smallIcon: 'ic_launcher',
+                    pressAction: {
+                        id: 'default',
+                    },
                 },
             });
         } catch (e) {
@@ -108,6 +113,28 @@ export const getInitialNotification = async () => {
         }
     } catch (error) {
         console.error('Failed to get initial notification:', error);
+    }
+    return null;
+};
+
+export const onNotifeeForegroundEvent = (callback) => {
+    return notifee.onForegroundEvent(({ type, detail }) => {
+        if (type === EventType.PRESS) {
+            console.log('User pressed notification:', detail.notification);
+            if (callback) callback(detail.notification);
+        }
+    });
+};
+
+export const getInitialNotifeeNotification = async () => {
+    try {
+        const initialNotification = await notifee.getInitialNotification();
+        if (initialNotification) {
+            console.log('App opened from quit state via Notifee notification:', initialNotification.notification);
+            return initialNotification.notification;
+        }
+    } catch (error) {
+        console.error('Failed to get initial Notifee notification:', error);
     }
     return null;
 };
