@@ -48,13 +48,20 @@ class NotificationService:
         # Firebase Multicast supports up to 500 tokens at once
         # If we have more, we should chunk them (omitted for brevity unless needed)
         
+        # Prepare data payload (include title/body in data for consistent handling)
+        message_data = data or {}
+        message_data["title"] = title
+        message_data["body"] = body
+        
         message = messaging.MulticastMessage(
-            notification=messaging.Notification(
-                title=title,
-                body=body,
-            ),
-            data=data or {},
+            # Do NOT use the 'notification' field for Android background reliability
+            # notification=messaging.Notification(title=title, body=body),
+            data=message_data,
             tokens=tokens,
+            android=messaging.AndroidConfig(
+                priority='high',
+                ttl=3600,
+            ),
         )
         
         try:

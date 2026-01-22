@@ -8,7 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
 import { ThemeContext } from './src/context/ThemeContext';
 import { BotProvider, useBot } from './src/context/BotContext';
-import { requestUserPermission, getToken, onTokenRefresh, onForegroundMessage, onNotificationOpenedApp, getInitialNotification } from './src/services/NotificationService';
+import { requestUserPermission, getToken, onTokenRefresh, onForegroundMessage, onNotificationOpenedApp, getInitialNotification, setupNotificationChannel } from './src/services/NotificationService';
 import mobileAds from './src/utils/SafeMobileAds';
 import { API_URLS } from './src/config';
 import axios from 'axios';
@@ -104,6 +104,7 @@ const NotificationInitializer = () => {
 
   useEffect(() => {
     const init = async () => {
+      await setupNotificationChannel();
       await requestUserPermission();
       const token = await getToken();
       if (token) setFcmToken(token);

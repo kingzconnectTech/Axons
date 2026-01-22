@@ -216,7 +216,16 @@ def run_trade_session(config, shared_stats, stop_event):
                             shared_stats["losses"] += 1
                             shared_stats["profit"] -= stake_amount
                             shared_stats["consecutive_losses"] += 1
-                            
+                        
+                        # Check limits immediately after result to avoid unnecessary cooldown
+                        if shared_stats["total_trades"] >= config.max_trades:
+                            print(f"[Worker] Max trades reached ({shared_stats['total_trades']}). Stopping.")
+                            break
+
+                        if shared_stats["consecutive_losses"] >= config.max_consecutive_losses:
+                            print(f"[Worker] Max consecutive losses reached ({shared_stats['consecutive_losses']}). Stopping.")
+                            break
+
                         # Cooldown: Rest for 1 minute after trade completion
                         print(f"[Worker] Resting for 60 seconds before resuming scan...")
                         time.sleep(60)
@@ -247,4 +256,8 @@ def run_trade_session(config, shared_stats, stop_event):
         except Exception:
             pass
     finally:
+        try:
+            shared_stats["active"] = False
+        except Exception:
+            pass
         print(f"[Worker] Session ended for {config.email}")

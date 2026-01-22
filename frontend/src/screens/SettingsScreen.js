@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, Platform, Linking } from 'react-native';
 import { Text, Button, Surface, useTheme, Switch, Divider, Avatar } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -13,6 +13,28 @@ export default function SettingsScreen({ navigation }) {
   
   // State for settings
   const [isLoading, setIsLoading] = useState(false);
+  const [userData, setUserData] = useState({
+    name: '',
+    email: '',
+    uid: '',
+    dob: ''
+  });
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      const user = auth().currentUser;
+      if (user) {
+        const dob = await AsyncStorage.getItem(`user_dob_${user.uid}`);
+        setUserData({
+          name: user.displayName || 'Trader',
+          email: user.email || '',
+          uid: user.uid,
+          dob: dob || 'Not set'
+        });
+      }
+    };
+    loadProfile();
+  }, []);
 
   const saveSettings = async () => {
     setIsLoading(true);
@@ -34,6 +56,47 @@ export default function SettingsScreen({ navigation }) {
       />
       
       <ScrollView contentContainerStyle={styles.content}>
+        {/* Profile Section */}
+        <Surface style={[styles.section, { backgroundColor: theme.colors.surface }]} elevation={2}>
+          <View style={styles.sectionHeader}>
+            <MaterialCommunityIcons name="account-circle" size={24} color={theme.colors.primary} />
+            <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+              My Profile
+            </Text>
+          </View>
+          <Divider style={styles.divider} />
+          
+          <View style={styles.profileHeader}>
+            <Avatar.Text 
+              size={64} 
+              label={userData.name ? userData.name.substring(0, 2).toUpperCase() : 'TR'} 
+              style={{ backgroundColor: theme.colors.primary }}
+            />
+            <View style={styles.profileInfo}>
+              <Text variant="titleLarge" style={{ color: theme.colors.onSurface, fontWeight: 'bold' }}>
+                {userData.name}
+              </Text>
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                {userData.email}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.infoRow}>
+            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>User ID</Text>
+            <Text variant="bodyMedium" style={{ color: theme.colors.onSurface, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }}>
+              {userData.uid.substring(0, 8)}...
+            </Text>
+          </View>
+          
+          <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
+            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>Date of Birth</Text>
+            <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
+              {userData.dob}
+            </Text>
+          </View>
+        </Surface>
+
         {/* Preferences */}
         <Surface style={[styles.section, { backgroundColor: theme.colors.surface }]} elevation={2}>
           <View style={styles.sectionHeader}>
@@ -52,6 +115,19 @@ export default function SettingsScreen({ navigation }) {
               color={theme.colors.primary}
             />
           </View>
+          
+          <Divider style={styles.divider} />
+
+          <Button 
+            mode="text" 
+            onPress={() => Linking.openSettings()} 
+            style={styles.linkButton}
+            contentStyle={{ justifyContent: 'flex-start' }}
+            textColor={theme.colors.tertiary}
+            icon="battery-alert"
+          >
+            Optimize Battery for Signals
+          </Button>
         </Surface>
 
         <Surface style={[styles.section, { backgroundColor: theme.colors.surface }]} elevation={2}>
