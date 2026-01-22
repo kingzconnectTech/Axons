@@ -20,6 +20,13 @@ messaging().setBackgroundMessageHandler(async remoteMessage => {
   const body = 
     remoteMessage.data?.body || '';
 
+  // Ensure channel exists (Background/Quit state)
+  await notifee.createChannel({
+      id: 'default',
+      name: 'Default Channel',
+      importance: AndroidImportance.HIGH,
+  });
+
   await notifee.displayNotification({
     title,
     body,

@@ -59,6 +59,28 @@ export const onTokenRefresh = (callback) => {
     });
 };
 
+export const displayLocalNotification = async (title, body, data = {}) => {
+    try {
+        await setupNotificationChannel(); // Ensure channel exists
+        await notifee.displayNotification({
+            title,
+            body,
+            data,
+            android: {
+                channelId: 'default',
+                importance: AndroidImportance.HIGH,
+                smallIcon: 'ic_launcher',
+                pressAction: {
+                    id: 'default',
+                },
+            },
+        });
+        console.log("[NotificationService] Notification displayed:", title);
+    } catch (error) {
+        console.error("[NotificationService] Display Error:", error);
+    }
+};
+
 export const onForegroundMessage = (callback) => {
     return messaging().onMessage(async remoteMessage => {
         console.log('Foreground FCM:', remoteMessage);
@@ -73,23 +95,7 @@ export const onForegroundMessage = (callback) => {
           remoteMessage.data?.body || 
           '';
 
-        try {
-            await notifee.displayNotification({
-                title,
-                body,
-                data: remoteMessage.data,
-                android: {
-                    channelId: 'default',
-                    importance: AndroidImportance.HIGH,
-                    smallIcon: 'ic_launcher',
-                    pressAction: {
-                        id: 'default',
-                    },
-                },
-            });
-        } catch (e) {
-            console.error("Notifee error:", e);
-        }
+        await displayLocalNotification(title, body, remoteMessage.data);
 
         if (callback) callback(remoteMessage);
     });

@@ -90,6 +90,8 @@ def test_notification():
         if not tokens:
             return {"status": "failed", "message": "No tokens found in database"}
         
+        print(f"[TestNotification] Sending to {len(tokens)} tokens. Sample: {tokens[0][:10]}...")
+        
         notification_service.send_multicast(
             tokens=tokens,
             title="Test Notification",
@@ -98,7 +100,9 @@ def test_notification():
                 "pair": "TEST-PAIR",
                 "action": "CALL",
                 "confidence": "99",
-                "timestamp": str(time.time())
+                "timestamp": str(time.time()),
+                "title": "Test Notification", # Redundant but safe
+                "body": "This is a test signal from Axon Backend." # Redundant but safe
             }
         )
         return {"status": "sent", "tokens_count": len(tokens)}
