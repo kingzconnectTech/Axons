@@ -17,6 +17,7 @@ const { width } = Dimensions.get('window');
 
 export default function SignalsScreen() {
   const theme = useTheme();
+  const { syncDeviceToken } = useBot();
   const [selectedPairs, setSelectedPairs] = useState(['EURUSD-OTC']);
   const [timeframe, setTimeframe] = useState(1);
   const [strategy, setStrategy] = useState('RSI + Support & Resistance Reversal');
@@ -211,6 +212,16 @@ export default function SignalsScreen() {
              alert(`Notification Sent! Target Tokens: ${response.data.tokens_count}`);
         } else {
              alert(`Failed: ${response.data.message}`);
+             // Auto-retry sync if failed due to missing tokens
+             if (response.data.message.includes("No tokens")) {
+                 console.log("Attempting to sync token...");
+                 const success = await syncDeviceToken();
+                 if (success) {
+                     alert("Token synced. Please try again.");
+                 } else {
+                     alert("Token sync failed. Check internet or restart app.");
+                 }
+             }
         }
     } catch (e) {
         console.error(e);
