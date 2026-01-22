@@ -31,7 +31,7 @@ def get_signal_status():
 @router.get("/quick-scan", response_model=List[SignalResponse])
 def quick_scan():
     """
-    Scans common OTC and Normal pairs using the Quick 2M Strategy.
+    Scans common OTC and Normal pairs using the RSI Directional Every Minute Strategy.
     Returns analysis for each pair.
     """
     pairs = [
@@ -59,7 +59,7 @@ def quick_scan():
         if candles:
             last_candle = candles[-1]
             spread = last_candle["max"] - last_candle["min"]
-            analysis = StrategyService.analyze(pair, candles, "Quick 2M Strategy", spread=spread)
+            analysis = StrategyService.analyze(pair, candles, "RSI Directional Every Minute", spread=spread)
             results.append(SignalResponse(
                 pair=pair,
                 action=analysis["action"],

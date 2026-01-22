@@ -9,6 +9,7 @@ import { API_URLS } from '../config';
 import ParticlesBackground from '../components/ParticlesBackground';
 import SelectionModal from '../components/SelectionModal';
 import AdBanner from '../components/AdBanner';
+import AnimatedBorderButton from '../components/AnimatedBorderButton';
 
 const API_URL = API_URLS.SIGNALS;
 const { width } = Dimensions.get('window');
@@ -63,34 +64,29 @@ export default function SignalsScreen() {
         description: 'Combines RSI overbought/oversold conditions with key support/resistance levels. (Active: 24/7 Market Hours)' 
     },
     { 
-        value: 'OTC Mean Reversion', 
-        label: 'OTC Mean Reversion',
-        description: 'Capitalizes on the tendency of OTC asset prices to revert to their historical average. (Active: 24/7)' 
+        value: 'Quick 2M Strategy', 
+        label: 'Quick 2M Strategy',
+        description: 'Fast Momentum Strategy: Uses 2-candle trend confirmation for quick signals. (Best for OTC)' 
     },
     { 
-        value: 'OTC Volatility Trap Break–Reclaim', 
-        label: 'OTC Volatility Trap Break–Reclaim',
-        description: 'Identifies false breakouts (traps) in volatile OTC markets and signals entries on reclaim. (Active: 24/7)' 
+        value: 'RSI EMA Pullback Fast', 
+        label: 'RSI EMA Pullback Fast',
+        description: 'No Delay, No Repaint. Uses EMA 20/50 cross + Pullback + RSI confirmation. (M1 Expiry)' 
     },
     { 
-        value: 'OTC Trend-Pullback Engine Strategy', 
-        label: 'OTC Trend-Pullback Engine Strategy',
-        description: 'Follows strong OTC trends and enters on pullbacks to dynamic support zones. (Active: 24/7)' 
+        value: 'RSI Extreme Reversal Fast', 
+        label: 'RSI Extreme Reversal Fast',
+        description: 'Single-Candle Reversal: RSI < 28/72 + Wick Rejection. (M1 Expiry)' 
     },
     { 
-        value: 'Real Trend Pullback', 
-        label: 'Real Trend Pullback',
-        description: 'Classic trend-following strategy. Active during London (07-11 UTC) & NY (13-17 UTC) sessions.' 
+        value: 'Engulfing Momentum Fast', 
+        label: 'Engulfing Momentum Fast',
+        description: '2-Candle Pattern: Enters immediately after strong engulfing candle. (M2 Expiry)' 
     },
     { 
-        value: 'London Breakout', 
-        label: 'London Breakout',
-        description: 'Captures momentum from the Asian range breakout. Active during London session (07:00-11:00 UTC).' 
-    },
-    { 
-        value: 'NY Reversal', 
-        label: 'NY Reversal',
-        description: 'Looks for reversal patterns after morning momentum fades. Active during NY session (13:00-17:00 UTC).' 
+        value: 'Bollinger Snap Fast', 
+        label: 'Bollinger Snap Fast',
+        description: 'Over-extension Reversion: Price snaps back from outer bands. (M1-M2 Expiry)' 
     }
   ];
   const timeframes = [1, 2, 3, 4, 5, 15];
@@ -118,36 +114,10 @@ export default function SignalsScreen() {
   }, []);
 
   const getStrategyOptions = () => {
-    const currentHour = new Date().getUTCHours();
     return strategies.map(s => {
-      let disabled = false;
-      let disabledReason = '';
-
-      if (s.value === 'London Breakout') {
-        if (currentHour < 7 || currentHour >= 11) {
-            disabled = true;
-            disabledReason = 'Active only 07:00 - 11:00 UTC';
-        }
-      } else if (s.value === 'NY Reversal') {
-        if (currentHour < 13 || currentHour >= 17) {
-            disabled = true;
-            disabledReason = 'Active only 13:00 - 17:00 UTC';
-        }
-      } else if (s.value === 'Real Trend Pullback') {
-         // Active London (7-11) OR NY (13-17)
-         const isLondon = currentHour >= 7 && currentHour < 11;
-         const isNY = currentHour >= 13 && currentHour < 17;
-         if (!isLondon && !isNY) {
-             disabled = true;
-             disabledReason = 'Active only during London & NY sessions';
-         }
-      }
-
       return {
         ...s,
         icon: 'robot',
-        disabled,
-        disabledReason
       };
     });
   };
@@ -367,31 +337,42 @@ export default function SignalsScreen() {
 
               {!streaming ? (
                 <View>
+                  <AnimatedBorderButton
+                    containerStyle={{ marginTop: 16 }}
+                    borderRadius={16}
+                    colors={['#00D1FF', '#FFFFFF', '#00D1FF']}
+                  >
+                    <Button 
+                      mode="contained" 
+                      onPress={toggleStream} 
+                      loading={loading}
+                      style={[styles.analyzeButton, { marginTop: 0, borderRadius: 14, elevation: 0, shadowOpacity: 0 }]}
+                      contentStyle={{ height: 56 }}
+                      labelStyle={{ fontSize: 18, fontWeight: 'bold', letterSpacing: 1 }}
+                      icon="play-circle"
+                    >
+                      START STREAM
+                    </Button>
+                  </AnimatedBorderButton>
+                </View>
+              ) : (
+                <AnimatedBorderButton
+                  containerStyle={{ marginTop: 16 }}
+                  borderRadius={16}
+                  colors={['#FF5252', '#FFFFFF', '#FF5252']}
+                >
                   <Button 
                     mode="contained" 
                     onPress={toggleStream} 
-                    loading={loading}
-                    style={styles.analyzeButton}
+                    buttonColor={theme.colors.error}
+                    style={[styles.stopButton, { marginTop: 0, borderRadius: 14, elevation: 0, shadowOpacity: 0 }]}
                     contentStyle={{ height: 56 }}
                     labelStyle={{ fontSize: 18, fontWeight: 'bold', letterSpacing: 1 }}
-                    icon="play-circle"
+                    icon="stop-circle"
                   >
-                    START STREAM
+                    STOP STREAM
                   </Button>
-                
-                </View>
-              ) : (
-                <Button 
-                  mode="contained" 
-                  onPress={toggleStream} 
-                  buttonColor={theme.colors.error}
-                  style={styles.stopButton}
-                  contentStyle={{ height: 56 }}
-                  labelStyle={{ fontSize: 18, fontWeight: 'bold', letterSpacing: 1 }}
-                  icon="stop-circle"
-                >
-                  STOP STREAM
-                </Button>
+                </AnimatedBorderButton>
               )}
             </View>
           </LinearGradient>

@@ -10,6 +10,7 @@ import ParticlesBackground from '../components/ParticlesBackground';
 import SelectionModal from '../components/SelectionModal';
 import { useBot } from '../context/BotContext';
 import { useInterstitialAd, TestIds } from '../utils/SafeMobileAds';
+import AnimatedBorderButton from '../components/AnimatedBorderButton';
 
 const API_URL = API_URLS.AUTOTRADE;
 const { width } = Dimensions.get('window');
@@ -28,13 +29,11 @@ export default function AutoTradeScreen() {
   const [strategy, setStrategy] = useState('RSI + Support & Resistance Reversal');
   const strategies = [
     'RSI + Support & Resistance Reversal',
-    'OTC Mean Reversion',
-    'OTC Volatility Trap Break–Reclaim',
-    'OTC Trend-Pullback Engine Strategy',
-    'Test Execution Strategy',
-    'Real Trend Pullback',
-    'London Breakout',
-    'NY Reversal'
+    'Quick 2M Strategy',
+    'RSI EMA Pullback Fast',
+    'RSI Extreme Reversal Fast',
+    'Engulfing Momentum Fast',
+    'Bollinger Snap Fast'
   ];
   const [stopLoss, setStopLoss] = useState('10');
   const [takeProfit, setTakeProfit] = useState('20');
@@ -69,37 +68,11 @@ export default function AutoTradeScreen() {
   const pairOptions = otcPairs.map(p => ({ label: p, value: p, icon: 'currency-usd' }));
   
   const getStrategyOptions = () => {
-    const currentHour = new Date().getUTCHours();
     return strategies.map(s => {
-      let disabled = false;
-      let disabledReason = '';
-
-      if (s === 'London Breakout') {
-        if (currentHour < 7 || currentHour >= 11) {
-            disabled = true;
-            disabledReason = 'Active only 07:00 - 11:00 UTC';
-        }
-      } else if (s === 'NY Reversal') {
-        if (currentHour < 13 || currentHour >= 17) {
-            disabled = true;
-            disabledReason = 'Active only 13:00 - 17:00 UTC';
-        }
-      } else if (s === 'Real Trend Pullback') {
-         // Active London (7-11) OR NY (13-17)
-         const isLondon = currentHour >= 7 && currentHour < 11;
-         const isNY = currentHour >= 13 && currentHour < 17;
-         if (!isLondon && !isNY) {
-             disabled = true;
-             disabledReason = 'Active only during London & NY sessions';
-         }
-      }
-
       return {
         label: s,
         value: s,
         icon: 'chart-bell-curve-cumulative',
-        disabled,
-        disabledReason
       };
     });
   };
@@ -461,30 +434,40 @@ export default function AutoTradeScreen() {
 
         <View style={styles.buttonContainer}>
           {!status?.active ? (
-            <Button 
-              mode="contained" 
-              onPress={handleStart} 
-              loading={loading} 
-              style={styles.startButton}
-              contentStyle={{ height: 60 }}
-              labelStyle={{ fontSize: 18, fontWeight: 'bold', letterSpacing: 1 }}
-              icon="play-circle"
+            <AnimatedBorderButton
+              borderRadius={16}
+              colors={['#00E676', '#FFFFFF', '#00E676']}
             >
-              START AUTO TRADE
-            </Button>
+              <Button 
+                mode="contained" 
+                onPress={handleStart} 
+                loading={loading} 
+                style={[styles.startButton, { borderRadius: 14, elevation: 0, shadowOpacity: 0 }]}
+                contentStyle={{ height: 60 }}
+                labelStyle={{ fontSize: 18, fontWeight: 'bold', letterSpacing: 1 }}
+                icon="play-circle"
+              >
+                START AUTO TRADE
+              </Button>
+            </AnimatedBorderButton>
           ) : (
-            <Button 
-              mode="contained" 
-              onPress={handleStop} 
-              loading={loading} 
-              buttonColor={theme.colors.error} 
-              style={styles.stopButton}
-              contentStyle={{ height: 60 }}
-              labelStyle={{ fontSize: 18, fontWeight: 'bold', letterSpacing: 1 }}
-              icon="stop-circle"
+            <AnimatedBorderButton
+              borderRadius={16}
+              colors={['#FF5252', '#FFFFFF', '#FF5252']}
             >
-              STOP TRADING
-            </Button>
+              <Button 
+                mode="contained" 
+                onPress={handleStop} 
+                loading={loading} 
+                buttonColor={theme.colors.error} 
+                style={[styles.stopButton, { borderRadius: 14, elevation: 0, shadowOpacity: 0 }]}
+                contentStyle={{ height: 60 }}
+                labelStyle={{ fontSize: 18, fontWeight: 'bold', letterSpacing: 1 }}
+                icon="stop-circle"
+              >
+                STOP TRADING
+              </Button>
+            </AnimatedBorderButton>
           )}
         </View>
       </View>
