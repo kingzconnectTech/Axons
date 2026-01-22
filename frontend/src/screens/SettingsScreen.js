@@ -3,6 +3,7 @@ import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text, Button, Surface, useTheme, Switch, Divider } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import auth from '@react-native-firebase/auth';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ThemeContext } from '../context/ThemeContext';
 
@@ -63,6 +64,16 @@ export default function SettingsScreen({ navigation }) {
         >
           Save Settings
         </Button>
+
+        <Button 
+          mode="outlined" 
+          onPress={() => auth().signOut()} 
+          style={styles.logoutButton}
+          textColor={theme.colors.error}
+          icon="logout"
+        >
+          Log Out
+        </Button>
         
         <Text style={styles.versionText}>Axon v1.0.0</Text>
       </ScrollView>
@@ -118,6 +129,11 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 24,
     borderRadius: 8,
+  },
+  logoutButton: {
+    marginBottom: 24,
+    borderRadius: 8,
+    borderColor: '#FF5252',
   },
   versionText: {
     textAlign: 'center',

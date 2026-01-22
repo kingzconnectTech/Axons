@@ -5,6 +5,7 @@ import { NavigationContainer, DarkTheme as NavDarkTheme, DefaultTheme as NavDefa
 import { createStackNavigator } from '@react-navigation/stack';
 import { Provider as PaperProvider, MD3DarkTheme, MD3LightTheme, adaptNavigationTheme } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import auth from '@react-native-firebase/auth';
 import { ThemeContext } from './src/context/ThemeContext';
 import { BotProvider, useBot } from './src/context/BotContext';
 import { requestUserPermission, getToken, onTokenRefresh, onForegroundMessage, onNotificationOpenedApp, getInitialNotification } from './src/services/NotificationService';
@@ -19,6 +20,8 @@ import SignalsScreen from './src/screens/SignalsScreen';
 import AutoTradeScreen from './src/screens/AutoTradeScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import QuickScreen from './src/screens/QuickScreen';
+import LoginScreen from './src/screens/LoginScreen';
+import RegisterScreen from './src/screens/RegisterScreen';
 
 const Stack = createStackNavigator();
 
@@ -141,6 +144,20 @@ export default function App() {
   const [isOnline, setIsOnline] = useState(true);
   const [checkingConnectivity, setCheckingConnectivity] = useState(true);
   
+  // Auth State
+  const [initializing, setInitializing] = useState(true);
+  const [user, setUser] = useState();
+
+  function onAuthStateChanged(user) {
+    setUser(user);
+    if (initializing) setInitializing(false);
+  }
+
+  useEffect(() => {
+    const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
+    return subscriber; // unsubscribe on unmount
+  }, []);
+  
   // We need to access context, but App component wraps Providers.
   // We should move logic to a child component or handle it here if we refactor.
   // For now, let's keep it simple and just log/store in global if needed, 
@@ -209,6 +226,8 @@ export default function App() {
 
   const theme = isDark ? customDarkTheme : customLightTheme;
 
+  if (initializing) return null;
+
   return (
     <ThemeContext.Provider value={themeContext}>
       <BotProvider>
@@ -222,7 +241,6 @@ export default function App() {
             {isOnline ? (
               <NavigationContainer theme={theme}>
                 <Stack.Navigator 
-                  initialRouteName="Home"
                   screenOptions={{
                     headerStyle: {
                       backgroundColor: theme.colors.background,
@@ -238,11 +256,20 @@ export default function App() {
                     cardStyle: { backgroundColor: theme.colors.background }
                   }}
                 >
-                  <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-                  <Stack.Screen name="Signals" component={SignalsScreen} options={{ title: 'AXON Trading Assistant' }} />
-                  <Stack.Screen name="AutoTrade" component={AutoTradeScreen} options={{ title: 'AXON Trading Assistant' }} />
-                  <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
-                  <Stack.Screen name="Quick" component={QuickScreen} options={{ title: 'AXON Flash Scan' }} />
+                  {!user ? (
+                    <>
+                      <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+                      <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
+                    </>
+                  ) : (
+                    <>
+                      <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+                      <Stack.Screen name="Signals" component={SignalsScreen} options={{ title: 'AXON Trading Assistant' }} />
+                      <Stack.Screen name="AutoTrade" component={AutoTradeScreen} options={{ title: 'AXON Trading Assistant' }} />
+                      <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
+                      <Stack.Screen name="Quick" component={QuickScreen} options={{ title: 'AXON Flash Scan' }} />
+                    </>
+                  )}
                 </Stack.Navigator>
               </NavigationContainer>
             ) : (
