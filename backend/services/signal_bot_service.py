@@ -145,6 +145,10 @@ class SignalBotManager:
                         if len(self.history) > 100:
                             self.history.pop(0)
 
+                        # Cooldown: Rest for 1 minute after finding a signal
+                        logging.info(f"Signal found. Resting for 60 seconds...")
+                        time.sleep(60)
+
                 # Wait for next cycle
                 time.sleep(5) 
 

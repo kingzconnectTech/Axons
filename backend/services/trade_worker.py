@@ -219,6 +219,10 @@ def run_trade_session(config, shared_stats, stop_event):
                             shared_stats["profit"] -= stake_amount
                             shared_stats["consecutive_losses"] += 1
                             
+                        # Cooldown: Rest for 1 minute after trade completion
+                        print(f"[Worker] Resting for 60 seconds before resuming scan...")
+                        time.sleep(60)
+                            
                         # Refresh balance
                         shared_stats["balance"] = iq.get_balance()
                         

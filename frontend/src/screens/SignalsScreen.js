@@ -64,11 +64,6 @@ export default function SignalsScreen() {
         description: 'Combines RSI overbought/oversold conditions with key support/resistance levels. (Active: 24/7 Market Hours)' 
     },
     { 
-        value: 'Quick 2M Strategy', 
-        label: 'Quick 2M Strategy',
-        description: 'Fast Momentum Strategy: Uses 2-candle trend confirmation for quick signals. (Best for OTC)' 
-    },
-    { 
         value: 'RSI EMA Pullback Fast', 
         label: 'RSI EMA Pullback Fast',
         description: 'No Delay, No Repaint. Uses EMA 20/50 cross + Pullback + RSI confirmation. (M1 Expiry)' 
@@ -341,6 +336,7 @@ export default function SignalsScreen() {
                     containerStyle={{ marginTop: 16 }}
                     borderRadius={16}
                     colors={['#00D1FF', '#FFFFFF', '#00D1FF']}
+                    duration={loading ? 500 : 2000}
                   >
                     <Button 
                       mode="contained" 

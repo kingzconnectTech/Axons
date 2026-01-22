@@ -29,7 +29,6 @@ export default function AutoTradeScreen() {
   const [strategy, setStrategy] = useState('RSI + Support & Resistance Reversal');
   const strategies = [
     'RSI + Support & Resistance Reversal',
-    'Quick 2M Strategy',
     'RSI EMA Pullback Fast',
     'RSI Extreme Reversal Fast',
     'Engulfing Momentum Fast',

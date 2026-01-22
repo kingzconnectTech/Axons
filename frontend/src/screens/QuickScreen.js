@@ -8,6 +8,7 @@ import { API_URLS } from '../config';
 import ParticlesBackground from '../components/ParticlesBackground';
 import SelectionModal from '../components/SelectionModal';
 import AdBanner from '../components/AdBanner';
+import AnimatedBorderButton from '../components/AnimatedBorderButton';
 
 const { width } = Dimensions.get('window');
 const SCAN_ACCENT = '#3d0dadff';
@@ -208,21 +209,26 @@ export default function QuickScreen({ navigation }) {
 
         {/* Analyze Button */}
         <View style={styles.actionContainer}>
-           <TouchableOpacity 
-              onPress={handleAnalyze} 
-              disabled={loading}
-              activeOpacity={0.9}
+           <AnimatedBorderButton
+              borderRadius={28}
+              colors={['#00D1FF', '#FFFFFF', '#00D1FF']}
+              duration={loading ? 500 : 2000}
+              containerStyle={{ width: '100%', elevation: 4, shadowColor: '#6a00ffff', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}
            >
-              <Animated.View
+             <TouchableOpacity 
+                onPress={handleAnalyze} 
+                disabled={loading}
+                activeOpacity={0.9}
                 style={[
                   styles.analyzeButton,
                   {
                     backgroundColor: '#5D2F77',
-                    transform: [{ scale: loading ? pulseScale : 1 }],
-                    opacity: loading ? glowOpacity : 1,
-                  },
+                    elevation: 0, // Remove elevation from inner button as it's on container
+                    margin: 0, // Reset margin
+                    width: '100%', // Ensure full width
+                  }
                 ]}
-              >
+             >
                 {loading ? (
                   <ActivityIndicator color="white" size="small" />
                 ) : (
@@ -231,8 +237,8 @@ export default function QuickScreen({ navigation }) {
                     <Text style={styles.buttonText}>SCAN NOW</Text>
                   </View>
                 )}
-              </Animated.View>
-           </TouchableOpacity>
+             </TouchableOpacity>
+           </AnimatedBorderButton>
            
            <Surface style={styles.instructionCard} elevation={1}>
               <MaterialCommunityIcons name="information" size={20} color={SCAN_ACCENT_DARK} />
