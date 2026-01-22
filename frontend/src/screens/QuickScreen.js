@@ -278,7 +278,7 @@ export default function QuickScreen({ navigation }) {
                   {result.action === 'NEUTRAL' ? 'NO SIGNAL' : result.action}
                </Text>
                <Text style={{ color: theme.colors.onSurfaceVariant, marginTop: 4 }}>
-                  2 Minute Expiry Recommended
+                  1 Minute Expiry Recommended
                </Text>
             </View>
 
@@ -287,7 +287,7 @@ export default function QuickScreen({ navigation }) {
             <View style={styles.strategyInfo}>
                <MaterialCommunityIcons name="information-outline" size={16} color={theme.colors.onSurfaceVariant} />
                <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 12, marginLeft: 6, flex: 1 }}>
-                  {result.reason || 'Based on Trend Momentum (3 Candles)'}
+                  {result.reason || 'Based on RSI Direction & Candle Bias'}
                </Text>
             </View>
 
