@@ -192,36 +192,43 @@ def cluster_levels(levels, atr, tolerance=0.5):
             clusters.append(lvl)
     return clusters
 
-def resample_to_m5(m1_candles):
+def resample_to_n_minutes(m1_candles, n_minutes):
     """
-    Resamples M1 candles to M5 candles.
-    Requires at least 5 M1 candles to make 1 M5 candle.
+    Resamples M1 candles to M{n} candles.
+    Requires at least n M1 candles to make 1 M{n} candle.
     """
-    m5_candles = []
-    # Process in chunks of 5
-    # We want to align with clock if possible, but for simple RSI, rolling chunks work
-    # or just non-overlapping chunks from the end.
-    # Let's take len(candles) // 5 chunks.
+    if not m1_candles or n_minutes < 1:
+        return []
+
+    mn_candles = []
+    total_candles = len(m1_candles)
     
-    n = len(m1_candles)
-    # Start from the index that leaves us with a multiple of 5, or just take latest full sets
-    remainder = n % 5
+    # Start from the index that leaves us with a multiple of n
+    # (Align to the end of the series so the latest candle is complete if possible)
+    remainder = total_candles % n_minutes
     start_idx = remainder
     
-    for i in range(start_idx, n, 5):
-        chunk = m1_candles[i:i+5]
-        if len(chunk) < 5: break
-        
-        m5_candle = {
+    for i in range(start_idx, total_candles, n_minutes):
+        chunk = m1_candles[i:i+n_minutes]
+        if len(chunk) < n_minutes:
+            break
+            
+        mn_candle = {
             'open': chunk[0]['open'],
             'close': chunk[-1]['close'],
             'max': max(c['max'] for c in chunk),
             'min': min(c['min'] for c in chunk),
             'volume': sum(c.get('volume', 0) for c in chunk)
         }
-        m5_candles.append(m5_candle)
+        mn_candles.append(mn_candle)
         
-    return m5_candles
+    return mn_candles
+
+def resample_to_m5(m1_candles):
+    """
+    Resamples M1 candles to M5 candles.
+    """
+    return resample_to_n_minutes(m1_candles, 5)
 
 
 class StrategyService:

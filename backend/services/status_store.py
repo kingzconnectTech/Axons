@@ -8,9 +8,14 @@ class StatusStore:
     def __init__(self):
         self.table_name = os.environ.get("AXON_STATUS_TABLE")
         self.region = os.environ.get("AWS_REGION", "us-east-1")
-        self.dynamodb = boto3.resource("dynamodb", region_name=self.region)
+        
         if not self.table_name:
-            raise RuntimeError("AXON_STATUS_TABLE not set")
+            print("[StatusStore] Warning: AXON_STATUS_TABLE not set. Status storage disabled.")
+            self.table = None
+            self.partition_key = None
+            return
+
+        self.dynamodb = boto3.resource("dynamodb", region_name=self.region)
         self.table = self.dynamodb.Table(self.table_name)
         self.partition_key = None
         try:
@@ -21,8 +26,10 @@ class StatusStore:
                     break
         except ClientError as e:
             print(f"[StatusStore] Error describing table {self.table_name}: {e}")
+        
         if not self.partition_key:
-            raise RuntimeError("Partition key not found for AXON_STATUS_TABLE")
+            print("[StatusStore] Warning: Partition key not found. Storage disabled.")
+            self.table = None
 
     def _to_dynamodb_compatible(self, value):
         if isinstance(value, float):
@@ -34,6 +41,7 @@ class StatusStore:
         return value
 
     def set_status(self, email, status_dict):
+        if not self.table: return
         raw_item = {self.partition_key: email, "updated_at": int(time.time())}
         raw_item.update(status_dict or {})
         item = self._to_dynamodb_compatible(raw_item)
@@ -43,6 +51,7 @@ class StatusStore:
             print(f"[StatusStore] Error writing status for {email}: {e}")
 
     def get_status(self, email):
+        if not self.table: return None
         try:
             resp = self.table.get_item(Key={self.partition_key: email})
             return resp.get("Item", None)
@@ -51,6 +60,7 @@ class StatusStore:
             return None
 
     def update_token(self, email, token):
+        if not self.table: return
         try:
             self.table.update_item(
                 Key={self.partition_key: email},
@@ -65,6 +75,7 @@ class StatusStore:
             print(f"[StatusStore] Error updating token for {email}: {e}")
 
     def get_all_tokens(self):
+        if not self.table: return []
         try:
             response = self.table.scan(
                 ProjectionExpression="fcm_token"
