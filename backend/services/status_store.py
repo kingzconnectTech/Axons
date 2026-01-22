@@ -10,12 +10,21 @@ class StatusStore:
     def __init__(self):
         self.table_name = os.environ.get("AXON_STATUS_TABLE")
         self.region = os.environ.get("AWS_REGION", "us-east-1")
-        self.local_file = "local_status_store.json"
         
-        if not self.table_name:
-            print("[StatusStore] Warning: AXON_STATUS_TABLE not set. Using local JSON file storage.")
+        # Use absolute path for local storage to avoid CWD issues
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.local_file = os.path.join(base_dir, "local_status_store.json")
+        
+        # Force local storage for debugging/dev if table name is empty or we want to ensure local
+        # You can revert this later if DynamoDB is strictly required
+        if not self.table_name or True: 
+            print(f"[StatusStore] Using local JSON file storage at: {self.local_file}")
             self.use_local = True
             self._load_local()
+            # Try creating file immediately to test permissions
+            if not os.path.exists(self.local_file):
+                print("[StatusStore] Creating empty local store file...")
+                self._save_local()
             return
 
         self.use_local = False
@@ -118,7 +127,10 @@ class StatusStore:
 
     def get_all_tokens(self):
         if self.use_local:
+            # Reload to ensure we have the latest tokens from other workers/updates
+            self._load_local()
             tokens = {v['fcm_token'] for k, v in self.local_data.items() if 'fcm_token' in v and v['fcm_token']}
+            print(f"[StatusStore] Loaded tokens: {len(tokens)} found. Data: {self.local_data.keys()}")
             return list(tokens)
 
         if not self.table: return []

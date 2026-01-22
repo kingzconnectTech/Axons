@@ -60,8 +60,9 @@ export const BotProvider = ({ children }) => {
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (nextAppState === 'active' && email) {
-        console.log("App resumed - refreshing bot status");
+        console.log("App resumed - refreshing bot status & syncing token");
         fetchStatus();
+        syncDeviceToken();
       }
     });
 
