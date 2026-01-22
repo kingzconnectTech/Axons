@@ -132,6 +132,8 @@ class SignalBotManager:
                                         "timestamp": str(ts)
                                     }
                                 )
+                            else:
+                                logging.warning(f"No tokens found. Skipping notification for {pair}.")
                         except Exception as e:
                             logging.error(f"Failed to send notification: {e}")
 

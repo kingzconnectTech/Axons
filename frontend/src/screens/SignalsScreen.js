@@ -202,6 +202,23 @@ export default function SignalsScreen() {
     }
   };
 
+  const handleTestNotification = async () => {
+    setLoading(true);
+    try {
+        const response = await axios.post(`${API_URL}/test-notification`);
+        if (response.data.status === 'sent') {
+             alert(`Notification Sent! Target Tokens: ${response.data.tokens_count}`);
+        } else {
+             alert(`Failed: ${response.data.message}`);
+        }
+    } catch (e) {
+        console.error(e);
+        alert(`Error: ${e.message}`);
+    } finally {
+        setLoading(false);
+    }
+  };
+
   const getSelectedStrategyDescription = () => {
       const s = strategies.find(s => s.value === strategy);
       return s ? s.description : 'No description available.';
@@ -371,6 +388,20 @@ export default function SignalsScreen() {
                   </Button>
                 </AnimatedBorderButton>
               )}
+              
+              <Button 
+                  mode="text" 
+                  onPress={handleTestNotification} 
+                  loading={loading}
+                  disabled={loading}
+                  style={{ marginTop: 8 }}
+                  labelStyle={{ fontSize: 12 }}
+                  textColor={theme.colors.onSurfaceVariant}
+                  icon="bell-ring-outline"
+              >
+                  Test Notification Connection
+              </Button>
+
             </View>
           </LinearGradient>
         </Surface>

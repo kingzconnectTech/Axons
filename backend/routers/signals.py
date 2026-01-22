@@ -77,6 +77,34 @@ def quick_scan():
             
     return results
 
+from services.notification_service import notification_service
+from services.status_store import status_store
+
+@router.post("/test-notification")
+def test_notification():
+    """
+    Forces a test notification to all registered devices to verify connectivity.
+    """
+    try:
+        tokens = status_store.get_all_tokens()
+        if not tokens:
+            return {"status": "failed", "message": "No tokens found in database"}
+        
+        notification_service.send_multicast(
+            tokens=tokens,
+            title="Test Notification",
+            body="This is a test signal from Axon Backend.",
+            data={
+                "pair": "TEST-PAIR",
+                "action": "CALL",
+                "confidence": "99",
+                "timestamp": str(time.time())
+            }
+        )
+        return {"status": "sent", "tokens_count": len(tokens)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/analyze", response_model=SignalResponse)
 def get_signal(request: SignalRequest):
     best_result = None
