@@ -31,7 +31,7 @@ export default function LoginScreen({ navigation }) {
       else if (e.code === 'auth/user-disabled') setError('User account is disabled');
       else if (e.code === 'auth/user-not-found') setError('User not found');
       else if (e.code === 'auth/wrong-password') setError('Incorrect password');
-      else setError('Login failed. Please try again.');
+      else setError(`Login failed: ${e.message}`);
     } finally {
       setLoading(false);
     }

@@ -76,7 +76,7 @@ export default function RegisterScreen({ navigation }) {
       if (e.code === 'auth/email-already-in-use') setError('That email address is already in use!');
       else if (e.code === 'auth/invalid-email') setError('That email address is invalid!');
       else if (e.code === 'auth/weak-password') setError('Password should be at least 6 characters');
-      else setError('Registration failed. Please try again.');
+      else setError(`Registration failed: ${e.message}`);
     } finally {
       setLoading(false);
     }
