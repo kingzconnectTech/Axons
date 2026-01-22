@@ -1,20 +1,24 @@
 import os
 import time
+import json
 from decimal import Decimal
 import boto3
 from botocore.exceptions import ClientError
+import logging
 
 class StatusStore:
     def __init__(self):
         self.table_name = os.environ.get("AXON_STATUS_TABLE")
         self.region = os.environ.get("AWS_REGION", "us-east-1")
+        self.local_file = "local_status_store.json"
         
         if not self.table_name:
-            print("[StatusStore] Warning: AXON_STATUS_TABLE not set. Status storage disabled.")
-            self.table = None
-            self.partition_key = None
+            print("[StatusStore] Warning: AXON_STATUS_TABLE not set. Using local JSON file storage.")
+            self.use_local = True
+            self._load_local()
             return
 
+        self.use_local = False
         self.dynamodb = boto3.resource("dynamodb", region_name=self.region)
         self.table = self.dynamodb.Table(self.table_name)
         self.partition_key = None
@@ -31,6 +35,23 @@ class StatusStore:
             print("[StatusStore] Warning: Partition key not found. Storage disabled.")
             self.table = None
 
+    def _load_local(self):
+        if os.path.exists(self.local_file):
+            try:
+                with open(self.local_file, 'r') as f:
+                    self.local_data = json.load(f)
+            except:
+                self.local_data = {}
+        else:
+            self.local_data = {}
+
+    def _save_local(self):
+        try:
+            with open(self.local_file, 'w') as f:
+                json.dump(self.local_data, f, indent=2)
+        except Exception as e:
+            print(f"[StatusStore] Failed to save local data: {e}")
+
     def _to_dynamodb_compatible(self, value):
         if isinstance(value, float):
             return Decimal(str(value))
@@ -41,6 +62,14 @@ class StatusStore:
         return value
 
     def set_status(self, email, status_dict):
+        if self.use_local:
+            if email not in self.local_data:
+                self.local_data[email] = {}
+            self.local_data[email].update(status_dict or {})
+            self.local_data[email]["updated_at"] = int(time.time())
+            self._save_local()
+            return
+
         if not self.table: return
         raw_item = {self.partition_key: email, "updated_at": int(time.time())}
         raw_item.update(status_dict or {})
@@ -51,6 +80,9 @@ class StatusStore:
             print(f"[StatusStore] Error writing status for {email}: {e}")
 
     def get_status(self, email):
+        if self.use_local:
+            return self.local_data.get(email)
+
         if not self.table: return None
         try:
             resp = self.table.get_item(Key={self.partition_key: email})
@@ -60,6 +92,14 @@ class StatusStore:
             return None
 
     def update_token(self, email, token):
+        if self.use_local:
+            if email not in self.local_data:
+                self.local_data[email] = {}
+            self.local_data[email]["fcm_token"] = token
+            self.local_data[email]["updated_at"] = int(time.time())
+            self._save_local()
+            return
+
         if not self.table: return
         try:
             self.table.update_item(
@@ -75,6 +115,10 @@ class StatusStore:
             print(f"[StatusStore] Error updating token for {email}: {e}")
 
     def get_all_tokens(self):
+        if self.use_local:
+            tokens = {v['fcm_token'] for k, v in self.local_data.items() if 'fcm_token' in v and v['fcm_token']}
+            return list(tokens)
+
         if not self.table: return []
         try:
             response = self.table.scan(

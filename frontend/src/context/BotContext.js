@@ -70,26 +70,30 @@ export const BotProvider = ({ children }) => {
     };
   }, [email]);
 
+  const syncDeviceToken = async () => {
+    if (email && fcmToken) {
+      try {
+        await axios.post(`${API_URLS.AUTOTRADE}/token`, {
+          email: email,
+          token: fcmToken
+        });
+        console.log("[BotContext] FCM Token synced with backend");
+        return true;
+      } catch (error) {
+        console.log("[BotContext] Failed to sync FCM Token:", error.message);
+        return false;
+      }
+    }
+    return false;
+  };
+
   // Sync FCM Token with Backend
   useEffect(() => {
-    const syncToken = async () => {
-      if (email && fcmToken) {
-        try {
-          await axios.post(`${API_URLS.AUTOTRADE}/token`, {
-            email: email,
-            token: fcmToken
-          });
-          console.log("[BotContext] FCM Token synced with backend");
-        } catch (error) {
-          console.log("[BotContext] Failed to sync FCM Token:", error.message);
-        }
-      }
-    };
-    syncToken();
+    syncDeviceToken();
   }, [email, fcmToken]);
 
   return (
-    <BotContext.Provider value={{ isBotRunning, setIsBotRunning, botStats, setBotStats, fetchStatus, setEmail, fcmToken, setFcmToken }}>
+    <BotContext.Provider value={{ isBotRunning, setIsBotRunning, botStats, setBotStats, fetchStatus, setEmail, fcmToken, setFcmToken, syncDeviceToken }}>
       {children}
     </BotContext.Provider>
   );

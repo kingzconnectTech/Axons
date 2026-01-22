@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
 import { useInterstitialAd, TestIds } from '../utils/SafeMobileAds';
 import { API_URLS } from '../config';
+import { useBot } from '../context/BotContext';
 import ParticlesBackground from '../components/ParticlesBackground';
 import SelectionModal from '../components/SelectionModal';
 import AdBanner from '../components/AdBanner';
