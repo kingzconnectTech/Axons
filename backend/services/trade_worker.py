@@ -172,16 +172,14 @@ def run_trade_session(config, shared_stats, stop_event):
                 confidence = best_opportunity["confidence"]
 
                 base_amount = config.amount
-                if confidence >= 90:
-                    stake_amount = base_amount * 2.0
-                elif confidence >= 80:
-                    stake_amount = base_amount * 1.5
-                else:
-                    stake_amount = base_amount
+                stake_amount = base_amount
                 
-                print(f"[Worker] Executing trade: {pair} {action} {timeframe}m ({confidence}%) | Amount: {stake_amount}")
+                # Ensure timeframe is an integer for standard durations
+                trade_duration = int(timeframe) if timeframe >= 1 else timeframe
                 
-                check, id = iq.buy(stake_amount, pair, action, timeframe)
+                print(f"[Worker] Executing trade: {pair} {action} {trade_duration}m ({confidence}%) | Amount: {stake_amount}")
+                
+                check, id = iq.buy(stake_amount, pair, action, trade_duration)
                 if check:
                     print(f"[Worker] Trade placed for {config.email}: {action} (ID: {id})")
                     
