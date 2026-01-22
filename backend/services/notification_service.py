@@ -18,12 +18,37 @@ class NotificationService:
             cred_path = os.environ.get("FIREBASE_CREDENTIALS_PATH", "firebase-service-account.json")
             
             if os.path.exists(cred_path):
-                cred = credentials.Certificate(cred_path)
-                firebase_admin.initialize_app(cred)
-                self.initialized = True
-                logging.info(f"[NotificationService] Firebase Admin initialized successfully using {cred_path}.")
+                try:
+                    cred = credentials.Certificate(cred_path)
+                    # Check if app is already initialized to avoid ValueError
+                    try:
+                        firebase_admin.get_app()
+                    except ValueError:
+                        firebase_admin.initialize_app(cred)
+                    
+                    self.initialized = True
+                    print(f"[NotificationService] Firebase Admin initialized successfully using {cred_path}.")
+                except Exception as e:
+                     print(f"[NotificationService] Critical Firebase Init Error: {e}")
             else:
-                logging.warning(f"[NotificationService] Service account key not found at {cred_path}. Notifications disabled.")
+                # Try to find it in the parent directory as a fallback (common in dev)
+                parent_cred = os.path.join(os.path.dirname(os.getcwd()), cred_path)
+                if os.path.exists(parent_cred):
+                     try:
+                        cred = credentials.Certificate(parent_cred)
+                        try:
+                            firebase_admin.get_app()
+                        except ValueError:
+                            firebase_admin.initialize_app(cred)
+                        self.initialized = True
+                        print(f"[NotificationService] Firebase Admin initialized using fallback path: {parent_cred}")
+                     except Exception as e:
+                        print(f"[NotificationService] Critical Firebase Init Error (Fallback): {e}")
+                else:
+                    print(f"[NotificationService] Service account key NOT FOUND at {cred_path} or {parent_cred}. Notifications DISABLED.")
+                    # List files in current dir to help debug
+                    print(f"[NotificationService] Current Directory: {os.getcwd()}")
+                    print(f"[NotificationService] Files: {os.listdir(os.getcwd())}")
         except Exception as e:
             logging.error(f"[NotificationService] Failed to initialize Firebase: {e}")
 
@@ -65,15 +90,14 @@ class NotificationService:
         )
         
         try:
+            print(f"[NotificationService] Sending multicast to {len(tokens)} tokens...")
             response = messaging.send_multicast(message)
-            logging.info(f"[NotificationService] Sent {response.success_count} messages. Failed: {response.failure_count}")
+            print(f"[NotificationService] Sent {response.success_count} messages. Failed: {response.failure_count}")
             if response.failure_count > 0:
                 for idx, resp in enumerate(response.responses):
                     if not resp.success:
-                        # Could log specific errors here (e.g. invalid token)
-                        # In a real app, we should remove invalid tokens from DB
-                        pass
+                        print(f"[NotificationService] Failure details for token {idx}: {resp.exception}")
         except Exception as e:
-            logging.error(f"[NotificationService] Send error: {e}")
+            print(f"[NotificationService] Send error: {e}")
 
 notification_service = NotificationService.get_instance()
