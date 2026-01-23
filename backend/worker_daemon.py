@@ -90,6 +90,7 @@ class WorkerDaemon:
             if self.local_mode:
                 try:
                     task = self.local_queue.get()
+                    print(f"[WorkerDaemon] Received task: {task.get('type')}")
                     t = task.get("type")
                     payload = task.get("payload", {})
                     if t == "start":
@@ -100,6 +101,8 @@ class WorkerDaemon:
                             self.stop_session(email)
                 except Exception as e:
                     print(f"[WorkerDaemon] Error in local loop: {e}")
+                    import traceback
+                    traceback.print_exc()
                     time.sleep(1)
             else:
                 resp = self.sqs.receive_message(

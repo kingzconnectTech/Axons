@@ -1,7 +1,7 @@
 import os
 import json
 import boto3
-import multiprocessing
+import queue
 
 class QueueService:
     def __init__(self):
@@ -11,9 +11,9 @@ class QueueService:
             self.sqs = boto3.client("sqs", region_name=self.region)
             self.local_mode = False
         else:
-            self.local_queue = multiprocessing.Queue()
+            self.local_queue = queue.Queue()
             self.local_mode = True
-            print("[QueueService] Running in LOCAL mode (no SQS).")
+            print("[QueueService] Running in LOCAL mode (Internal Queue).")
 
     def enqueue_start(self, config_dict):
         if self.local_mode:
@@ -21,6 +21,7 @@ class QueueService:
                 "type": "start",
                 "payload": config_dict
             })
+            print(f"[QueueService] Enqueued START task locally. Queue size: {self.local_queue.qsize()}")
             return
 
         body = {
@@ -38,6 +39,7 @@ class QueueService:
                 "type": "stop",
                 "payload": {"email": email}
             })
+            print(f"[QueueService] Enqueued STOP task locally. Queue size: {self.local_queue.qsize()}")
             return
 
         body = {
