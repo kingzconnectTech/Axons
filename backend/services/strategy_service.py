@@ -238,21 +238,41 @@ class StrategyService:
             return {"action": "NEUTRAL", "confidence": 0}
 
         if strategy_name == "Quick 2M Strategy":
-            # Quick 2M Strategy: Fast Momentum (2 Candles)
-            # Tuned for quicker signals (2 consecutive candles instead of 3)
-            c1 = candles[CONFIRM]     # Last closed
-            c2 = candles[CONFIRM-1]   # Previous
+            # RECALIBRATED: Now uses Trend Following (EMA50) + RSI
+            # The previous "2 Candle" logic was too naive (95% loss rate).
+            close_prices = [c["close"] for c in candles]
+            if len(close_prices) < 50:
+                 return {"action": "NEUTRAL", "confidence": 0}
 
-            def is_green(c): return c['close'] > c['open']
-            def is_red(c): return c['close'] < c['open']
-            
-            # CALL: 2 Green Candles
-            if is_green(c2) and is_green(c1):
-                return {"action": "CALL", "confidence": 80, "reason": "Fast Bullish Momentum (2 Candles)"}
-            
-            # PUT: 2 Red Candles
-            if is_red(c2) and is_red(c1):
-                return {"action": "PUT", "confidence": 80, "reason": "Fast Bearish Momentum (2 Candles)"}
+            ema50 = calculate_ema(close_prices, 50)
+            rsi = calculate_rsi(close_prices, 14)
+            conf = get_candle_features(candles[CONFIRM])
+
+            # Filter: Doji / Weak candles
+            if conf['body_ratio'] < 0.3:
+                return {"action": "NEUTRAL", "confidence": 0}
+
+            # CALL SCENARIO
+            # 1. Trend is UP (Close > EMA50)
+            # 2. RSI is Bullish (52 < RSI < 75)
+            # 3. Last Candle is Green
+            if conf['close'] > ema50 and 52 < rsi < 75 and conf['is_bullish']:
+                return {
+                    "action": "CALL",
+                    "confidence": 88,
+                    "reason": "Flash Trend: EMA50 + RSI Buy"
+                }
+
+            # PUT SCENARIO
+            # 1. Trend is DOWN (Close < EMA50)
+            # 2. RSI is Bearish (25 < RSI < 48)
+            # 3. Last Candle is Red
+            if conf['close'] < ema50 and 25 < rsi < 48 and not conf['is_bullish']:
+                return {
+                    "action": "PUT",
+                    "confidence": 88,
+                    "reason": "Flash Trend: EMA50 + RSI Sell"
+                }
                 
             return {"action": "NEUTRAL", "confidence": 0}
 
