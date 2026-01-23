@@ -128,8 +128,9 @@ class StatusStore:
     def get_token(self, email):
         """Get FCM token for a specific user"""
         status = self.get_status(email)
-        if status and status.get("token"):
-            return status["token"]
+        # Check for 'fcm_token' (used in update_token) or fallback to 'token' (legacy)
+        if status:
+            return status.get("fcm_token") or status.get("token")
         return None
 
     def update_token(self, email, token):

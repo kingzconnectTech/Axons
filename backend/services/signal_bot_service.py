@@ -144,6 +144,7 @@ class SignalBotManager:
                         try:
                             token = status_store.get_token(email)
                             if token:
+                                logging.info(f"[{email}] Sending notification to token: {token[:10]}...")
                                 notification_service.send_multicast(
                                     tokens=[token],
                                     title=f"New Signal: {pair.replace('-OTC', '')}",
