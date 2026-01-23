@@ -29,6 +29,7 @@ class SignalBotManager:
         
         logging.info(f"Starting stream for {email}.")
 
+        bot_id = str(uuid.uuid4())
         stop_event = threading.Event()
         stats = {"total": 0, "calls": 0, "puts": 0}
         history = []
