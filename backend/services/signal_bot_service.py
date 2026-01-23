@@ -13,13 +13,7 @@ class SignalBotManager:
     _lock = threading.Lock()
 
     def __init__(self):
-        self.active = False
-        self.thread = None
-        self.params = {}
-        self.stats = {"total": 0, "calls": 0, "puts": 0}
-        self.last_signal = None
-        self.stop_event = threading.Event()
-        self.history = []
+        self.sessions = {}
 
     @classmethod
     def get_instance(cls):
@@ -28,59 +22,87 @@ class SignalBotManager:
                 cls._instance = cls()
             return cls._instance
 
-    def start_stream(self, pairs, timeframe, strategy):
-        if self.active:
-            return False, "Signal stream already active"
+    def start_stream(self, email, pairs, timeframe, strategy):
+        if email in self.sessions:
+            return False, "Signal stream already active for this user"
         
-        logging.info(f"Starting stream.")
+        logging.info(f"Starting stream for {email}.")
 
-        self.params = {
+        stop_event = threading.Event()
+        stats = {"total": 0, "calls": 0, "puts": 0}
+        history = []
+        params = {
             "pairs": pairs,
             "timeframe": timeframe,
             "strategy": strategy
         }
-        self.active = True
-        self.stop_event.clear()
-        self.stats = {"total": 0, "calls": 0, "puts": 0}
-        self.last_signal = None
-        self.history = []
+        last_signal = None
 
-        self.thread = threading.Thread(target=self._run_loop, daemon=True)
-        self.thread.start()
+        session = {
+            "params": params,
+            "stats": stats,
+            "history": history,
+            "last_signal": last_signal,
+            "stop_event": stop_event,
+            "active": True
+        }
+
+        # Start thread
+        thread = threading.Thread(
+            target=self._run_loop, 
+            args=(email, stop_event, params, stats, history, session), 
+            daemon=True
+        )
+        thread.start()
+        
+        session["thread"] = thread
+        self.sessions[email] = session
         
         return True, "Signal stream started"
 
-    def stop_stream(self):
-        if not self.active:
+    def stop_stream(self, email):
+        if email not in self.sessions:
             return False, "Signal stream not active"
 
-        self.active = False
-        self.stop_event.set()
-        if self.thread:
-            self.thread.join(timeout=2)
+        session = self.sessions[email]
+        session["active"] = False
+        session["stop_event"].set()
         
+        if session["thread"]:
+            session["thread"].join(timeout=2)
+        
+        del self.sessions[email]
         return True, "Signal stream stopped"
 
-    def get_status(self):
+    def get_status(self, email):
+        if email in self.sessions:
+            session = self.sessions[email]
+            return {
+                "active": True,
+                "params": session["params"],
+                "stats": session["stats"],
+                "last_signal": session.get("last_signal"),
+                "history": session["history"],
+            }
         return {
-            "active": self.active,
-            "params": self.params,
-            "stats": self.stats,
-            "last_signal": self.last_signal,
-            "history": self.history,
+            "active": False,
+            "params": {},
+            "stats": {"total": 0, "calls": 0, "puts": 0},
+            "last_signal": None,
+            "history": [],
         }
 
-    def _run_loop(self):
-        logging.info(f"Signal Bot Started: {self.params}")
-        pairs = self.params["pairs"]
-        timeframe = self.params["timeframe"]
-        strategy = self.params["strategy"]
+    def _run_loop(self, email, stop_event, params, stats, history, session):
+        logging.info(f"Signal Bot Started for {email}: {params}")
+        pairs = params["pairs"]
+        timeframe = params["timeframe"]
+        strategy = params["strategy"]
 
-        while self.active and not self.stop_event.is_set():
+        while not stop_event.is_set():
             try:
                 # Iterate through all selected pairs
                 for pair in pairs:
-                    if not self.active or self.stop_event.is_set():
+                    if stop_event.is_set():
                         break
 
                     supported = {1, 2, 5, 15, 60}
@@ -101,7 +123,8 @@ class SignalBotManager:
                         result = StrategyService.analyze(pair, mN, strategy, spread=spread)
                     
                     if result["action"] in ["CALL", "PUT"]:
-                        self.last_signal = {
+                        # Update session last_signal directly
+                        session["last_signal"] = {
                             "action": result["action"],
                             "confidence": result["confidence"],
                             "timestamp": time.time(),
@@ -109,20 +132,20 @@ class SignalBotManager:
                         }
 
                         ts = time.time()
-                        self.stats["total"] += 1
+                        stats["total"] += 1
                         if result["action"] == "CALL":
-                            self.stats["calls"] += 1
+                            stats["calls"] += 1
                         else:
-                            self.stats["puts"] += 1
+                            stats["puts"] += 1
                         
-                        logging.info(f"SIGNAL FOUND: {pair} {result['action']} ({result['confidence']}%)")
+                        logging.info(f"[{email}] SIGNAL FOUND: {pair} {result['action']} ({result['confidence']}%)")
                         
-                        # Send Notification
+                        # Send Notification (Single User)
                         try:
-                            tokens = status_store.get_all_tokens()
-                            if tokens:
+                            token = status_store.get_token(email)
+                            if token:
                                 notification_service.send_multicast(
-                                    tokens=tokens,
+                                    tokens=[token],
                                     title=f"New Signal: {pair.replace('-OTC', '')}",
                                     body=f"{result['action']} Signal Detected! Confidence: {result['confidence']}%",
                                     data={
@@ -133,29 +156,29 @@ class SignalBotManager:
                                     }
                                 )
                             else:
-                                logging.warning(f"No tokens found. Skipping notification for {pair}.")
+                                logging.warning(f"[{email}] No token found. Skipping notification.")
                         except Exception as e:
-                            logging.error(f"Failed to send notification: {e}")
+                            logging.error(f"[{email}] Failed to send notification: {e}")
 
-                        self.history.append({
+                        history.append({
                             "timestamp": ts,
                             "pair": pair,
                             "timeframe": timeframe,
                             "action": result["action"],
                             "status": None,
                         })
-                        if len(self.history) > 100:
-                            self.history.pop(0)
+                        if len(history) > 100:
+                            history.pop(0)
 
-                        # Cooldown: Rest for 1 minute after finding a signal
-                        logging.info(f"Signal found. Resting for 60 seconds...")
+                        # Cooldown
+                        logging.info(f"[{email}] Signal found. Resting for 60 seconds...")
                         time.sleep(60)
 
                 # Wait for next cycle
                 time.sleep(5) 
 
             except Exception as e:
-                logging.error(f"Signal Bot Error: {e}")
+                logging.error(f"[{email}] Signal Bot Error: {e}")
                 time.sleep(5)
 
 signal_bot_manager = SignalBotManager.get_instance()

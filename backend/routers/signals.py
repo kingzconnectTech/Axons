@@ -3,7 +3,7 @@ from typing import List
 from services.iq_service import iq_manager
 from services.strategy_service import StrategyService, resample_to_n_minutes
 from services.signal_bot_service import signal_bot_manager
-from models.schemas import SignalRequest, SignalResponse, SignalBotStart, SignalBotStatus
+from models.schemas import SignalRequest, SignalResponse, SignalBotStart, SignalBotStatus, SignalBotStop
 import time
 
 router = APIRouter()
@@ -11,22 +11,22 @@ router = APIRouter()
 @router.post("/start")
 def start_signal_stream(data: SignalBotStart):
     success, msg = signal_bot_manager.start_stream(
-        data.pairs, data.timeframe, data.strategy
+        data.email, data.pairs, data.timeframe, data.strategy
     )
     if not success:
         raise HTTPException(status_code=400, detail=msg)
     return {"status": "started", "message": msg}
 
 @router.post("/stop")
-def stop_signal_stream():
-    success, msg = signal_bot_manager.stop_stream()
+def stop_signal_stream(data: SignalBotStop):
+    success, msg = signal_bot_manager.stop_stream(data.email)
     if not success:
         raise HTTPException(status_code=400, detail=msg)
     return {"status": "stopped", "message": msg}
 
 @router.get("/status", response_model=SignalBotStatus)
-def get_signal_status():
-    return signal_bot_manager.get_status()
+def get_signal_status(email: str):
+    return signal_bot_manager.get_status(email)
 
 @router.get("/quick-scan", response_model=List[SignalResponse])
 def quick_scan():

@@ -9,14 +9,22 @@ from services.trade_worker import run_trade_session
 from services.status_store import status_store
 
 class WorkerDaemon:
-    def __init__(self):
+    def __init__(self, local_queue=None):
         self.region = os.environ.get("AWS_REGION", "us-east-1")
         self.queue_url = os.environ.get("AXON_SQS_QUEUE_URL")
-        self.sqs = boto3.client("sqs", region_name=self.region)
         self.manager = multiprocessing.Manager()
         self.sessions = {}
-        if not self.queue_url:
-            raise RuntimeError("AXON_SQS_QUEUE_URL not set")
+        
+        if local_queue:
+            self.local_queue = local_queue
+            self.local_mode = True
+            print("[WorkerDaemon] Started in LOCAL mode.")
+        elif self.queue_url:
+            self.sqs = boto3.client("sqs", region_name=self.region)
+            self.local_mode = False
+            print("[WorkerDaemon] Started in SQS mode.")
+        else:
+            raise RuntimeError("AXON_SQS_QUEUE_URL not set and no local_queue provided")
 
     def monitor_session(self, email, stats, stop_event, process):
         while True:
@@ -77,27 +85,43 @@ class WorkerDaemon:
             status_store.set_status(email, {"active": False})
 
     def run(self):
+        print(f"[WorkerDaemon] Listening for tasks...")
         while True:
-            resp = self.sqs.receive_message(
-                QueueUrl=self.queue_url,
-                MaxNumberOfMessages=10,
-                WaitTimeSeconds=20
-            )
-            messages = resp.get("Messages", [])
-            for m in messages:
-                body = json.loads(m["Body"])
-                t = body.get("type")
-                payload = body.get("payload", {})
-                if t == "start":
-                    self.start_session(payload)
-                elif t == "stop":
-                    email = payload.get("email")
-                    if email:
-                        self.stop_session(email)
-                self.sqs.delete_message(
+            if self.local_mode:
+                try:
+                    task = self.local_queue.get()
+                    t = task.get("type")
+                    payload = task.get("payload", {})
+                    if t == "start":
+                        self.start_session(payload)
+                    elif t == "stop":
+                        email = payload.get("email")
+                        if email:
+                            self.stop_session(email)
+                except Exception as e:
+                    print(f"[WorkerDaemon] Error in local loop: {e}")
+                    time.sleep(1)
+            else:
+                resp = self.sqs.receive_message(
                     QueueUrl=self.queue_url,
-                    ReceiptHandle=m["ReceiptHandle"]
+                    MaxNumberOfMessages=10,
+                    WaitTimeSeconds=20
                 )
+                messages = resp.get("Messages", [])
+                for m in messages:
+                    body = json.loads(m["Body"])
+                    t = body.get("type")
+                    payload = body.get("payload", {})
+                    if t == "start":
+                        self.start_session(payload)
+                    elif t == "stop":
+                        email = payload.get("email")
+                        if email:
+                            self.stop_session(email)
+                    self.sqs.delete_message(
+                        QueueUrl=self.queue_url,
+                        ReceiptHandle=m["ReceiptHandle"]
+                    )
 
 if __name__ == "__main__":
     WorkerDaemon().run()

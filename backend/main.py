@@ -4,10 +4,21 @@ import uvicorn
 import os
 from dotenv import load_dotenv
 from routers import signals, autotrade, market
+from services.queue_service import queue_service
+from worker_daemon import WorkerDaemon
+import threading
 
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 app = FastAPI(title="Axon Trading App")
+
+@app.on_event("startup")
+def startup_event():
+    if queue_service.local_mode:
+        print("Starting local worker daemon thread...")
+        worker = WorkerDaemon(local_queue=queue_service.local_queue)
+        t = threading.Thread(target=worker.run, daemon=True)
+        t.start()
 
 app.add_middleware(
     CORSMiddleware,

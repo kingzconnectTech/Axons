@@ -102,6 +102,13 @@ class StatusStore:
             print(f"[StatusStore] Error reading status for {email}: {e}")
             return None
 
+    def get_token(self, email):
+        """Get FCM token for a specific user"""
+        status = self.get_status(email)
+        if status and status.get("token"):
+            return status["token"]
+        return None
+
     def update_token(self, email, token):
         if self.use_local:
             if email not in self.local_data:

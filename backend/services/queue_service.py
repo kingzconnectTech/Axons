@@ -1,16 +1,28 @@
 import os
 import json
 import boto3
+import multiprocessing
 
 class QueueService:
     def __init__(self):
         self.queue_url = os.environ.get("AXON_SQS_QUEUE_URL")
         self.region = os.environ.get("AWS_REGION", "us-east-1")
-        self.sqs = boto3.client("sqs", region_name=self.region)
+        if self.queue_url:
+            self.sqs = boto3.client("sqs", region_name=self.region)
+            self.local_mode = False
+        else:
+            self.local_queue = multiprocessing.Queue()
+            self.local_mode = True
+            print("[QueueService] Running in LOCAL mode (no SQS).")
 
     def enqueue_start(self, config_dict):
-        if not self.queue_url:
-            raise RuntimeError("AXON_SQS_QUEUE_URL not set")
+        if self.local_mode:
+            self.local_queue.put({
+                "type": "start",
+                "payload": config_dict
+            })
+            return
+
         body = {
             "type": "start",
             "payload": config_dict
@@ -21,8 +33,13 @@ class QueueService:
         )
 
     def enqueue_stop(self, email):
-        if not self.queue_url:
-            raise RuntimeError("AXON_SQS_QUEUE_URL not set")
+        if self.local_mode:
+            self.local_queue.put({
+                "type": "stop",
+                "payload": {"email": email}
+            })
+            return
+
         body = {
             "type": "stop",
             "payload": {"email": email}

@@ -17,7 +17,7 @@ const { width } = Dimensions.get('window');
 
 export default function SignalsScreen() {
   const theme = useTheme();
-  const { syncDeviceToken } = useBot();
+  const { syncDeviceToken, email } = useBot();
   const [selectedPairs, setSelectedPairs] = useState(['EURUSD-OTC']);
   const [timeframe, setTimeframe] = useState(1);
   const [strategy, setStrategy] = useState('RSI + Support & Resistance Reversal');
@@ -120,8 +120,9 @@ export default function SignalsScreen() {
   };
 
   const checkStatus = async () => {
+    if (!email) return;
     try {
-      const response = await axios.get(`${API_URL}/status`);
+      const response = await axios.get(`${API_URL}/status?email=${email}`);
       if (response.data.active) {
         setStreaming(true);
         if (response.data.params) {
@@ -152,7 +153,7 @@ export default function SignalsScreen() {
   const toggleStreamCore = async () => {
     if (streaming) {
       try {
-        await axios.post(`${API_URL}/stop`);
+        await axios.post(`${API_URL}/stop`, { email });
         setStreaming(false);
       } catch (e) {
         alert('Failed to stop stream');
@@ -161,6 +162,7 @@ export default function SignalsScreen() {
       setLoading(true);
       try {
         await axios.post(`${API_URL}/start`, {
+            email,
             pairs: selectedPairs,
             timeframe,
             strategy

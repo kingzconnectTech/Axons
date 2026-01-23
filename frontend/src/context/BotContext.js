@@ -108,7 +108,7 @@ export const BotProvider = ({ children }) => {
   }, [email, fcmToken]);
 
   return (
-    <BotContext.Provider value={{ isBotRunning, setIsBotRunning, botStats, setBotStats, fetchStatus, setEmail, fcmToken, setFcmToken, syncDeviceToken }}>
+    <BotContext.Provider value={{ isBotRunning, setIsBotRunning, botStats, setBotStats, fetchStatus, email, setEmail, fcmToken, setFcmToken, syncDeviceToken }}>
       {children}
     </BotContext.Provider>
   );

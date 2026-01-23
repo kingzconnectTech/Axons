@@ -7,9 +7,13 @@ class SignalRequest(BaseModel):
     strategy: str
 
 class SignalBotStart(BaseModel):
+    email: str
     pairs: List[str]
     timeframe: int
     strategy: str
+
+class SignalBotStop(BaseModel):
+    email: str
 
 class SignalHistoryItem(BaseModel):
     timestamp: float
