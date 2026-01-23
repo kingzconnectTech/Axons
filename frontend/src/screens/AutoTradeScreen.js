@@ -17,7 +17,7 @@ const { width } = Dimensions.get('window');
 
 export default function AutoTradeScreen() {
   const theme = useTheme();
-  const { isBotRunning, fetchStatus: refreshGlobalStatus, setEmail: setGlobalEmail } = useBot();
+  const { isBotRunning, botStats, fetchStatus: refreshGlobalStatus, setEmail: setGlobalEmail } = useBot();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [accountType, setAccountType] = useState('PRACTICE');
