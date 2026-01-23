@@ -106,6 +106,9 @@ def test_notification():
             }
         )
         
+        if not response:
+             return {"status": "failed", "message": "Notification service returned no response (check initialization logs)"}
+
         # Log response details
         print(f"[TestNotification] Success: {response.success_count}, Failure: {response.failure_count}")
         if response.failure_count > 0:

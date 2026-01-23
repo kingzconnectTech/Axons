@@ -97,7 +97,9 @@ class NotificationService:
                 for idx, resp in enumerate(response.responses):
                     if not resp.success:
                         print(f"[NotificationService] Failure details for token {idx}: {resp.exception}")
+            return response
         except Exception as e:
-            print(f"[NotificationService] Send error: {e}")
+            logging.error(f"[NotificationService] Send Error: {e}")
+            return None
 
 notification_service = NotificationService.get_instance()
