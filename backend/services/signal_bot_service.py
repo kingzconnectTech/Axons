@@ -58,7 +58,7 @@ class SignalBotManager:
         session["thread"] = thread
         self.sessions[email] = session
         
-        return True, "Signal stream started"
+        return True, {"message": "Signal stream started", "bot_id": bot_id}
 
     def stop_stream(self, email):
         if email not in self.sessions:
@@ -147,13 +147,14 @@ class SignalBotManager:
                                 logging.info(f"[{email}] Sending notification to token: {token[:10]}...")
                                 notification_service.send_multicast(
                                     tokens=[token],
-                                    title=f"New Signal: {pair.replace('-OTC', '')}",
+                                    title=f"New Signal: {pair}",
                                     body=f"{result['action']} Signal Detected! Confidence: {result['confidence']}%",
                                     data={
                                         "pair": pair,
                                         "action": result["action"],
                                         "confidence": str(result["confidence"]),
-                                        "timestamp": str(ts)
+                                        "timestamp": str(ts),
+                                        "bot_id": session.get("bot_id", "")
                                     }
                                 )
                             else:

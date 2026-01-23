@@ -45,31 +45,35 @@ class StatusStore:
             self.table = None
 
     def _load_local(self):
-        if os.path.exists(self.local_file):
-            try:
-                with open(self.local_file, 'r') as f:
-                    self.local_data = json.load(f)
-            except:
+        with self._lock:
+            if os.path.exists(self.local_file):
+                try:
+                    with open(self.local_file, 'r') as f:
+                        self.local_data = json.load(f)
+                except:
+                    self.local_data = {}
+            else:
                 self.local_data = {}
-        else:
-            self.local_data = {}
 
     def _log(self, msg):
         try:
-            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            log_file = os.path.join(base_dir, "debug_status.log")
-            with open(log_file, "a") as f:
-                f.write(f"[{os.getpid()}] {time.ctime()} {msg}\n")
+            # Locking log file writes too just in case
+            with self._lock:
+                base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                log_file = os.path.join(base_dir, "debug_status.log")
+                with open(log_file, "a") as f:
+                    f.write(f"[{os.getpid()}] {time.ctime()} {msg}\n")
         except Exception as e:
             # Fallback print if file write fails
             print(f"[StatusStore] Log error: {e}")
 
     def _save_local(self):
         try:
-            abs_path = os.path.abspath(self.local_file)
-            self._log(f"Saving to {abs_path}: {json.dumps(self.local_data)}")
-            with open(self.local_file, 'w') as f:
-                json.dump(self.local_data, f, indent=2)
+            with self._lock:
+                abs_path = os.path.abspath(self.local_file)
+                # self._log(f"Saving to {abs_path}: {json.dumps(self.local_data)}")
+                with open(self.local_file, 'w') as f:
+                    json.dump(self.local_data, f, indent=2)
         except Exception as e:
             self._log(f"Failed to save local data: {e}")
             print(f"[StatusStore] Failed to save local data: {e}")

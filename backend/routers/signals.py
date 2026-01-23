@@ -10,12 +10,13 @@ router = APIRouter()
 
 @router.post("/start")
 def start_signal_stream(data: SignalBotStart):
-    success, msg = signal_bot_manager.start_stream(
+    success, result = signal_bot_manager.start_stream(
         data.email, data.pairs, data.timeframe, data.strategy
     )
     if not success:
-        raise HTTPException(status_code=400, detail=msg)
-    return {"status": "started", "message": msg}
+        raise HTTPException(status_code=400, detail=result)
+    
+    return {"status": "started", "message": result["message"], "bot_id": result["bot_id"]}
 
 @router.post("/stop")
 def stop_signal_stream(data: SignalBotStop):
