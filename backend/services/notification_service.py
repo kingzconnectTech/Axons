@@ -9,6 +9,7 @@ class NotificationService:
 
     def __init__(self):
         self.initialized = False
+        self.init_error = None
         self._initialize_firebase()
 
     def _initialize_firebase(self):
@@ -27,9 +28,11 @@ class NotificationService:
                         firebase_admin.initialize_app(cred)
                     
                     self.initialized = True
+                    self.init_error = None
                     print(f"[NotificationService] Firebase Admin initialized successfully using {cred_path}.")
                 except Exception as e:
-                     print(f"[NotificationService] Critical Firebase Init Error: {e}")
+                     self.init_error = f"Critical Firebase Init Error: {str(e)}"
+                     print(f"[NotificationService] {self.init_error}")
             else:
                 # Try to find it in the parent directory as a fallback (common in dev)
                 parent_cred = os.path.join(os.path.dirname(os.getcwd()), cred_path)
@@ -41,16 +44,20 @@ class NotificationService:
                         except ValueError:
                             firebase_admin.initialize_app(cred)
                         self.initialized = True
+                        self.init_error = None
                         print(f"[NotificationService] Firebase Admin initialized using fallback path: {parent_cred}")
                      except Exception as e:
-                        print(f"[NotificationService] Critical Firebase Init Error (Fallback): {e}")
+                        self.init_error = f"Critical Firebase Init Error (Fallback): {str(e)}"
+                        print(f"[NotificationService] {self.init_error}")
                 else:
-                    print(f"[NotificationService] Service account key NOT FOUND at {cred_path} or {parent_cred}. Notifications DISABLED.")
+                    self.init_error = f"Service account key NOT FOUND at {cred_path} or {parent_cred}. Please place 'firebase-service-account.json' in backend/."
+                    print(f"[NotificationService] {self.init_error}")
                     # List files in current dir to help debug
                     print(f"[NotificationService] Current Directory: {os.getcwd()}")
                     print(f"[NotificationService] Files: {os.listdir(os.getcwd())}")
         except Exception as e:
-            logging.error(f"[NotificationService] Failed to initialize Firebase: {e}")
+            self.init_error = f"Failed to initialize Firebase: {str(e)}"
+            logging.error(f"[NotificationService] {self.init_error}")
 
     @classmethod
     def get_instance(cls):
