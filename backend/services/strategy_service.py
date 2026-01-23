@@ -355,27 +355,38 @@ class StrategyService:
 
         if strategy_name == "RSI Directional Every Minute":
             close_prices = [c["close"] for c in candles]
+            # Need at least 50 candles for EMA50
+            if len(close_prices) < 50:
+                 return {"action": "NEUTRAL", "confidence": 0}
+
+            ema50 = calculate_ema(close_prices, 50)
             rsi = calculate_rsi(close_prices, 14)
             conf = get_candle_features(candles[CONFIRM])
 
-            # Ignore doji
-            if conf['body_ratio'] < 0.2:
+            # Filter: Doji / Weak candles
+            if conf['body_ratio'] < 0.3:
                 return {"action": "NEUTRAL", "confidence": 0}
 
-            # CALL
-            if conf['is_bullish'] and rsi <= 60:
+            # CALL SCENARIO
+            # 1. Trend is UP (Close > EMA50)
+            # 2. RSI is Bullish (52 < RSI < 75) - shifted slightly above 50 to confirm momentum
+            # 3. Last Candle is Green
+            if conf['close'] > ema50 and 52 < rsi < 75 and conf['is_bullish']:
                 return {
                     "action": "CALL",
-                    "confidence": 72,
-                    "reason": "Bullish candle + RSI bias"
+                    "confidence": 88,
+                    "reason": "Trend Follow: EMA50 + RSI > 52"
                 }
 
-            # PUT
-            if not conf['is_bullish'] and rsi >= 40:
+            # PUT SCENARIO
+            # 1. Trend is DOWN (Close < EMA50)
+            # 2. RSI is Bearish (25 < RSI < 48) - shifted slightly below 50 to confirm momentum
+            # 3. Last Candle is Red
+            if conf['close'] < ema50 and 25 < rsi < 48 and not conf['is_bullish']:
                 return {
                     "action": "PUT",
-                    "confidence": 72,
-                    "reason": "Bearish candle + RSI bias"
+                    "confidence": 88,
+                    "reason": "Trend Follow: EMA50 + RSI < 48"
                 }
 
             return {"action": "NEUTRAL", "confidence": 0}

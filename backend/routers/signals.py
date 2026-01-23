@@ -52,9 +52,9 @@ def quick_scan():
     results = []
     
     for pair in pairs:
-        # Get 1m candles (need enough for history check and StrategyService validation)
-        # StrategyService requires at least 30 candles
-        candles = iq_manager.get_candles(pair, 1, count=30)
+        # Get 1m candles (need enough for EMA50 calculation in StrategyService)
+        # StrategyService requires at least 50 candles for the new logic
+        candles = iq_manager.get_candles(pair, 1, count=70)
         
         if candles:
             last_candle = candles[-1]
