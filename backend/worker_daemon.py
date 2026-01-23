@@ -27,6 +27,7 @@ class WorkerDaemon:
             raise RuntimeError("AXON_SQS_QUEUE_URL not set and no local_queue provided")
 
     def monitor_session(self, email, stats, stop_event, process):
+        print(f"[WorkerDaemon] Monitor started for {email}")
         while True:
             # Check if process died unexpectedly
             if not process.is_alive():
@@ -39,10 +40,12 @@ class WorkerDaemon:
             data = dict(stats)
             # Use is_alive + active flag to determine true status
             data["active"] = not stop_event.is_set()
+            # print(f"[WorkerDaemon] Updating status for {email}: {data}") 
             status_store.set_status(email, data)
             
             # Wait for 5 seconds OR until stop_event is set
             if stop_event.wait(5):
+                print(f"[WorkerDaemon] Stop event set for {email}")
                 # If stopped, perform one last update to ensure active=False
                 data = dict(stats)
                 data["active"] = False
@@ -70,6 +73,7 @@ class WorkerDaemon:
         })
         config = AutoTradeConfig(**config_dict)
         process = multiprocessing.Process(target=run_trade_session, args=(config, stats, stop_event))
+        process.daemon = True  # Ensure process dies if main process (backend) restarts
         process.start()
         monitor = threading.Thread(target=self.monitor_session, args=(email, stats, stop_event, process), daemon=True)
         monitor.start()

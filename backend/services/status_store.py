@@ -54,13 +54,21 @@ class StatusStore:
         else:
             self.local_data = {}
 
+    def _log(self, msg):
+        try:
+            with open("debug_status.log", "a") as f:
+                f.write(f"[{time.ctime()}] {msg}\n")
+        except:
+            pass
+
     def _save_local(self):
         try:
             abs_path = os.path.abspath(self.local_file)
-            print(f"[StatusStore] Saving to {abs_path}")
+            self._log(f"Saving to {abs_path}: {json.dumps(self.local_data)}")
             with open(self.local_file, 'w') as f:
                 json.dump(self.local_data, f, indent=2)
         except Exception as e:
+            self._log(f"Failed to save local data: {e}")
             print(f"[StatusStore] Failed to save local data: {e}")
 
     def _to_dynamodb_compatible(self, value):
@@ -73,6 +81,7 @@ class StatusStore:
         return value
 
     def set_status(self, email, status_dict):
+        self._log(f"set_status called for {email}: {status_dict}")
         if self.use_local:
             if email not in self.local_data:
                 self.local_data[email] = {}
@@ -92,6 +101,7 @@ class StatusStore:
 
     def get_status(self, email):
         if self.use_local:
+            self._load_local() # Force reload to ensure freshness
             return self.local_data.get(email)
 
         if not self.table: return None
@@ -101,6 +111,19 @@ class StatusStore:
         except ClientError as e:
             print(f"[StatusStore] Error reading status for {email}: {e}")
             return None
+
+    def reset_all_active(self):
+        """Resets all 'active' flags to False. Used on startup to clear stale states."""
+        if self.use_local:
+            self._load_local()
+            changed = False
+            for email in self.local_data:
+                if self.local_data[email].get("active"):
+                    self.local_data[email]["active"] = False
+                    changed = True
+            if changed:
+                self._save_local()
+                self._log("Reset all active sessions to False on startup.")
 
     def get_token(self, email):
         """Get FCM token for a specific user"""
