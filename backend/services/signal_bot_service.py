@@ -3,6 +3,7 @@ import time
 import logging
 import os
 import requests
+import uuid
 from services.iq_service import iq_manager
 from services.strategy_service import StrategyService, resample_to_n_minutes
 from services.notification_service import notification_service
@@ -39,6 +40,7 @@ class SignalBotManager:
         last_signal = None
 
         session = {
+            "bot_id": bot_id,
             "params": params,
             "stats": stats,
             "history": history,

@@ -1,6 +1,7 @@
 import os
 import time
 import json
+import threading
 from decimal import Decimal
 import boto3
 from botocore.exceptions import ClientError
@@ -8,6 +9,7 @@ import logging
 
 class StatusStore:
     def __init__(self):
+        self._lock = threading.Lock()
         self.table_name = os.environ.get("AXON_STATUS_TABLE")
         self.region = os.environ.get("AWS_REGION", "us-east-1")
         
