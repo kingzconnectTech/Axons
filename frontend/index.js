@@ -25,6 +25,7 @@ messaging().setBackgroundMessageHandler(async remoteMessage => {
       id: 'default',
       name: 'Default Channel',
       importance: AndroidImportance.HIGH,
+      sound: 'default',
   });
 
   await notifee.displayNotification({
@@ -34,6 +35,7 @@ messaging().setBackgroundMessageHandler(async remoteMessage => {
     android: {
       channelId: 'default',
       importance: AndroidImportance.HIGH,
+      largeIcon: 'ic_launcher',
       smallIcon: 'ic_launcher', // fallback to launcher icon
       pressAction: {
         id: 'default',
