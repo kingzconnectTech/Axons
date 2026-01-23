@@ -29,7 +29,7 @@ class NotificationService:
                     
                     self.initialized = True
                     self.init_error = None
-                    print(f"[NotificationService] Firebase Admin initialized successfully using {cred_path}.")
+                    print(f"[NotificationService] Firebase Admin initialized successfully using {cred_path}. Version: {firebase_admin.__version__}")
                 except Exception as e:
                      self.init_error = f"Critical Firebase Init Error: {str(e)}"
                      print(f"[NotificationService] {self.init_error}")
@@ -45,7 +45,7 @@ class NotificationService:
                             firebase_admin.initialize_app(cred)
                         self.initialized = True
                         self.init_error = None
-                        print(f"[NotificationService] Firebase Admin initialized using fallback path: {parent_cred}")
+                        print(f"[NotificationService] Firebase Admin initialized using fallback path: {parent_cred}. Version: {firebase_admin.__version__}")
                      except Exception as e:
                         self.init_error = f"Critical Firebase Init Error (Fallback): {str(e)}"
                         print(f"[NotificationService] {self.init_error}")
@@ -99,7 +99,14 @@ class NotificationService:
         
         try:
             print(f"[NotificationService] Sending multicast to {len(tokens)} tokens...")
-            response = messaging.send_multicast(message)
+            
+            if hasattr(messaging, 'send_each_for_multicast'):
+                 response = messaging.send_each_for_multicast(message)
+            elif hasattr(messaging, 'send_multicast'):
+                 response = messaging.send_multicast(message)
+            else:
+                 raise AttributeError("Neither 'send_each_for_multicast' nor 'send_multicast' found in firebase_admin.messaging. Please update firebase-admin package.")
+
             print(f"[NotificationService] Sent {response.success_count} messages. Failed: {response.failure_count}")
             if response.failure_count > 0:
                 for idx, resp in enumerate(response.responses):
