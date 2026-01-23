@@ -92,7 +92,7 @@ def test_notification():
         
         print(f"[TestNotification] Sending to {len(tokens)} tokens. Sample: {tokens[0][:10]}...")
         
-        response = notification_service.send_multicast(
+        response, error = notification_service.send_multicast(
             tokens=tokens,
             title="Test Notification",
             body="This is a test signal from Axon Backend.",
@@ -106,9 +106,9 @@ def test_notification():
             }
         )
         
-        if not response:
-             error_msg = notification_service.init_error or "Unknown error (check logs)"
-             return {"status": "failed", "message": f"Notification service failed. Reason: {error_msg}"}
+        if error:
+             init_err = notification_service.init_error or "None"
+             return {"status": "failed", "message": f"Send failed: {error} (Init Error: {init_err})"}
 
         # Log response details
         print(f"[TestNotification] Success: {response.success_count}, Failure: {response.failure_count}")

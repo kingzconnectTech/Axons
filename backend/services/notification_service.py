@@ -68,14 +68,15 @@ class NotificationService:
     def send_multicast(self, tokens: List[str], title: str, body: str, data: Dict = None):
         """
         Send a notification to multiple devices.
+        Returns: (response, error_message)
         """
         if not self.initialized:
             logging.warning("[NotificationService] Cannot send notification: Not initialized.")
-            return
+            return None, "Service not initialized"
         
         if not tokens:
             logging.warning("[NotificationService] No tokens provided for notification.")
-            return
+            return None, "No tokens provided"
         
         # Firebase Multicast supports up to 500 tokens at once
         # If we have more, we should chunk them (omitted for brevity unless needed)
@@ -104,9 +105,9 @@ class NotificationService:
                 for idx, resp in enumerate(response.responses):
                     if not resp.success:
                         print(f"[NotificationService] Failure details for token {idx}: {resp.exception}")
-            return response
+            return response, None
         except Exception as e:
             logging.error(f"[NotificationService] Send Error: {e}")
-            return None
+            return None, str(e)
 
 notification_service = NotificationService.get_instance()
