@@ -57,7 +57,7 @@ class StatusStore:
     def _log(self, msg):
         try:
             with open("debug_status.log", "a") as f:
-                f.write(f"[{time.ctime()}] {msg}\n")
+                f.write(f"[{os.getpid()}] {time.ctime()} {msg}\n")
         except:
             pass
 

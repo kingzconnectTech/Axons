@@ -146,13 +146,18 @@ export default function AutoTradeScreen() {
     };
   }, [email]);
 
+  // Sync with global bot stats (from polling)
   useEffect(() => {
-    let interval;
-    if (status && status.active) {
-      interval = setInterval(fetchStatus, 5000);
+    if (botStats) {
+      // Only update if we are viewing the same email or if the bot is running for this user
+      // Note: botStats comes from BotContext which uses the globally active email.
+      setStatus(botStats);
+      if (botStats.currency && botStats.currency !== 'USD') {
+        AsyncStorage.setItem('user_currency', botStats.currency);
+        setSavedCurrency(botStats.currency);
+      }
     }
-    return () => clearInterval(interval);
-  }, [status?.active]);
+  }, [botStats]);
 
   useEffect(() => {
     interstitial.load();

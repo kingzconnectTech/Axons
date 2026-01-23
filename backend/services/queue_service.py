@@ -15,8 +15,16 @@ class QueueService:
             self.local_mode = True
             print("[QueueService] Running in LOCAL mode (Internal Queue).")
 
+    def _log(self, msg):
+        try:
+            with open("debug_queue.log", "a") as f:
+                f.write(f"[{os.getpid()}] {msg}\n")
+        except:
+            pass
+
     def enqueue_start(self, config_dict):
         if self.local_mode:
+            self._log(f"Enqueue START. Queue ID: {id(self.local_queue)}")
             self.local_queue.put({
                 "type": "start",
                 "payload": config_dict

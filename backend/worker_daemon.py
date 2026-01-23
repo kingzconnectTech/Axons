@@ -77,6 +77,7 @@ class WorkerDaemon:
         process.start()
         monitor = threading.Thread(target=self.monitor_session, args=(email, stats, stop_event, process), daemon=True)
         monitor.start()
+        self._log(f"Started session for {email}. Process PID: {process.pid}")
         self.sessions[email] = {"process": process, "stop_event": stop_event, "stats": stats}
 
     def stop_session(self, email):
