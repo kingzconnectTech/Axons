@@ -14,6 +14,12 @@ app = FastAPI(title="Axon Trading App")
 
 @app.on_event("startup")
 def startup_event():
+    try:
+        with open("startup_debug.log", "a") as f:
+            f.write(f"Startup event fired. Queue local_mode: {queue_service.local_mode}\n")
+    except:
+        pass
+        
     if queue_service.local_mode:
         print("Starting local worker daemon thread...")
         worker = WorkerDaemon(local_queue=queue_service.local_queue)

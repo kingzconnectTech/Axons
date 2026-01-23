@@ -56,10 +56,13 @@ class StatusStore:
 
     def _log(self, msg):
         try:
-            with open("debug_status.log", "a") as f:
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            log_file = os.path.join(base_dir, "debug_status.log")
+            with open(log_file, "a") as f:
                 f.write(f"[{os.getpid()}] {time.ctime()} {msg}\n")
-        except:
-            pass
+        except Exception as e:
+            # Fallback print if file write fails
+            print(f"[StatusStore] Log error: {e}")
 
     def _save_local(self):
         try:

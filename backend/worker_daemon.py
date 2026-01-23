@@ -28,29 +28,35 @@ class WorkerDaemon:
 
     def monitor_session(self, email, stats, stop_event, process):
         print(f"[WorkerDaemon] Monitor started for {email}")
-        while True:
-            # Check if process died unexpectedly
-            if not process.is_alive():
-                print(f"[WorkerDaemon] Process for {email} died unexpectedly.")
-                data = dict(stats)
-                data["active"] = False
-                status_store.set_status(email, data)
-                break
+        status_store._log(f"[WorkerDaemon] Monitor started for {email}")
+        try:
+            while True:
+                # Check if process died unexpectedly
+                if not process.is_alive():
+                    print(f"[WorkerDaemon] Process for {email} died unexpectedly.")
+                    data = dict(stats)
+                    data["active"] = False
+                    status_store.set_status(email, data)
+                    break
 
-            data = dict(stats)
-            # Use is_alive + active flag to determine true status
-            data["active"] = not stop_event.is_set()
-            # print(f"[WorkerDaemon] Updating status for {email}: {data}") 
-            status_store.set_status(email, data)
-            
-            # Wait for 5 seconds OR until stop_event is set
-            if stop_event.wait(5):
-                print(f"[WorkerDaemon] Stop event set for {email}")
-                # If stopped, perform one last update to ensure active=False
                 data = dict(stats)
-                data["active"] = False
+                # Use is_alive + active flag to determine true status
+                data["active"] = not stop_event.is_set()
+                # print(f"[WorkerDaemon] Updating status for {email}: {data}") 
                 status_store.set_status(email, data)
-                break
+                
+                # Wait for 5 seconds OR until stop_event is set
+                if stop_event.wait(5):
+                    print(f"[WorkerDaemon] Stop event set for {email}")
+                    # If stopped, perform one last update to ensure active=False
+                    data = dict(stats)
+                    data["active"] = False
+                    status_store.set_status(email, data)
+                    break
+        except Exception as e:
+            print(f"[WorkerDaemon] Monitor exception for {email}: {e}")
+            import traceback
+            traceback.print_exc()
 
     def start_session(self, config_dict):
         email = config_dict["email"]
@@ -90,11 +96,13 @@ class WorkerDaemon:
             status_store.set_status(email, {"active": False})
 
     def run(self):
+        status_store._log(f"[WorkerDaemon] Listening for tasks... LocalMode={self.local_mode}")
         print(f"[WorkerDaemon] Listening for tasks...")
         while True:
             if self.local_mode:
                 try:
                     task = self.local_queue.get()
+                    status_store._log(f"[WorkerDaemon] Received task: {task.get('type')}")
                     print(f"[WorkerDaemon] Received task: {task.get('type')}")
                     t = task.get("type")
                     payload = task.get("payload", {})
@@ -105,6 +113,7 @@ class WorkerDaemon:
                         if email:
                             self.stop_session(email)
                 except Exception as e:
+                    status_store._log(f"[WorkerDaemon] Error in local loop: {e}")
                     print(f"[WorkerDaemon] Error in local loop: {e}")
                     import traceback
                     traceback.print_exc()
