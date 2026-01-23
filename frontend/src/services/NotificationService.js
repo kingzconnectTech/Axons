@@ -1,4 +1,4 @@
-import { PermissionsAndroid, Platform } from 'react-native';
+import { PermissionsAndroid, Platform, Alert } from 'react-native';
 import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
 import messaging from '@react-native-firebase/messaging';
 
@@ -69,7 +69,6 @@ export const displayLocalNotification = async (title, body, data = {}) => {
             android: {
                 channelId: 'default',
                 importance: AndroidImportance.HIGH,
-                smallIcon: 'ic_launcher',
                 pressAction: {
                     id: 'default',
                 },
@@ -85,6 +84,9 @@ export const onForegroundMessage = (callback) => {
     return messaging().onMessage(async remoteMessage => {
         console.log('Foreground FCM:', remoteMessage);
         
+        // Debug Alert to verify receipt
+        Alert.alert('FCM Received', JSON.stringify(remoteMessage.notification || remoteMessage.data));
+
         const title = 
           remoteMessage.notification?.title || 
           remoteMessage.data?.title || 

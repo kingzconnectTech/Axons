@@ -92,7 +92,7 @@ def test_notification():
         
         print(f"[TestNotification] Sending to {len(tokens)} tokens. Sample: {tokens[0][:10]}...")
         
-        notification_service.send_multicast(
+        response = notification_service.send_multicast(
             tokens=tokens,
             title="Test Notification",
             body="This is a test signal from Axon Backend.",
@@ -105,7 +105,20 @@ def test_notification():
                 "body": "This is a test signal from Axon Backend." # Redundant but safe
             }
         )
-        return {"status": "sent", "tokens_count": len(tokens)}
+        
+        # Log response details
+        print(f"[TestNotification] Success: {response.success_count}, Failure: {response.failure_count}")
+        if response.failure_count > 0:
+            for idx, resp in enumerate(response.responses):
+                if not resp.success:
+                    print(f"[TestNotification] Token {idx} failed: {resp.exception}")
+
+        return {
+            "status": "sent", 
+            "tokens_count": len(tokens), 
+            "success_count": response.success_count, 
+            "failure_count": response.failure_count
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
