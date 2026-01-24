@@ -256,6 +256,34 @@ export default function HomeScreen({ navigation }) {
       
       <AdBanner />
       <View style={{ height: 20 }} />
+
+      {/* Daily Disclaimer Modal */}
+      <Modal
+        visible={showDisclaimer}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {}} // Prevent closing by back button without accepting
+      >
+        <View style={styles.modalOverlay}>
+          <Surface style={[styles.modalContent, { backgroundColor: theme.colors.surface }]} elevation={5}>
+            <MaterialCommunityIcons name="alert-decagram" size={normalize(48)} color={theme.colors.error} style={{ marginBottom: normalize(16) }} />
+            <Text variant="titleLarge" style={{ fontWeight: 'bold', color: theme.colors.onSurface, marginBottom: normalize(8), textAlign: 'center' }}>
+              Disclaimer
+            </Text>
+            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center', marginBottom: normalize(24) }}>
+              Trading involves significant risk. Signals provided by Axon are for educational purposes only and are not guaranteed. Axon is not a financial advisor or trading platform. You are responsible for your own trading decisions.
+            </Text>
+            <Button 
+              mode="contained" 
+              onPress={handleAcceptDisclaimer}
+              style={{ width: '100%', borderRadius: normalize(12) }}
+              contentStyle={{ height: normalize(48) }}
+            >
+              I Understand & Accept
+            </Button>
+          </Surface>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -263,6 +291,20 @@ export default function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: normalize(20),
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 400,
+    padding: normalize(24),
+    borderRadius: normalize(24),
+    alignItems: 'center',
   },
   headerGradient: {
     paddingTop: normalize(60),

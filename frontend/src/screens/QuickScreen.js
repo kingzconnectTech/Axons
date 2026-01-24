@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
   analyzeButton: {
     width: '100%',
     height: normalize(56),
-    borderRadius: normalize(28),
+    borderRadius: normalize(12),
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,
