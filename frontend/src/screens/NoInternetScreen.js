@@ -3,6 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import { Text, Button, Surface, useTheme } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { responsiveFontSize, normalize } from '../utils/responsive';
 
 export default function NoInternetScreen({ onRetry, loading }) {
   const theme = useTheme();
@@ -24,7 +25,7 @@ export default function NoInternetScreen({ onRetry, loading }) {
           >
             <MaterialCommunityIcons
               name="wifi-off"
-              size={64}
+              size={normalize(64)}
               color={theme.colors.error}
             />
           </View>
@@ -32,7 +33,7 @@ export default function NoInternetScreen({ onRetry, loading }) {
 
         <Text
           variant="headlineMedium"
-          style={{ color: theme.colors.onSurface, fontWeight: 'bold', marginTop: 16 }}
+          style={{ color: theme.colors.onSurface, fontWeight: 'bold', marginTop: normalize(16), fontSize: responsiveFontSize(24) }}
         >
           No Internet Connection
         </Text>
@@ -42,7 +43,8 @@ export default function NoInternetScreen({ onRetry, loading }) {
           style={{
             color: theme.colors.onSurfaceVariant,
             textAlign: 'center',
-            marginTop: 12,
+            marginTop: normalize(12),
+            fontSize: responsiveFontSize(14),
           }}
         >
           Please check your network connection and tap refresh to try again.
@@ -54,7 +56,8 @@ export default function NoInternetScreen({ onRetry, loading }) {
           loading={loading}
           disabled={loading}
           style={styles.button}
-          contentStyle={{ paddingVertical: 6 }}
+          contentStyle={{ paddingVertical: normalize(6) }}
+          labelStyle={{ fontSize: responsiveFontSize(16) }}
         >
           Refresh
         </Button>
@@ -68,12 +71,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: normalize(24),
   },
   card: {
     width: '100%',
-    borderRadius: 20,
-    padding: 24,
+    borderRadius: normalize(20),
+    padding: normalize(24),
     alignItems: 'center',
   },
   iconWrapper: {
@@ -81,14 +84,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: normalize(96),
+    height: normalize(96),
+    borderRadius: normalize(48),
     alignItems: 'center',
     justifyContent: 'center',
   },
   button: {
-    marginTop: 24,
+    marginTop: normalize(24),
     borderRadius: 999,
     alignSelf: 'stretch',
   },

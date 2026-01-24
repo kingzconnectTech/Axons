@@ -234,7 +234,7 @@ export default function QuickScreen({ navigation }) {
                   <ActivityIndicator color="white" size="small" />
                 ) : (
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <MaterialCommunityIcons name="lightning-bolt" size={24} color="white" style={{ marginRight: 8 }} />
+                    <MaterialCommunityIcons name="lightning-bolt" size={normalize(24)} color="white" style={{ marginRight: normalize(8) }} />
                     <Text style={styles.buttonText}>SCAN NOW</Text>
                   </View>
                 )}
@@ -242,7 +242,7 @@ export default function QuickScreen({ navigation }) {
            </AnimatedBorderButton>
            
            <Surface style={styles.instructionCard} elevation={1}>
-              <MaterialCommunityIcons name="information" size={20} color={SCAN_ACCENT_DARK} />
+              <MaterialCommunityIcons name="information" size={normalize(20)} color={SCAN_ACCENT_DARK} />
               <Text style={styles.instructionText}>
                  For best accuracy, scan twice to confirm the signal.
               </Text>
@@ -292,15 +292,15 @@ export default function QuickScreen({ navigation }) {
             <ConfidenceMeter value={result.confidence} color={getActionColor(result.action)} />
             
             <View style={styles.strategyInfo}>
-               <MaterialCommunityIcons name="information-outline" size={16} color={theme.colors.onSurfaceVariant} />
-               <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 12, marginLeft: 6, flex: 1 }}>
+               <MaterialCommunityIcons name="information-outline" size={normalize(16)} color={theme.colors.onSurfaceVariant} />
+               <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: responsiveFontSize(12), marginLeft: normalize(6), flex: 1 }}>
                   {result.reason || 'Based on RSI Direction & Candle Bias'}
                </Text>
             </View>
 
             {/* Scan Again Hint */}
-            <TouchableOpacity onPress={handleAnalyze} style={{ marginTop: 20, alignItems: 'center' }}>
-               <Text style={{ color: theme.colors.primary, fontWeight: 'bold' }}>SCAN AGAIN</Text>
+            <TouchableOpacity onPress={handleAnalyze} style={{ marginTop: normalize(20), alignItems: 'center' }}>
+               <Text style={{ color: theme.colors.primary, fontWeight: 'bold', fontSize: responsiveFontSize(14) }}>SCAN AGAIN</Text>
             </TouchableOpacity>
           </Surface>
         )}
@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.9)',
     fontWeight: 'bold',
     letterSpacing: 1,
-    marginTop: 4,
+    marginTop: normalize(4),
     fontSize: responsiveFontSize(14),
   },
   scrollContent: {
@@ -395,7 +395,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,
-    shadowColor: '#6a00ffff',
+    shadowColor: '#00E676',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -463,9 +463,9 @@ const styles = StyleSheet.create({
     marginTop: normalize(16),
     padding: normalize(12),
     borderRadius: normalize(12),
-    backgroundColor: '#3700ffff',
+    backgroundColor: 'rgba(0, 77, 64, 0.8)', // Dark Green transparent
     borderWidth: 1,
-    borderColor: 'rgba(255, 226, 175, 0.7)',
+    borderColor: 'rgba(0, 230, 118, 0.3)',
   },
   instructionText: {
     color: '#FFFFFF',

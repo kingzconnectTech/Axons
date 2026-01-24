@@ -42,6 +42,15 @@ export const requestUserPermission = async () => {
   }
 };
 
+export const checkNotificationPermission = async () => {
+  const settings = await notifee.getNotificationSettings();
+  if (settings.authorizationStatus === 0) {
+      console.log("User has denied notifications (Notifee check)");
+      return false;
+  }
+  return true;
+};
+
 export const getToken = async () => {
     try {
         const token = await messaging().getToken();

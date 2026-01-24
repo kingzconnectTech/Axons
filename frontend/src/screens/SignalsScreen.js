@@ -40,7 +40,7 @@ export default function SignalsScreen() {
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
-  const INTERSTITIAL_UNIT_ID = __DEV__ ? TestIds.INTERSTITIAL : 'ca-app-pub-3940256099942544/1033173712';
+  const INTERSTITIAL_UNIT_ID = __DEV__ ? TestIds.INTERSTITIAL : 'ca-app-pub-4647863166992264/2993504899';
   const interstitial = useInterstitialAd(INTERSTITIAL_UNIT_ID, {
     requestNonPersonalizedAdsOnly: true,
   });

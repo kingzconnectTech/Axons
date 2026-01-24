@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { View, StyleSheet, ScrollView, Alert, Platform, Linking } from 'react-native';
-import { Text, Button, Surface, useTheme, Switch, Divider, Avatar } from 'react-native-paper';
+import { Text, Button, Surface, useTheme, Switch, Divider, Avatar, TextInput, HelperText } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { responsiveFontSize, normalize } from '../utils/responsive';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ThemeContext } from '../context/ThemeContext';
+import { displayLocalNotification } from '../services/NotificationService';
 
 export default function SettingsScreen({ navigation }) {
   const theme = useTheme();
@@ -93,9 +94,22 @@ export default function SettingsScreen({ navigation }) {
           
           <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
             <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, fontSize: responsiveFontSize(14) }}>Date of Birth</Text>
-            <Text variant="bodyMedium" style={{ color: theme.colors.onSurface, fontSize: responsiveFontSize(14) }}>
-              {userData.dob}
-            </Text>
+            <TextInput
+              mode="outlined"
+              value={userData.dob === 'Not set' ? '' : userData.dob}
+              onChangeText={(text) => setUserData({ ...userData, dob: text })}
+              placeholder="DD/MM/YYYY"
+              placeholderTextColor={theme.colors.onSurfaceVariant}
+              style={{ 
+                height: normalize(40), 
+                width: normalize(140), 
+                backgroundColor: theme.colors.surface,
+                fontSize: responsiveFontSize(14)
+              }}
+              contentStyle={{ paddingVertical: 0 }}
+              textColor={theme.colors.onSurface}
+              theme={{ colors: { outline: theme.colors.outline } }}
+            />
           </View>
         </Surface>
 
@@ -130,6 +144,18 @@ export default function SettingsScreen({ navigation }) {
             labelStyle={{ fontSize: responsiveFontSize(14) }}
           >
             Optimize Battery for Signals
+          </Button>
+
+          <Button 
+            mode="text" 
+            onPress={() => displayLocalNotification('Test Notification', 'This is a test message to verify notifications are working.')} 
+            style={styles.linkButton}
+            contentStyle={{ justifyContent: 'flex-start' }}
+            textColor={theme.colors.secondary}
+            icon="bell-ring-outline"
+            labelStyle={{ fontSize: responsiveFontSize(14) }}
+          >
+            Test Push Notification
           </Button>
         </Surface>
 
@@ -264,13 +290,21 @@ const styles = StyleSheet.create({
     borderRadius: normalize(8),
   },
   logoutButton: {
-    marginBottom: normalize(24),
+    marginBottom: normalize(12),
     borderRadius: normalize(8),
     borderColor: '#FF5252',
+  },
+  deleteButton: {
+    marginBottom: normalize(24),
+    borderRadius: normalize(8),
   },
   versionText: {
     textAlign: 'center',
     color: '#666',
     fontSize: responsiveFontSize(12),
+  },
+  linkButton: {
+    marginBottom: normalize(8),
+    borderRadius: normalize(8),
   }
 });

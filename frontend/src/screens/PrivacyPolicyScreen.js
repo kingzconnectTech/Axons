@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, useTheme, Surface } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
+import { responsiveFontSize, normalize } from '../utils/responsive';
 
 export default function PrivacyPolicyScreen() {
   const theme = useTheme();
@@ -79,7 +80,7 @@ export default function PrivacyPolicyScreen() {
             If you have questions or comments about this policy, please contact us through the support channels provided in the app.
           </Text>
         </Surface>
-        <View style={{ height: 40 }} />
+        <View style={{ height: normalize(40) }} />
       </ScrollView>
     </View>
   );
@@ -97,24 +98,27 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   content: {
-    padding: 16,
+    padding: normalize(16),
   },
   card: {
-    padding: 20,
-    borderRadius: 16,
+    padding: normalize(20),
+    borderRadius: normalize(16),
   },
   title: {
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: normalize(8),
     textAlign: 'center',
+    fontSize: responsiveFontSize(24),
   },
   heading: {
     fontWeight: 'bold',
-    marginTop: 20,
-    marginBottom: 8,
+    marginTop: normalize(20),
+    marginBottom: normalize(8),
+    fontSize: responsiveFontSize(18),
   },
   paragraph: {
-    lineHeight: 22,
-    marginBottom: 4,
+    lineHeight: normalize(22),
+    marginBottom: normalize(4),
+    fontSize: responsiveFontSize(14),
   },
 });

@@ -127,6 +127,7 @@ const NotificationInitializer = () => {
           setFcmToken(token);
       } else {
           console.error("Failed to fetch token after retry.");
+          Alert.alert("Notification Error", "Could not fetch push token. Please check your internet connection or restart the app.");
       }
 
       // Check if app was opened from quit state by notification (FCM)

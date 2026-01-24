@@ -11,6 +11,7 @@ import ParticlesBackground from '../components/ParticlesBackground';
 import AdBanner from '../components/AdBanner';
 import { API_URLS } from '../config';
 import { useBot } from '../context/BotContext';
+import { responsiveFontSize, normalize } from '../utils/responsive';
 
 const { width } = Dimensions.get('window');
 
@@ -124,19 +125,19 @@ export default function HomeScreen({ navigation }) {
     <Surface style={[styles.priceCard, { backgroundColor: theme.colors.surface }]} elevation={2}>
       <View style={styles.priceRow}>
         <View>
-           <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant, fontWeight: 'bold' }}>{pair}</Text>
-           <Text variant="titleMedium" style={{ color: theme.colors.onSurface, marginTop: 4, fontWeight: 'bold' }}>
+           <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant, fontWeight: 'bold', fontSize: responsiveFontSize(12) }}>{pair}</Text>
+           <Text variant="titleMedium" style={{ color: theme.colors.onSurface, marginTop: normalize(4), fontWeight: 'bold', fontSize: responsiveFontSize(16) }}>
              {price.toFixed(pair.includes('JPY') ? 2 : 5)}
            </Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end' }}>
            <MaterialCommunityIcons 
              name={isPositive ? "trending-up" : "trending-down"} 
-             size={16} 
+             size={normalize(16)} 
              color={isPositive ? theme.colors.secondary : theme.colors.error} 
-             style={{ marginRight: 4 }}
+             style={{ marginRight: normalize(4) }}
            />
-           <Text variant="bodyMedium" style={{ color: isPositive ? theme.colors.secondary : theme.colors.error, fontWeight: 'bold' }}>
+           <Text variant="bodyMedium" style={{ color: isPositive ? theme.colors.secondary : theme.colors.error, fontWeight: 'bold', fontSize: responsiveFontSize(14) }}>
              {isPositive ? '+' : ''}{change.toFixed(2)}%
            </Text>
         </View>
@@ -192,14 +193,14 @@ export default function HomeScreen({ navigation }) {
         <ParticlesBackground />
         <View style={styles.headerContent}>
           <View>
-            <Text variant="displaySmall" style={{ color: theme.colors.onPrimaryContainer, fontWeight: '900', letterSpacing: 4 }}>AXON</Text>
-            <Text variant="labelMedium" style={{ color: theme.colors.primary, letterSpacing: 1, marginTop: 4, fontWeight: 'bold' }}>ALGORITHMIC TRADING</Text>
+            <Text variant="displaySmall" style={{ color: theme.colors.onPrimaryContainer, fontWeight: '900', letterSpacing: normalize(4), fontSize: responsiveFontSize(36) }}>AXON</Text>
+            <Text variant="labelMedium" style={{ color: theme.colors.primary, letterSpacing: normalize(1), marginTop: normalize(4), fontWeight: 'bold', fontSize: responsiveFontSize(12) }}>ALGORITHMIC TRADING</Text>
           </View>
           <TouchableOpacity 
             onPress={() => navigation.navigate('Settings')}
-            style={{ padding: 8, backgroundColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', borderRadius: 20 }}
+            style={{ padding: normalize(8), backgroundColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', borderRadius: normalize(20) }}
           >
-            <MaterialCommunityIcons name="cog" size={24} color={theme.colors.onPrimaryContainer} />
+            <MaterialCommunityIcons name="cog" size={normalize(24)} color={theme.colors.onPrimaryContainer} />
           </TouchableOpacity>
         </View>
       </LinearGradient>
@@ -264,12 +265,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerGradient: {
-    paddingTop: 60,
-    paddingBottom: 20,
-    paddingHorizontal: 16,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    marginBottom: 20,
+    paddingTop: normalize(60),
+    paddingBottom: normalize(20),
+    paddingHorizontal: normalize(16),
+    borderBottomLeftRadius: normalize(30),
+    borderBottomRightRadius: normalize(30),
+    marginBottom: normalize(20),
     overflow: 'hidden', // for particles
   },
   headerContent: {
@@ -280,30 +281,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   section: {
-    marginBottom: 24,
-    paddingHorizontal: 16,
+    marginBottom: normalize(24),
+    paddingHorizontal: normalize(16),
   },
   sectionTitle: {
     fontWeight: 'bold',
-    marginBottom: 12,
+    marginBottom: normalize(12),
+    fontSize: responsiveFontSize(16),
   },
   tickerContainer: {
-    paddingRight: 16,
+    paddingRight: normalize(16),
   },
   priceCard: {
-    width: 160,
-    padding: 12,
-    borderRadius: 12,
-    marginRight: 12,
+    width: normalize(160),
+    padding: normalize(12),
+    borderRadius: normalize(12),
+    marginRight: normalize(12),
   },
   priceRow: {
     justifyContent: 'space-between',
-    height: 60,
+    height: normalize(60),
   },
   actionCard: {
-    padding: 16,
-    borderRadius: 16,
-    height: 120,
+    padding: normalize(16),
+    borderRadius: normalize(16),
+    height: normalize(120),
     position: 'relative',
     overflow: 'hidden',
   },
