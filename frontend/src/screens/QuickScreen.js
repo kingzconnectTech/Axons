@@ -159,8 +159,8 @@ export default function QuickScreen({ navigation }) {
       >
         <ParticlesBackground />
         <View style={styles.headerContent}>
-          <Text variant="headlineMedium" style={styles.headerTitle}>AXON TRADING ASSISTANT</Text>
-          <Text variant="bodyMedium" style={styles.headerSubtitle}>FLASH SCAN</Text>
+          <Text variant="headlineMedium" style={styles.headerTitle}>FLASH SCAN</Text>
+          <Text variant="bodyMedium" style={styles.headerSubtitle}>1min Fast Trade</Text>
         </View>
       </LinearGradient>
 
