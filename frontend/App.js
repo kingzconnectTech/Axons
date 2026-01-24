@@ -17,7 +17,6 @@ import NetInfo from '@react-native-community/netinfo';
 
 import HomeScreen from './src/screens/HomeScreen';
 import SignalsScreen from './src/screens/SignalsScreen';
-import AutoTradeScreen from './src/screens/AutoTradeScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import QuickScreen from './src/screens/QuickScreen';
 import LoginScreen from './src/screens/LoginScreen';
