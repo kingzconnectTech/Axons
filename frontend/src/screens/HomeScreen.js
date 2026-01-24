@@ -157,22 +157,22 @@ export default function HomeScreen({ navigation }) {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
         />
-        <MaterialCommunityIcons name={icon} size={32} color={disabled ? theme.colors.onSurfaceVariant : color} />
-        <Text variant="titleMedium" style={{ marginTop: 12, fontWeight: 'bold', color: disabled ? theme.colors.onSurfaceVariant : theme.colors.onSurface }}>{title}</Text>
-        <MaterialCommunityIcons name="arrow-right" size={20} color={theme.colors.onSurfaceVariant} style={{ position: 'absolute', bottom: 12, right: 12 }} />
+        <MaterialCommunityIcons name={icon} size={normalize(32)} color={disabled ? theme.colors.onSurfaceVariant : color} />
+        <Text variant="titleMedium" style={{ marginTop: normalize(12), fontWeight: 'bold', color: disabled ? theme.colors.onSurfaceVariant : theme.colors.onSurface, fontSize: responsiveFontSize(16) }}>{title}</Text>
+        <MaterialCommunityIcons name="arrow-right" size={normalize(20)} color={theme.colors.onSurfaceVariant} style={{ position: 'absolute', bottom: normalize(12), right: normalize(12) }} />
         
         {badge && (
           <View style={{ 
             position: 'absolute', 
-            top: 12, 
-            right: 12, 
+            top: normalize(12), 
+            right: normalize(12), 
             backgroundColor: badge.color, 
-            paddingHorizontal: 8, 
-            paddingVertical: 2, 
-            borderRadius: 10,
+            paddingHorizontal: normalize(8), 
+            paddingVertical: normalize(2), 
+            borderRadius: normalize(10),
             zIndex: 10
           }}>
-            <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>{badge.text}</Text>
+            <Text style={{ color: 'white', fontSize: responsiveFontSize(10), fontWeight: 'bold' }}>{badge.text}</Text>
           </View>
         )}
       </Surface>

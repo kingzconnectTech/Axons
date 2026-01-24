@@ -5,14 +5,15 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
 import { API_URLS } from '../config';
+import { responsiveFontSize, normalize } from '../utils/responsive';
 import ParticlesBackground from '../components/ParticlesBackground';
 import SelectionModal from '../components/SelectionModal';
 import AdBanner from '../components/AdBanner';
 import AnimatedBorderButton from '../components/AnimatedBorderButton';
 
 const { width } = Dimensions.get('window');
-const SCAN_ACCENT = '#3d0dadff';
-const SCAN_ACCENT_DARK = '#1c0472ff';
+const SCAN_ACCENT = '#264f00ff';
+const SCAN_ACCENT_DARK = '#004D40';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -151,7 +152,7 @@ export default function QuickScreen({ navigation }) {
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
       <LinearGradient
-        colors={['#3E1E68', theme.colors.background]}
+        colors={['#004D40', theme.colors.background]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 0.6 }}
         style={styles.headerGradient}
@@ -194,15 +195,15 @@ export default function QuickScreen({ navigation }) {
           <Surface style={[styles.card, { backgroundColor: theme.colors.surface }]} elevation={4}>
              <View style={styles.cardInner}>
                 <View style={[styles.iconBox, { backgroundColor: 'rgba(255, 226, 175, 0.15)' }]}>
-                   <MaterialCommunityIcons name="currency-usd" size={32} color={SCAN_ACCENT_DARK} />
+                   <MaterialCommunityIcons name="currency-usd" size={normalize(32)} color={SCAN_ACCENT_DARK} />
                 </View>
-                <View style={{ flex: 1, marginLeft: 16 }}>
-                   <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant, letterSpacing: 1 }}>SELECTED ASSET</Text>
-                   <Text variant="headlineSmall" style={{ color: theme.colors.onSurface, fontWeight: 'bold' }}>
+                <View style={{ flex: 1, marginLeft: normalize(16) }}>
+                   <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant, letterSpacing: 1, fontSize: responsiveFontSize(12) }}>SELECTED ASSET</Text>
+                   <Text variant="headlineSmall" style={{ color: theme.colors.onSurface, fontWeight: 'bold', fontSize: responsiveFontSize(24) }}>
                       {!selectedPairs || selectedPairs.length === 0 ? 'Select Pairs' : (selectedPairs.length > 1 ? `${selectedPairs.length} Pairs Selected` : (pairs.find(p => p.value === selectedPairs[0])?.label || selectedPairs[0] || ''))}
                    </Text>
                 </View>
-                <MaterialCommunityIcons name="chevron-down" size={28} color={theme.colors.onSurfaceVariant} />
+                <MaterialCommunityIcons name="chevron-down" size={normalize(28)} color={theme.colors.onSurfaceVariant} />
              </View>
           </Surface>
         </TouchableOpacity>
@@ -210,10 +211,10 @@ export default function QuickScreen({ navigation }) {
         {/* Analyze Button */}
         <View style={styles.actionContainer}>
            <AnimatedBorderButton
-              borderRadius={28}
-              colors={['#00D1FF', '#FFFFFF', '#00D1FF']}
+              borderRadius={normalize(28)}
+              colors={['#00E676', '#FFFFFF', '#00E676']}
               duration={loading ? 500 : 2000}
-              containerStyle={{ width: '100%', elevation: 4, shadowColor: '#6a00ffff', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}
+              containerStyle={{ width: '100%', elevation: 4, shadowColor: '#00E676', shadowOffset: { width: 0, height: normalize(4) }, shadowOpacity: 0.3, shadowRadius: normalize(8) }}
            >
              <TouchableOpacity 
                 onPress={handleAnalyze} 
@@ -222,7 +223,7 @@ export default function QuickScreen({ navigation }) {
                 style={[
                   styles.analyzeButton,
                   {
-                    backgroundColor: '#5D2F77',
+                    backgroundColor: '#004D40',
                     elevation: 0, // Remove elevation from inner button as it's on container
                     margin: 0, // Reset margin
                     width: '100%', // Ensure full width
@@ -259,17 +260,17 @@ export default function QuickScreen({ navigation }) {
             <View style={styles.resultHeader}>
               <View>
                   <View style={[styles.badge, { backgroundColor: getActionColor(result.action) + '20', alignSelf: 'flex-start' }]}>
-                     <Text style={{ color: getActionColor(result.action), fontWeight: '900', letterSpacing: 1 }}>
+                     <Text style={{ color: getActionColor(result.action), fontWeight: '900', letterSpacing: 1, fontSize: responsiveFontSize(14) }}>
                         {result.action === 'NEUTRAL' ? 'WAIT' : 'SIGNAL FOUND'}
                      </Text>
                   </View>
                   {result.pair && (
-                      <Text style={{ color: theme.colors.onSurface, fontSize: 20, fontWeight: 'bold', marginTop: 8 }}>
+                      <Text style={{ color: theme.colors.onSurface, fontSize: responsiveFontSize(20), fontWeight: 'bold', marginTop: normalize(8) }}>
                           {result.pair.replace('-OTC', ' (OTC)')}
                       </Text>
                   )}
               </View>
-              <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 12 }}>
+              <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: responsiveFontSize(12) }}>
                  {new Date(result.timestamp * 1000).toLocaleTimeString()}
               </Text>
             </View>
@@ -277,13 +278,13 @@ export default function QuickScreen({ navigation }) {
             <View style={styles.mainResult}>
                <MaterialCommunityIcons 
                   name={getActionIcon(result.action)} 
-                  size={64} 
+                  size={normalize(64)} 
                   color={getActionColor(result.action)} 
                />
                <Text style={[styles.actionText, { color: getActionColor(result.action) }]}>
                   {result.action === 'NEUTRAL' ? 'NO SIGNAL' : result.action}
                </Text>
-               <Text style={{ color: theme.colors.onSurfaceVariant, marginTop: 4 }}>
+               <Text style={{ color: theme.colors.onSurfaceVariant, marginTop: normalize(4), fontSize: responsiveFontSize(14) }}>
                   1 Minute Expiry Recommended
                </Text>
             </View>
@@ -327,12 +328,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerGradient: {
-    paddingTop: 70,
-    paddingBottom: 40,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    marginBottom: 20,
+    paddingTop: normalize(70),
+    paddingBottom: normalize(40),
+    paddingHorizontal: normalize(20),
+    borderBottomLeftRadius: normalize(30),
+    borderBottomRightRadius: normalize(30),
+    marginBottom: normalize(20),
   },
   headerContent: {
     alignItems: 'center',
@@ -345,50 +346,52 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.2)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
+    fontSize: responsiveFontSize(28),
   },
   headerSubtitle: {
     color: 'rgba(255,255,255,0.9)',
     fontWeight: 'bold',
     letterSpacing: 1,
     marginTop: 4,
+    fontSize: responsiveFontSize(14),
   },
   scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
+    padding: normalize(20),
+    paddingBottom: normalize(40),
   },
   chipsContainer: {
     flexDirection: 'row',
-    marginBottom: 20,
+    marginBottom: normalize(20),
   },
   chip: {
-    marginRight: 8,
-    borderRadius: 20,
+    marginRight: normalize(8),
+    borderRadius: normalize(20),
   },
   card: {
-    borderRadius: 20,
-    marginBottom: 24,
+    borderRadius: normalize(20),
+    marginBottom: normalize(24),
     overflow: 'hidden',
   },
   cardInner: {
-    padding: 20,
+    padding: normalize(20),
     flexDirection: 'row',
     alignItems: 'center',
   },
   iconBox: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+    width: normalize(56),
+    height: normalize(56),
+    borderRadius: normalize(16),
     justifyContent: 'center',
     alignItems: 'center',
   },
   actionContainer: {
     alignItems: 'stretch',
-    marginBottom: 32,
+    marginBottom: normalize(32),
   },
   analyzeButton: {
     width: '100%',
-    height: 56,
-    borderRadius: 28,
+    height: normalize(56),
+    borderRadius: normalize(28),
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,
@@ -399,54 +402,54 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: 'white',
-    fontSize: 18,
+    fontSize: responsiveFontSize(18),
     fontWeight: 'bold',
     letterSpacing: 1,
   },
   resultCard: {
-    borderRadius: 24,
-    padding: 24,
+    borderRadius: normalize(24),
+    padding: normalize(24),
     overflow: 'hidden',
   },
   resultHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: normalize(20),
   },
   badge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingHorizontal: normalize(12),
+    paddingVertical: normalize(6),
+    borderRadius: normalize(8),
   },
   mainResult: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: normalize(24),
   },
   actionText: {
-    fontSize: 42,
+    fontSize: responsiveFontSize(42),
     fontWeight: '900',
     letterSpacing: 2,
-    marginTop: 8,
+    marginTop: normalize(8),
   },
   meterContainer: {
-    marginBottom: 20,
+    marginBottom: normalize(20),
   },
   meterBackground: {
-    height: 12,
+    height: normalize(12),
     backgroundColor: 'rgba(0,0,0,0.1)',
-    borderRadius: 6,
+    borderRadius: normalize(6),
     overflow: 'hidden',
-    marginBottom: 8,
+    marginBottom: normalize(8),
   },
   meterFill: {
     height: '100%',
-    borderRadius: 6,
+    borderRadius: normalize(6),
   },
   meterText: {
     textAlign: 'right',
     fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: responsiveFontSize(12),
   },
   strategyInfo: {
     flexDirection: 'row',
@@ -457,18 +460,18 @@ const styles = StyleSheet.create({
   instructionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 16,
-    padding: 12,
-    borderRadius: 12,
+    marginTop: normalize(16),
+    padding: normalize(12),
+    borderRadius: normalize(12),
     backgroundColor: '#3700ffff',
     borderWidth: 1,
     borderColor: 'rgba(255, 226, 175, 0.7)',
   },
   instructionText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: responsiveFontSize(13),
     fontWeight: '600',
-    marginLeft: 10,
+    marginLeft: normalize(10),
     flex: 1,
   }
 });

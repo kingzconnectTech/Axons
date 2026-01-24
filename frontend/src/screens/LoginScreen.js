@@ -137,40 +137,40 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: 'center',
-    padding: 20,
+    padding: normalize(20),
   },
   card: {
-    padding: 24,
-    borderRadius: 24,
+    padding: normalize(24),
+    borderRadius: normalize(24),
     alignItems: 'center',
   },
   title: {
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: normalize(8),
   },
   subtitle: {
-    marginBottom: 32,
+    marginBottom: normalize(32),
   },
   form: {
     width: '100%',
   },
   input: {
-    marginBottom: 16,
+    marginBottom: normalize(16),
     backgroundColor: 'transparent',
   },
   button: {
-    borderRadius: 10,
-    paddingVertical: 6,
+    borderRadius: normalize(10),
+    paddingVertical: normalize(6),
     elevation: 0,
   },
   buttonLabel: {
-    fontSize: 16,
+    fontSize: responsiveFontSize(16),
     fontWeight: 'bold',
     letterSpacing: 1,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 24,
+    marginTop: normalize(24),
   },
 });

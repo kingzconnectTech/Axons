@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { View, StyleSheet, ScrollView, Alert, Platform, Linking } from 'react-native';
 import { Text, Button, Surface, useTheme, Switch, Divider, Avatar } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
+import { responsiveFontSize, normalize } from '../utils/responsive';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -59,8 +60,8 @@ export default function SettingsScreen({ navigation }) {
         {/* Profile Section */}
         <Surface style={[styles.section, { backgroundColor: theme.colors.surface }]} elevation={2}>
           <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="account-circle" size={24} color={theme.colors.primary} />
-            <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+            <MaterialCommunityIcons name="account-circle" size={normalize(24)} color={theme.colors.primary} />
+            <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface, fontSize: responsiveFontSize(16) }]}>
               My Profile
             </Text>
           </View>
@@ -68,30 +69,31 @@ export default function SettingsScreen({ navigation }) {
           
           <View style={styles.profileHeader}>
             <Avatar.Text 
-              size={64} 
+              size={normalize(64)} 
               label={userData.name ? userData.name.substring(0, 2).toUpperCase() : 'TR'} 
               style={{ backgroundColor: theme.colors.primary }}
+              labelStyle={{ fontSize: responsiveFontSize(24) }}
             />
             <View style={styles.profileInfo}>
-              <Text variant="titleLarge" style={{ color: theme.colors.onSurface, fontWeight: 'bold' }}>
+              <Text variant="titleLarge" style={{ color: theme.colors.onSurface, fontWeight: 'bold', fontSize: responsiveFontSize(22) }}>
                 {userData.name}
               </Text>
-              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, fontSize: responsiveFontSize(14) }}>
                 {userData.email}
               </Text>
             </View>
           </View>
 
           <View style={styles.infoRow}>
-            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>User ID</Text>
-            <Text variant="bodyMedium" style={{ color: theme.colors.onSurface, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }}>
+            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, fontSize: responsiveFontSize(14) }}>User ID</Text>
+            <Text variant="bodyMedium" style={{ color: theme.colors.onSurface, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontSize: responsiveFontSize(14) }}>
               {userData.uid.substring(0, 8)}...
             </Text>
           </View>
           
           <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
-            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>Date of Birth</Text>
-            <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
+            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, fontSize: responsiveFontSize(14) }}>Date of Birth</Text>
+            <Text variant="bodyMedium" style={{ color: theme.colors.onSurface, fontSize: responsiveFontSize(14) }}>
               {userData.dob}
             </Text>
           </View>
@@ -100,15 +102,15 @@ export default function SettingsScreen({ navigation }) {
         {/* Preferences */}
         <Surface style={[styles.section, { backgroundColor: theme.colors.surface }]} elevation={2}>
           <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="bell-ring" size={24} color={theme.colors.tertiary} />
-            <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+            <MaterialCommunityIcons name="bell-ring" size={normalize(24)} color={theme.colors.tertiary} />
+            <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface, fontSize: responsiveFontSize(16) }]}>
               App Preferences
             </Text>
           </View>
           <Divider style={styles.divider} />
           
           <View style={styles.row}>
-            <Text variant="bodyLarge" style={{ color: theme.colors.onSurface }}>Dark Mode</Text>
+            <Text variant="bodyLarge" style={{ color: theme.colors.onSurface, fontSize: responsiveFontSize(16) }}>Dark Mode</Text>
             <Switch
               value={isDark}
               onValueChange={toggleTheme}
@@ -125,6 +127,7 @@ export default function SettingsScreen({ navigation }) {
             contentStyle={{ justifyContent: 'flex-start' }}
             textColor={theme.colors.tertiary}
             icon="battery-alert"
+            labelStyle={{ fontSize: responsiveFontSize(14) }}
           >
             Optimize Battery for Signals
           </Button>
@@ -132,8 +135,8 @@ export default function SettingsScreen({ navigation }) {
 
         <Surface style={[styles.section, { backgroundColor: theme.colors.surface }]} elevation={2}>
           <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="shield-account" size={24} color={theme.colors.secondary} />
-            <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+            <MaterialCommunityIcons name="shield-account" size={normalize(24)} color={theme.colors.secondary} />
+            <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface, fontSize: responsiveFontSize(16) }]}>
               Legal & Support
             </Text>
           </View>
@@ -146,6 +149,7 @@ export default function SettingsScreen({ navigation }) {
             contentStyle={{ justifyContent: 'flex-start' }}
             textColor={theme.colors.primary}
             icon="file-document-outline"
+            labelStyle={{ fontSize: responsiveFontSize(14) }}
           >
             Privacy Policy
           </Button>
@@ -157,6 +161,7 @@ export default function SettingsScreen({ navigation }) {
             contentStyle={{ justifyContent: 'flex-start' }}
             textColor={theme.colors.primary}
             icon="email-outline"
+            labelStyle={{ fontSize: responsiveFontSize(14) }}
           >
             Contact Us
           </Button>
@@ -167,8 +172,9 @@ export default function SettingsScreen({ navigation }) {
           onPress={saveSettings}
           loading={isLoading}
           style={styles.saveButton}
-          contentStyle={{ height: 50 }}
+          contentStyle={{ height: normalize(50) }}
           icon="content-save"
+          labelStyle={{ fontSize: responsiveFontSize(16) }}
         >
           Save Settings
         </Button>
@@ -179,11 +185,12 @@ export default function SettingsScreen({ navigation }) {
           style={styles.logoutButton}
           textColor={theme.colors.error}
           icon="logout"
+          labelStyle={{ fontSize: responsiveFontSize(16) }}
         >
           Log Out
         </Button>
         
-        <Text style={styles.versionText}>Axon v1.0.0</Text>
+        <Text style={[styles.versionText, { fontSize: responsiveFontSize(12) }]}>Axon v1.0.0</Text>
       </ScrollView>
     </View>
   );
@@ -201,69 +208,69 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   content: {
-    padding: 16,
-    paddingBottom: 40,
+    padding: normalize(16),
+    paddingBottom: normalize(40),
   },
   section: {
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 20,
+    padding: normalize(16),
+    borderRadius: normalize(12),
+    marginBottom: normalize(20),
     backgroundColor: '#161B29',
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: normalize(12),
   },
   profileHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
-    marginTop: 4,
+    marginBottom: normalize(20),
+    marginTop: normalize(4),
   },
   profileInfo: {
-    marginLeft: 16,
+    marginLeft: normalize(16),
     flex: 1,
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: normalize(12),
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.05)',
   },
   sectionTitle: {
-    marginLeft: 10,
+    marginLeft: normalize(10),
     fontWeight: 'bold',
   },
   divider: {
-    marginBottom: 16,
+    marginBottom: normalize(16),
     backgroundColor: 'rgba(255,255,255,0.1)',
   },
   input: {
-    marginBottom: 16,
+    marginBottom: normalize(16),
     backgroundColor: '#1F2636',
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: normalize(8),
   },
   saveButton: {
-    marginTop: 8,
-    marginBottom: 24,
-    borderRadius: 8,
+    marginTop: normalize(8),
+    marginBottom: normalize(24),
+    borderRadius: normalize(8),
   },
   logoutButton: {
-    marginBottom: 24,
-    borderRadius: 8,
+    marginBottom: normalize(24),
+    borderRadius: normalize(8),
     borderColor: '#FF5252',
   },
   versionText: {
     textAlign: 'center',
     color: '#666',
-    fontSize: 12,
+    fontSize: responsiveFontSize(12),
   }
 });

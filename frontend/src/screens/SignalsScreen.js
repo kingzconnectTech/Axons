@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
 import { useInterstitialAd, TestIds } from '../utils/SafeMobileAds';
 import { API_URLS } from '../config';
+import { responsiveFontSize, normalize } from '../utils/responsive';
 import { useBot } from '../context/BotContext';
 import ParticlesBackground from '../components/ParticlesBackground';
 import SelectionModal from '../components/SelectionModal';
@@ -423,8 +424,8 @@ export default function SignalsScreen() {
                 </Text>
                 
                 <View style={styles.confidenceBar}>
-                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8 }}>CONFIDENCE LEVEL</Text>
-                  <Text variant="headlineLarge" style={{ color: theme.colors.primary, fontWeight: 'bold' }}>
+                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, fontSize: responsiveFontSize(14) }}>CONFIDENCE LEVEL</Text>
+                  <Text variant="headlineLarge" style={{ color: theme.colors.primary, fontWeight: 'bold', fontSize: responsiveFontSize(32) }}>
                     {signal.confidence.toFixed(1)}%
                   </Text>
                 </View>
@@ -583,47 +584,47 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerGradient: {
-    paddingTop: 60,
-    paddingBottom: 40,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
+    paddingTop: normalize(60),
+    paddingBottom: normalize(40),
+    paddingHorizontal: normalize(20),
+    borderBottomLeftRadius: normalize(30),
+    borderBottomRightRadius: normalize(30),
     overflow: 'hidden',
   },
   headerContent: {
     alignItems: 'center',
   },
   content: {
-    padding: 16,
-    marginTop: -20,
+    padding: normalize(16),
+    marginTop: normalize(-20),
   },
   card: {
-    borderRadius: 24,
-    marginBottom: 20,
+    borderRadius: normalize(24),
+    marginBottom: normalize(20),
     overflow: 'hidden',
     elevation: 4,
   },
   cardGradient: {
-    padding: 20,
+    padding: normalize(20),
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: normalize(20),
   },
   iconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: normalize(40),
+    height: normalize(40),
+    borderRadius: normalize(12),
     justifyContent: 'center',
     alignItems: 'center',
   },
   inputGroup: {
-    gap: 12,
+    gap: normalize(12),
   },
   input: {
     backgroundColor: 'transparent',
-    fontSize: 14,
+    fontSize: responsiveFontSize(14),
   },
   row: {
     flexDirection: 'row',
@@ -633,35 +634,35 @@ const styles = StyleSheet.create({
     width: '48%',
   },
   analyzeButton: {
-    marginTop: 16,
-    borderRadius: 16,
+    marginTop: normalize(16),
+    borderRadius: normalize(16),
     shadowColor: '#00D1FF',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: normalize(4) },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowRadius: normalize(8),
     elevation: 6,
     backgroundColor: '#00D1FF',
   },
   stopButton: {
-    marginTop: 16,
-    borderRadius: 16,
+    marginTop: normalize(16),
+    borderRadius: normalize(16),
     shadowColor: '#FF5252',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: normalize(4) },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowRadius: normalize(8),
     elevation: 6,
     backgroundColor: '#FF5252',
   },
   resultCard: {
-    borderRadius: 24,
+    borderRadius: normalize(24),
     overflow: 'hidden',
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: normalize(8) },
     shadowOpacity: 0.4,
-    shadowRadius: 12,
+    shadowRadius: normalize(12),
     elevation: 8,
   },
   resultGradient: {
-    padding: 24,
+    padding: normalize(24),
     alignItems: 'center',
   },
   resultHeader: {
@@ -669,33 +670,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: normalize(20),
   },
   signalDisplay: {
     alignItems: 'center',
     width: '100%',
+    marginBottom: normalize(24),
   },
   signalIconRing: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 4,
+    width: normalize(100),
+    height: normalize(100),
+    borderRadius: normalize(50),
+    borderWidth: normalize(4),
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.2)',
   },
   confidenceBar: {
-    marginTop: 24,
+    marginTop: normalize(24),
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.05)',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 20,
+    paddingVertical: normalize(16),
+    paddingHorizontal: normalize(32),
+    borderRadius: normalize(20),
     width: '100%',
   },
   dashboardCard: {
-    borderRadius: 24,
-    marginBottom: 20,
+    borderRadius: normalize(24),
+    marginBottom: normalize(20),
     overflow: 'hidden',
     elevation: 6,
   },
@@ -703,24 +705,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: normalize(20),
   },
   statusDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: normalize(12),
+    height: normalize(12),
+    borderRadius: normalize(6),
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: normalize(12),
     justifyContent: 'space-between',
   },
   statItem: {
     width: '47%',
-    padding: 16,
+    padding: normalize(16),
     backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 16,
+    borderRadius: normalize(16),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -728,19 +730,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 8,
+    paddingVertical: normalize(8),
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.05)',
   },
   historyBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: normalize(8),
+    paddingVertical: normalize(4),
+    borderRadius: normalize(12),
     backgroundColor: 'rgba(255,255,255,0.05)',
-    marginRight: 8,
+    marginRight: normalize(8),
   },
   historyStatus: {
-    minWidth: 60,
+    minWidth: normalize(60),
     alignItems: 'flex-end',
   },
 });
