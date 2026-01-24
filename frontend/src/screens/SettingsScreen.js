@@ -182,7 +182,7 @@ export default function SettingsScreen({ navigation }) {
 
           <Button 
             mode="text" 
-            onPress={() => Linking.openURL('mailto:support@axon.com')} 
+            onPress={() => Linking.openURL('mailto:axontrades911@gmail.com')} 
             style={styles.linkButton}
             contentStyle={{ justifyContent: 'flex-start' }}
             textColor={theme.colors.primary}
