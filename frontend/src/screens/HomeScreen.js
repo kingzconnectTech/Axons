@@ -221,13 +221,6 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.row}>
             <QuickActionCard title="Signals" icon="radar" route="Signals" color="#2196f3" />
             <View style={{ width: 16 }} />
-            <QuickActionCard 
-              title="Auto Trade" 
-              icon="robot" 
-              route="AutoTrade" 
-              color="#4caf50"
-            />
-            <View style={{ width: 16 }} />
             <QuickActionCard title="Flash" icon="flash" route="Quick" color="#FF9800" />
         </View>
       </View>

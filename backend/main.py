@@ -3,10 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import os
 from dotenv import load_dotenv
-from routers import signals, autotrade, market
-from services.queue_service import queue_service
-from worker_daemon import WorkerDaemon
-import threading
+from routers import signals, market
 
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
@@ -14,17 +11,7 @@ app = FastAPI(title="Axon Trading App")
 
 @app.on_event("startup")
 def startup_event():
-    try:
-        with open("startup_debug.log", "a") as f:
-            f.write(f"Startup event fired. Queue local_mode: {queue_service.local_mode}\n")
-    except:
-        pass
-        
-    if queue_service.local_mode:
-        print("Starting local worker daemon thread...")
-        worker = WorkerDaemon(local_queue=queue_service.local_queue)
-        t = threading.Thread(target=worker.run, daemon=True)
-        t.start()
+    pass
 
 app.add_middleware(
     CORSMiddleware,
@@ -35,7 +22,6 @@ app.add_middleware(
 )
 
 app.include_router(signals.router, prefix="/api/signals", tags=["signals"])
-app.include_router(autotrade.router, prefix="/api/autotrade", tags=["autotrade"])
 app.include_router(market.router, prefix="/api/market", tags=["market"])
 
 @app.get("/")

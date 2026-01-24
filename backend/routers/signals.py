@@ -3,10 +3,19 @@ from typing import List
 from services.iq_service import iq_manager
 from services.strategy_service import StrategyService, resample_to_n_minutes
 from services.signal_bot_service import signal_bot_manager
-from models.schemas import SignalRequest, SignalResponse, SignalBotStart, SignalBotStatus, SignalBotStop
+from services.status_store import status_store
+from models.schemas import SignalRequest, SignalResponse, SignalBotStart, SignalBotStatus, SignalBotStop, TokenUpdate
 import time
 
 router = APIRouter()
+
+@router.post("/token")
+def update_token(data: TokenUpdate):
+    try:
+        status_store.update_token(data.email, data.token)
+        return {"status": "token_updated"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/start")
 def start_signal_stream(data: SignalBotStart):

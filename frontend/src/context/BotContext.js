@@ -7,8 +7,6 @@ import { API_URLS } from '../config';
 const BotContext = createContext();
 
 export const BotProvider = ({ children }) => {
-  const [isBotRunning, setIsBotRunning] = useState(false);
-  const [botStats, setBotStats] = useState(null);
   const [email, setEmail] = useState(null);
   const [fcmToken, setFcmToken] = useState(null);
 
@@ -33,35 +31,11 @@ export const BotProvider = ({ children }) => {
     loadIdentity();
   }, []);
 
-  const fetchStatus = async () => {
-    if (!email) return;
-    try {
-      const response = await axios.get(`${API_URLS.AUTOTRADE}/status/${email}`);
-      if (response.data) {
-        setBotStats(response.data);
-        setIsBotRunning(response.data.active);
-      }
-    } catch (error) {
-      console.log("[BotContext] Status fetch error:", error.message);
-    }
-  };
-
-  // Poll for status when app is active
-  useEffect(() => {
-    let interval;
-    if (email) {
-      fetchStatus(); // Initial fetch
-      interval = setInterval(fetchStatus, 5000);
-    }
-    return () => clearInterval(interval);
-  }, [email]);
-
   // Handle App State changes (Background -> Active)
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (nextAppState === 'active' && email) {
-        console.log("App resumed - refreshing bot status & syncing token");
-        fetchStatus();
+        console.log("App resumed - syncing token");
         syncDeviceToken();
       }
     });
@@ -75,7 +49,7 @@ export const BotProvider = ({ children }) => {
     if (email && fcmToken) {
       try {
         console.log(`[BotContext] Syncing token for ${email}...`);
-        await axios.post(`${API_URLS.AUTOTRADE}/token`, {
+        await axios.post(`${API_URLS.SIGNALS}/token`, {
           email: email,
           token: fcmToken
         });
@@ -87,7 +61,7 @@ export const BotProvider = ({ children }) => {
         setTimeout(async () => {
              try {
                  console.log("[BotContext] Retrying token sync...");
-                 await axios.post(`${API_URLS.AUTOTRADE}/token`, {
+                 await axios.post(`${API_URLS.SIGNALS}/token`, {
                     email: email,
                     token: fcmToken
                  });
@@ -108,7 +82,7 @@ export const BotProvider = ({ children }) => {
   }, [email, fcmToken]);
 
   return (
-    <BotContext.Provider value={{ isBotRunning, setIsBotRunning, botStats, setBotStats, fetchStatus, email, setEmail, fcmToken, setFcmToken, syncDeviceToken }}>
+    <BotContext.Provider value={{ email, setEmail, fcmToken, setFcmToken, syncDeviceToken }}>
       {children}
     </BotContext.Provider>
   );

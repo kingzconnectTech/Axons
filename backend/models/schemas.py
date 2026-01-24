@@ -37,29 +37,6 @@ class SignalResponse(BaseModel):
     timestamp: float
     reason: Optional[str] = None
 
-class AutoTradeConfig(BaseModel):
-    email: str
-    password: str
-    account_type: str = "PRACTICE"  # PRACTICE or REAL
-    pairs: List[str] = ["EURUSD-OTC"]
-    amount: float
-    timeframe: float
-    strategy: str
-    stop_loss: float
-    take_profit: float
-    max_consecutive_losses: int
-    max_trades: int
-
-class TradeStatus(BaseModel):
-    active: bool
-    total_trades: int
-    wins: int
-    losses: int
-    profit: float
-    consecutive_losses: int
-    balance: float = 0.0
-    currency: Optional[str] = None
-
 class TokenUpdate(BaseModel):
     email: str
     token: str
