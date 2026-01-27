@@ -1,0 +1,71 @@
+{
+  "expo": {
+    "name": "Axon",
+    "slug": "axon",
+    "version": "1.0.0",
+    "icon": "./assets/Axon.png",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/Axon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#3E1E68"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.axon.techboi"
+    },
+    "android": {
+      "package": "com.axon.techboi",
+      "googleServicesFile": "./google-services.json",
+      "icon": "./assets/Axon.png",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/Axon.png",
+        "backgroundColor": "#3E1E68"
+      },
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.VIBRATE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.POST_NOTIFICATIONS"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-4647863166992264~5710161013",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          },
+          "android": {
+            "extraMavenRepos": [
+              "../../node_modules/@notifee/react-native/android/libs"
+            ],
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "13ba9648-45b1-4723-a646-1291ddef18d9"
+      }
+    },
+    "owner": "kingzconnect"
+  }
+}
