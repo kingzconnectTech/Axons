@@ -53,6 +53,7 @@
             "useFrameworks": "static"
           },
           "android": {
+            "kotlinVersion": "1.9.24",
             "extraMavenRepos": [
               "../../node_modules/@notifee/react-native/android/libs"
             ],

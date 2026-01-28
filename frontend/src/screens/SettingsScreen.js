@@ -4,7 +4,7 @@ import { Text, Button, Surface, useTheme, Switch, Divider, Avatar, TextInput, He
 import { LinearGradient } from 'expo-linear-gradient';
 import { responsiveFontSize, normalize } from '../utils/responsive';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import auth from '@react-native-firebase/auth';
+// import auth from '@react-native-firebase/auth';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ThemeContext } from '../context/ThemeContext';
 import { displayLocalNotification } from '../services/NotificationService';

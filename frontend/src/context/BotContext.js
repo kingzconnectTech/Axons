@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { API_URLS } from '../config';
 
-import auth from '@react-native-firebase/auth';
+// import auth from '@react-native-firebase/auth';
 
 const BotContext = createContext();
 
@@ -12,30 +12,30 @@ export const BotProvider = ({ children }) => {
   const [email, setEmail] = useState(null);
   const [fcmToken, setFcmToken] = useState(null);
 
-  useEffect(() => {
-    // Listen to Firebase Auth changes to keep email in sync
-    const unsubscribe = auth().onAuthStateChanged(async (user) => {
-      if (user && user.email) {
-        console.log("[BotContext] User authenticated:", user.email);
-        setEmail(user.email);
-        // Also save to AsyncStorage for persistence/legacy
-        await AsyncStorage.setItem('user_email', user.email);
-      } else {
-        // Fallback to anonymous ID if logged out
-        const savedEmail = await AsyncStorage.getItem('device_uuid');
-        if (savedEmail) {
-            setEmail(savedEmail);
-        } else {
-             // Create new anon ID if absolutely needed, or wait
-             const newAnon = `anon_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-             await AsyncStorage.setItem('device_uuid', newAnon);
-             setEmail(newAnon);
-        }
-      }
-    });
+  // useEffect(() => {
+  //   // Listen to Firebase Auth changes to keep email in sync
+  //   const unsubscribe = auth().onAuthStateChanged(async (user) => {
+  //     if (user && user.email) {
+  //       console.log("[BotContext] User authenticated:", user.email);
+  //       setEmail(user.email);
+  //       // Also save to AsyncStorage for persistence/legacy
+  //       await AsyncStorage.setItem('user_email', user.email);
+  //     } else {
+  //       // Fallback to anonymous ID if logged out
+  //       const savedEmail = await AsyncStorage.getItem('device_uuid');
+  //       if (savedEmail) {
+  //           setEmail(savedEmail);
+  //       } else {
+  //            // Create new anon ID if absolutely needed, or wait
+  //            const newAnon = `anon_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+  //            await AsyncStorage.setItem('device_uuid', newAnon);
+  //            setEmail(newAnon);
+  //       }
+  //     }
+  //   });
 
-    return unsubscribe;
-  }, []);
+  //   return unsubscribe;
+  // }, []);
 
   // Handle App State changes (Background -> Active)
   useEffect(() => {

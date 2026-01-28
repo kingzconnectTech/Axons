@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, TextInput, Button, useTheme, Surface, HelperText } from 'react-native-paper';
-import auth from '@react-native-firebase/auth';
+// import auth from '@react-native-firebase/auth';
 import { LinearGradient } from 'expo-linear-gradient';
 import { responsiveFontSize, normalize } from '../utils/responsive';
 import ParticlesBackground from '../components/ParticlesBackground';

@@ -44,21 +44,22 @@ let useInterstitialAd = () => {
   }), []);
 };
 
-if (!isExpoGo) {
-  try {
-    // Use require to conditionally load the native module
-    const RNGoogleMobileAds = require('react-native-google-mobile-ads');
+// FORCE MOCK FOR DEBUGGING
+// if (!isExpoGo) {
+//   try {
+//     // Use require to conditionally load the native module
+//     const RNGoogleMobileAds = require('react-native-google-mobile-ads');
     
-    // Assign real implementations
-    mobileAds = RNGoogleMobileAds.default;
-    BannerAd = RNGoogleMobileAds.BannerAd;
-    BannerAdSize = RNGoogleMobileAds.BannerAdSize;
-    TestIds = RNGoogleMobileAds.TestIds;
-    useInterstitialAd = RNGoogleMobileAds.useInterstitialAd;
-  } catch (e) {
-    console.warn('Failed to load react-native-google-mobile-ads', e);
-  }
-}
+//     // Assign real implementations
+//     mobileAds = RNGoogleMobileAds.default;
+//     BannerAd = RNGoogleMobileAds.BannerAd;
+//     BannerAdSize = RNGoogleMobileAds.BannerAdSize;
+//     TestIds = RNGoogleMobileAds.TestIds;
+//     useInterstitialAd = RNGoogleMobileAds.useInterstitialAd;
+//   } catch (e) {
+//     console.warn('Failed to load react-native-google-mobile-ads', e);
+//   }
+// }
 
 export default mobileAds;
 export { BannerAd, BannerAdSize, TestIds, useInterstitialAd };

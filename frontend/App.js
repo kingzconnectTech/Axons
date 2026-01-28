@@ -5,11 +5,11 @@ import { NavigationContainer, DarkTheme as NavDarkTheme, DefaultTheme as NavDefa
 import { createStackNavigator } from '@react-navigation/stack';
 import { Provider as PaperProvider, MD3DarkTheme, MD3LightTheme, adaptNavigationTheme } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import auth from '@react-native-firebase/auth';
+// import auth from '@react-native-firebase/auth';
 import { ThemeContext } from './src/context/ThemeContext';
 import { BotProvider, useBot } from './src/context/BotContext';
-import { requestUserPermission, getToken, onTokenRefresh, onForegroundMessage, onNotificationOpenedApp, getInitialNotification, setupNotificationChannel, onNotifeeForegroundEvent, getInitialNotifeeNotification } from './src/services/NotificationService';
-import mobileAds from './src/utils/SafeMobileAds';
+// import { requestUserPermission, getToken, onTokenRefresh, onForegroundMessage, onNotificationOpenedApp, getInitialNotification, setupNotificationChannel, onNotifeeForegroundEvent, getInitialNotifeeNotification } from './src/services/NotificationService';
+// import mobileAds from './src/utils/SafeMobileAds';
 import { API_URLS } from './src/config';
 import axios from 'axios';
 import NoInternetScreen from './src/screens/NoInternetScreen';
@@ -99,74 +99,74 @@ const customLightTheme = {
 };
 
 const NotificationInitializer = () => {
-  const { setFcmToken } = useBot();
+  // const { setFcmToken } = useBot();
 
-  useEffect(() => {
-    const handleNotificationPress = (notification) => {
-        Alert.alert(
-            notification.title || 'Notification',
-            notification.body || 'No details available',
-            [{ text: 'OK' }]
-        );
-    };
+  // useEffect(() => {
+  //   const handleNotificationPress = (notification) => {
+  //       Alert.alert(
+  //           notification.title || 'Notification',
+  //           notification.body || 'No details available',
+  //           [{ text: 'OK' }]
+  //       );
+  //   };
 
-    const init = async () => {
-      await setupNotificationChannel();
-      await requestUserPermission();
+  //   const init = async () => {
+  //     await setupNotificationChannel();
+  //     await requestUserPermission();
       
-      let token = await getToken();
-      if (!token) {
-          console.log("Retrying token fetch in 3s...");
-          await new Promise(r => setTimeout(r, 3000));
-          token = await getToken();
-      }
+  //     let token = await getToken();
+  //     if (!token) {
+  //         console.log("Retrying token fetch in 3s...");
+  //         await new Promise(r => setTimeout(r, 3000));
+  //         token = await getToken();
+  //     }
       
-      if (token) {
-          console.log("Token fetched successfully:", token);
-          setFcmToken(token);
-      } else {
-          console.error("Failed to fetch token after retry.");
-          Alert.alert("Notification Error", "Could not fetch push token. Please check your internet connection or restart the app.");
-      }
+  //     if (token) {
+  //         console.log("Token fetched successfully:", token);
+  //         setFcmToken(token);
+  //     } else {
+  //         console.error("Failed to fetch token after retry.");
+  //         Alert.alert("Notification Error", "Could not fetch push token. Please check your internet connection or restart the app.");
+  //     }
 
-      // Check if app was opened from quit state by notification (FCM)
-      const initialNotification = await getInitialNotification();
-      if (initialNotification) {
-          console.log('App opened from quit state via notification', initialNotification);
-      }
+  //     // Check if app was opened from quit state by notification (FCM)
+  //     const initialNotification = await getInitialNotification();
+  //     if (initialNotification) {
+  //         console.log('App opened from quit state via notification', initialNotification);
+  //     }
 
-      // Check if app was opened from quit state by Notifee notification
-      const initialNotifee = await getInitialNotifeeNotification();
-      if (initialNotifee) {
-          handleNotificationPress(initialNotifee);
-      }
-    };
-    init();
+  //     // Check if app was opened from quit state by Notifee notification
+  //     const initialNotifee = await getInitialNotifeeNotification();
+  //     if (initialNotifee) {
+  //         handleNotificationPress(initialNotifee);
+  //     }
+  //   };
+  //   init();
 
-    const unsubscribe = onTokenRefresh(token => {
-      setFcmToken(token);
-    });
+  //   const unsubscribe = onTokenRefresh(token => {
+  //     setFcmToken(token);
+  //   });
 
-    const unsubscribeMessage = onForegroundMessage(remoteMessage => {
-        console.log('Foreground message received:', remoteMessage);
-        // Notification is handled by Notifee in NotificationService
-    });
+  //   const unsubscribeMessage = onForegroundMessage(remoteMessage => {
+  //       console.log('Foreground message received:', remoteMessage);
+  //       // Notification is handled by Notifee in NotificationService
+  //   });
 
-    const unsubscribeOpened = onNotificationOpenedApp(remoteMessage => {
-        console.log('App opened from background via notification', remoteMessage);
-    });
+  //   const unsubscribeOpened = onNotificationOpenedApp(remoteMessage => {
+  //       console.log('App opened from background via notification', remoteMessage);
+  //   });
 
-    const unsubscribeNotifee = onNotifeeForegroundEvent(notification => {
-        handleNotificationPress(notification);
-    });
+  //   const unsubscribeNotifee = onNotifeeForegroundEvent(notification => {
+  //       handleNotificationPress(notification);
+  //   });
 
-    return () => {
-        unsubscribe();
-        unsubscribeMessage();
-        unsubscribeOpened();
-        unsubscribeNotifee();
-    };
-  }, []);
+  //   return () => {
+  //       unsubscribe();
+  //       unsubscribeMessage();
+  //       unsubscribeOpened();
+  //       unsubscribeNotifee();
+  //   };
+  // }, []);
 
   return null;
 };
@@ -186,10 +186,10 @@ export default function App() {
     if (initializing) setInitializing(false);
   }
 
-  useEffect(() => {
-    const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
-    return subscriber; // unsubscribe on unmount
-  }, []);
+  // useEffect(() => {
+  //   const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
+  //   return subscriber; // unsubscribe on unmount
+  // }, []);
   
   // We need to access context, but App component wraps Providers.
   // We should move logic to a child component or handle it here if we refactor.
@@ -200,17 +200,17 @@ export default function App() {
     loadThemePreference();
     checkInternet();
     
-    try {
-      if (typeof mobileAds.initialize === 'function') {
-        mobileAds.initialize().then(() => {
-             console.log('Mobile Ads Initialized');
-        }).catch(e => {
-             console.log('Mobile Ads Init failed', e);
-        });
-      }
-    } catch (e) {
-      console.error('mobileAds initialize threw', e);
-    }
+    // try {
+    //   if (typeof mobileAds.initialize === 'function') {
+    //     mobileAds.initialize().then(() => {
+    //          console.log('Mobile Ads Initialized');
+    //     }).catch(e => {
+    //          console.log('Mobile Ads Init failed', e);
+    //     });
+    //   }
+    // } catch (e) {
+    //   console.error('mobileAds initialize threw', e);
+    // }
   }, []);
 
   useEffect(() => {
@@ -264,7 +264,7 @@ export default function App() {
   return (
     <ThemeContext.Provider value={themeContext}>
       <BotProvider>
-        <NotificationInitializer />
+        {/* <NotificationInitializer /> */}
         <View style={styles.root}>
           <PaperProvider theme={theme}>
             <StatusBar 

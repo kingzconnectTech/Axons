@@ -1,6 +1,6 @@
 import { PermissionsAndroid, Platform } from 'react-native';
 import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
-import messaging from '@react-native-firebase/messaging';
+// import messaging from '@react-native-firebase/messaging';
 
 export const setupNotificationChannel = async () => {
   if (Platform.OS === 'android') {
@@ -14,32 +14,34 @@ export const setupNotificationChannel = async () => {
 };
 
 export const requestUserPermission = async () => {
-  if (Platform.OS === 'android') {
-    try {
-      if (Platform.Version >= 33) {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
-        );
-        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-          console.log('POST_NOTIFICATIONS denied — notifications WILL NOT SHOW');
-          return;
-        }
-        console.log('Notification permission granted.');
-      }
-    } catch (err) {
-      console.warn(err);
-    }
-  }
+  console.log('requestUserPermission mocked (SafeMode)');
+  return;
+  // if (Platform.OS === 'android') {
+  //   try {
+  //     if (Platform.Version >= 33) {
+  //       const granted = await PermissionsAndroid.request(
+  //         PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
+  //       );
+  //       if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+  //         console.log('POST_NOTIFICATIONS denied — notifications WILL NOT SHOW');
+  //         return;
+  //       }
+  //       console.log('Notification permission granted.');
+  //     }
+  //   } catch (err) {
+  //     console.warn(err);
+  //   }
+  // }
 
-  // Ensure messaging().requestPermission() is called directly
-  const authStatus = await messaging().requestPermission();
-  const enabled =
-    authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-    authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+  // // Ensure messaging().requestPermission() is called directly
+  // const authStatus = await messaging().requestPermission();
+  // const enabled =
+  //   authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+  //   authStatus === messaging.AuthorizationStatus.PROVISIONAL;
 
-  if (enabled) {
-    console.log('Authorization status:', authStatus);
-  }
+  // if (enabled) {
+  //   console.log('Authorization status:', authStatus);
+  // }
 };
 
 export const checkNotificationPermission = async () => {
@@ -52,21 +54,25 @@ export const checkNotificationPermission = async () => {
 };
 
 export const getToken = async () => {
-    try {
-        const token = await messaging().getToken();
-        console.log('FCM Token:', token);
-        return token;
-    } catch (error) {
-        console.error('Failed to get FCM token:', error);
-        return null;
-    }
+    console.log('getToken mocked (SafeMode)');
+    return null;
+    // try {
+    //     const token = await messaging().getToken();
+    //     console.log('FCM Token:', token);
+    //     return token;
+    // } catch (error) {
+    //     console.error('Failed to get FCM token:', error);
+    //     return null;
+    // }
 };
 
 export const onTokenRefresh = (callback) => {
-    return messaging().onTokenRefresh(token => {
-        console.log('FCM Token Refreshed:', token);
-        if (callback) callback(token);
-    });
+    console.log('onTokenRefresh mocked (SafeMode)');
+    return () => {};
+    // return messaging().onTokenRefresh(token => {
+    //     console.log('FCM Token Refreshed:', token);
+    //     if (callback) callback(token);
+    // });
 };
 
 export const displayLocalNotification = async (title, body, data = {}) => {

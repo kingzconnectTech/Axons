@@ -407,7 +407,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   resultCard: {
-    borderRadius: normalize(24),
+    borderRadius: normalize(12),
     padding: normalize(24),
     overflow: 'hidden',
   },
