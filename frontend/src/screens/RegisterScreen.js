@@ -68,14 +68,16 @@ export default function RegisterScreen({ navigation }) {
     setError('');
 
     try {
-      const userCredential = await auth().createUserWithEmailAndPassword(email.trim(), password);
-      await userCredential.user.updateProfile({
-        displayName: name,
-      });
+      // const userCredential = await auth().createUserWithEmailAndPassword(email.trim(), password);
+      // await userCredential.user.updateProfile({
+      //   displayName: name,
+      // });
+      console.log('Register mocked (SafeMode)');
+      setError('Registration disabled in Safe Mode');
       
       // Save extra profile info locally
-      const dob = `${day}/${month}/${year}`;
-      await AsyncStorage.setItem(`user_dob_${userCredential.user.uid}`, dob);
+      // const dob = `${day}/${month}/${year}`;
+      // await AsyncStorage.setItem(`user_dob_${userCredential.user.uid}`, dob);
       
       // Navigation handled by App.js auth listener
     } catch (e) {

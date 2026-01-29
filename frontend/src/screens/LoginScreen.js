@@ -24,8 +24,11 @@ export default function LoginScreen({ navigation }) {
     setError('');
     
     try {
-      await auth().signInWithEmailAndPassword(email.trim(), password);
+      // await auth().signInWithEmailAndPassword(email.trim(), password);
+      console.log('Login mocked (SafeMode)');
       // Navigation will be handled by the auth state listener in App.js
+      // Since auth listener is disabled, we can't really login.
+      setError('Login disabled in Safe Mode');
     } catch (e) {
       console.log(e);
       if (e.code === 'auth/invalid-email') setError('Invalid email address');

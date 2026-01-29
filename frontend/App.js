@@ -186,10 +186,17 @@ export default function App() {
     if (initializing) setInitializing(false);
   }
 
-  // useEffect(() => {
-  //   const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
-  //   return subscriber; // unsubscribe on unmount
-  // }, []);
+  useEffect(() => {
+    // Force initialization after 1s for Safe Mode
+    const timer = setTimeout(() => {
+        setUser({ uid: 'mock-user', email: 'mock@test.com' }); // Mock user for Safe Mode
+        setInitializing(false);
+    }, 1000);
+    return () => clearTimeout(timer);
+
+    // const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
+    // return subscriber; // unsubscribe on unmount
+  }, []);
   
   // We need to access context, but App component wraps Providers.
   // We should move logic to a child component or handle it here if we refactor.

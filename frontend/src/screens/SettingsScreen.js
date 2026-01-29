@@ -24,7 +24,8 @@ export default function SettingsScreen({ navigation }) {
 
   useEffect(() => {
     const loadProfile = async () => {
-      const user = auth().currentUser;
+      // const user = auth().currentUser;
+      const user = { uid: 'mock-user', displayName: 'Mock User', email: 'mock@test.com' };
       if (user) {
         const dob = await AsyncStorage.getItem(`user_dob_${user.uid}`);
         setUserData({
@@ -207,7 +208,10 @@ export default function SettingsScreen({ navigation }) {
 
         <Button 
           mode="outlined" 
-          onPress={() => auth().signOut()} 
+          onPress={() => {
+            console.log('SignOut mocked (SafeMode)');
+            // auth().signOut()
+          }} 
           style={styles.logoutButton}
           textColor={theme.colors.error}
           icon="logout"

@@ -1,16 +1,18 @@
 import { PermissionsAndroid, Platform } from 'react-native';
-import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
+// import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
 // import messaging from '@react-native-firebase/messaging';
 
 export const setupNotificationChannel = async () => {
-  if (Platform.OS === 'android') {
-    await notifee.createChannel({
-      id: 'default',
-      name: 'Default Channel',
-      importance: AndroidImportance.HIGH,
-      sound: 'default',
-    });
-  }
+  console.log('setupNotificationChannel mocked (SafeMode)');
+  return;
+  // if (Platform.OS === 'android') {
+  //   await notifee.createChannel({
+  //     id: 'default',
+  //     name: 'Default Channel',
+  //     importance: AndroidImportance.HIGH,
+  //     sound: 'default',
+  //   });
+  // }
 };
 
 export const requestUserPermission = async () => {
@@ -45,12 +47,14 @@ export const requestUserPermission = async () => {
 };
 
 export const checkNotificationPermission = async () => {
-  const settings = await notifee.getNotificationSettings();
-  if (settings.authorizationStatus === 0) {
-      console.log("User has denied notifications (Notifee check)");
-      return false;
-  }
+  console.log('checkNotificationPermission mocked (SafeMode)');
   return true;
+  // const settings = await notifee.getNotificationSettings();
+  // if (settings.authorizationStatus === 0) {
+  //     console.log("User has denied notifications (Notifee check)");
+  //     return false;
+  // }
+  // return true;
 };
 
 export const getToken = async () => {
@@ -76,26 +80,27 @@ export const onTokenRefresh = (callback) => {
 };
 
 export const displayLocalNotification = async (title, body, data = {}) => {
-    try {
-        await setupNotificationChannel(); // Ensure channel exists
-        await notifee.displayNotification({
-            title,
-            body,
-            data,
-            android: {
-                channelId: 'default',
-                importance: AndroidImportance.HIGH,
-                largeIcon: 'ic_launcher',
-                smallIcon: 'ic_launcher',
-                pressAction: {
-                    id: 'default',
-                },
-            },
-        });
-        console.log("[NotificationService] Notification displayed:", title);
-    } catch (error) {
-        console.error("[NotificationService] Display Error:", error);
-    }
+    console.log('[NotificationService] Display Local Notification mocked:', title);
+    // try {
+    //     await setupNotificationChannel(); // Ensure channel exists
+    //     await notifee.displayNotification({
+    //         title,
+    //         body,
+    //         data,
+    //         android: {
+    //             channelId: 'default',
+    //             importance: AndroidImportance.HIGH,
+    //             largeIcon: 'ic_launcher',
+    //             smallIcon: 'ic_launcher',
+    //             pressAction: {
+    //                 id: 'default',
+    //             },
+    //         },
+    //     });
+    //     console.log("[NotificationService] Notification displayed:", title);
+    // } catch (error) {
+    //     console.error("[NotificationService] Display Error:", error);
+    // }
 };
 
 export const onForegroundMessage = (callback) => {
