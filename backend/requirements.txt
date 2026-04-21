@@ -8,3 +8,5 @@ python-dotenv
 sqlalchemy
 boto3
 firebase-admin
+pandas
+numpy
