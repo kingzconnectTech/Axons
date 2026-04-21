@@ -12,6 +12,13 @@ load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 app = FastAPI(title="Axon Trading App")
 
+
+def should_start_local_worker():
+    explicit = os.environ.get("ENABLE_LOCAL_WORKER")
+    if explicit is not None:
+        return explicit.strip().lower() in {"1", "true", "yes", "on"}
+    return os.environ.get("RENDER") != "true"
+
 @app.on_event("startup")
 def startup_event():
     try:
@@ -20,11 +27,13 @@ def startup_event():
     except:
         pass
         
-    if queue_service.local_mode:
+    if queue_service.local_mode and should_start_local_worker():
         print("Starting local worker daemon thread...")
         worker = WorkerDaemon(local_queue=queue_service.local_queue)
         t = threading.Thread(target=worker.run, daemon=True)
         t.start()
+    elif queue_service.local_mode:
+        print("Skipping local worker daemon startup in hosted environment.")
 
 app.add_middleware(
     CORSMiddleware,
