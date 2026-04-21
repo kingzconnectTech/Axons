@@ -1,4 +1,4 @@
-const fallbackApiUrl = "http://localhost:8000";
+const fallbackApiUrl = "https://axons.onrender.com";
 
 export const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL?.trim() || fallbackApiUrl;
