@@ -20,6 +20,21 @@
    ```
    Server will run on `http://localhost:8000`.
 
+### Render Deployment
+1. Create a new Render Web Service from this repo.
+2. Set the root directory to `backend`.
+3. Use:
+   ```bash
+   pip install -r requirements.txt
+   ```
+   as the build command.
+4. Use:
+   ```bash
+   uvicorn main:app --host 0.0.0.0 --port $PORT
+   ```
+   as the start command.
+5. Set `EXPO_PUBLIC_API_BASE_URL` in the frontend build/dev environment to your Render backend URL.
+
 ### Frontend
 1. Navigate to `frontend` folder.
 2. Install dependencies:
@@ -33,7 +48,7 @@
    Use Expo Go app on your phone or an emulator.
 
 ## Configuration
-- **API URL**: If running on a physical device, update `API_BASE_URL` in `frontend/src/config.js` to your computer's local IP address (e.g., `http://192.168.1.X:8000`).
+- **API URL**: Set `EXPO_PUBLIC_API_BASE_URL` for the frontend. For local device testing, use your computer's local IP address (for example `http://192.168.1.X:8000`). For production, use your Render backend URL.
 
 ## Features
 - **Signals**: Real-time analysis using RSI and SMA strategies.

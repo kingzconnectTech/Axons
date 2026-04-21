@@ -10,8 +10,8 @@ from services.status_store import status_store
 
 class WorkerDaemon:
     def __init__(self, local_queue=None):
-        self.region = os.environ.get("AWS_REGION", "us-east-1")
-        self.queue_url = os.environ.get("AXON_SQS_QUEUE_URL")
+        self.region = os.environ.get("QUEUE_REGION") or os.environ.get("AWS_REGION", "us-east-1")
+        self.queue_url = os.environ.get("AXON_QUEUE_URL") or os.environ.get("AXON_SQS_QUEUE_URL")
         self.manager = multiprocessing.Manager()
         self.sessions = {}
         
@@ -22,9 +22,9 @@ class WorkerDaemon:
         elif self.queue_url:
             self.sqs = boto3.client("sqs", region_name=self.region)
             self.local_mode = False
-            print("[WorkerDaemon] Started in SQS mode.")
+            print("[WorkerDaemon] Started in external queue mode.")
         else:
-            raise RuntimeError("AXON_SQS_QUEUE_URL not set and no local_queue provided")
+            raise RuntimeError("AXON_QUEUE_URL not set and no local_queue provided")
 
     def monitor_session(self, email, stats, stop_event, process):
         print(f"[WorkerDaemon] Monitor started for {email}")

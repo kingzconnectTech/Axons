@@ -5,15 +5,15 @@ import queue
 
 class QueueService:
     def __init__(self):
-        self.queue_url = os.environ.get("AXON_SQS_QUEUE_URL")
-        self.region = os.environ.get("AWS_REGION", "us-east-1")
+        self.queue_url = os.environ.get("AXON_QUEUE_URL") or os.environ.get("AXON_SQS_QUEUE_URL")
+        self.region = os.environ.get("QUEUE_REGION") or os.environ.get("AWS_REGION", "us-east-1")
         if self.queue_url:
             self.sqs = boto3.client("sqs", region_name=self.region)
             self.local_mode = False
         else:
             self.local_queue = queue.Queue()
             self.local_mode = True
-            print("[QueueService] Running in LOCAL mode (Internal Queue).")
+            print("[QueueService] Running in local in-memory queue mode.")
 
     def _log(self, msg):
         try:

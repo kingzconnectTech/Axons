@@ -10,16 +10,15 @@ import logging
 class StatusStore:
     def __init__(self):
         self._lock = threading.Lock()
-        self.table_name = os.environ.get("AXON_STATUS_TABLE")
-        self.region = os.environ.get("AWS_REGION", "us-east-1")
+        self.table_name = os.environ.get("AXON_STATUS_TABLE") or os.environ.get("STATUS_TABLE_NAME")
+        self.region = os.environ.get("QUEUE_REGION") or os.environ.get("AWS_REGION", "us-east-1")
         
         # Use absolute path for local storage to avoid CWD issues
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.local_file = os.path.join(base_dir, "local_status_store.json")
         
-        # Force local storage for debugging/dev if table name is empty or we want to ensure local
-        # You can revert this later if DynamoDB is strictly required
-        if not self.table_name or True: 
+        # Render deployments work well with local file storage unless an external table is configured.
+        if not self.table_name:
             print(f"[StatusStore] Using local JSON file storage at: {self.local_file}")
             self.use_local = True
             self._load_local()
