@@ -13,7 +13,6 @@
    ```bash
    pip install -r requirements.txt
    ```
-   *Note: You might need to install `iqoptionapi` from source or a specific fork if the pip version is outdated.*
 3. Run the server:
    ```bash
    python main.py
@@ -34,6 +33,10 @@
    ```
    as the start command.
 5. Set `EXPO_PUBLIC_API_BASE_URL` in the frontend build/dev environment to your Render backend URL.
+
+### Backend Environment
+- `IQ_OPTION_EMAIL` and `IQ_OPTION_PASSWORD` are required for signal and market-data endpoints that use the shared IQ Option session.
+- If IQ Option support is unavailable, the backend now stays online and IQ-dependent routes return `503` with `service: "iqoption"`.
 
 ### Frontend
 1. Navigate to `frontend` folder.

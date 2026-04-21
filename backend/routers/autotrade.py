@@ -2,14 +2,21 @@ from fastapi import APIRouter, HTTPException
 from models.schemas import AutoTradeConfig, TradeStatus, TokenUpdate
 from services.queue_service import queue_service
 from services.status_store import status_store
+from services.iq_service import IQOptionUnavailableError, iq_manager
 
 router = APIRouter()
 
 @router.post("/start")
 def start_autotrade(config: AutoTradeConfig):
     try:
+        iq_manager.require_dependency()
         queue_service.enqueue_start(config.dict())
         return {"status": "queued"}
+    except IQOptionUnavailableError as e:
+        raise HTTPException(
+            status_code=503,
+            detail=iq_manager.unavailable_detail(str(e)),
+        ) from e
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

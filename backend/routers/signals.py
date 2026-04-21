@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from typing import List
-from services.iq_service import iq_manager
+from services.iq_service import IQOptionUnavailableError, iq_manager
 from services.strategy_service import StrategyService, resample_to_n_minutes
 from services.signal_bot_service import signal_bot_manager
 from models.schemas import SignalRequest, SignalResponse, SignalBotStart, SignalBotStatus, SignalBotStop
@@ -8,8 +8,19 @@ import time
 
 router = APIRouter()
 
+
+def ensure_iq_market_data():
+    try:
+        iq_manager.ensure_market_data_ready()
+    except IQOptionUnavailableError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=iq_manager.unavailable_detail(str(exc)),
+        ) from exc
+
 @router.post("/start")
 def start_signal_stream(data: SignalBotStart):
+    ensure_iq_market_data()
     success, result = signal_bot_manager.start_stream(
         data.email, data.pairs, data.timeframe, data.strategy
     )
@@ -35,6 +46,7 @@ def quick_scan():
     Scans common OTC and Normal pairs using the RSI Directional Every Minute Strategy.
     Returns analysis for each pair.
     """
+    ensure_iq_market_data()
     pairs = [
         "EURUSD-OTC",
         "GBPUSD-OTC",
@@ -129,6 +141,7 @@ def test_notification():
 
 @router.post("/analyze", response_model=SignalResponse)
 def get_signal(request: SignalRequest):
+    ensure_iq_market_data()
     best_result = None
     
     for pair in request.pairs:

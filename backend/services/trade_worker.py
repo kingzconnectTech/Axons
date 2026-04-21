@@ -1,7 +1,7 @@
 import time
 import traceback
 import random
-from iqoptionapi.stable_api import IQ_Option
+from services.iq_service import iq_manager
 from services.strategy_service import StrategyService, resample_to_n_minutes
 
 def run_trade_session(config, shared_stats, stop_event):
@@ -13,7 +13,8 @@ def run_trade_session(config, shared_stats, stop_event):
         
         # Direct connection to ensure process isolation (Bypassing IQSessionManager Singleton)
         print(f"[Worker] Connecting to IQ Option for {config.email}...")
-        iq = IQ_Option(config.email, config.password)
+        iq_option_class = iq_manager.require_dependency()
+        iq = iq_option_class(config.email, config.password)
         check, reason = iq.connect()
         if not check:
              raise Exception(f"Failed to connect: {reason}")

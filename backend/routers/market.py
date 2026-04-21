@@ -1,11 +1,19 @@
-from fastapi import APIRouter
-from services.iq_service import iq_manager
+from fastapi import APIRouter, HTTPException
+from services.iq_service import IQOptionUnavailableError, iq_manager
 from typing import List
 
 router = APIRouter()
 
 @router.get("/prices")
 def get_prices(pairs: str = "EURUSD-OTC,GBPUSD-OTC,EURJPY-OTC,AUDCAD-OTC"):
+    try:
+        iq_manager.ensure_market_data_ready()
+    except IQOptionUnavailableError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=iq_manager.unavailable_detail(str(exc)),
+        ) from exc
+
     pair_list = pairs.split(",")
     results = {}
     for pair in pair_list:
