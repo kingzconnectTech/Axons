@@ -15,16 +15,21 @@
     "@react-native-firebase/app": "^23.8.3",
     "@react-native-firebase/auth": "^23.8.3",
     "@react-native-firebase/messaging": "^23.8.3",
+    "@react-native/codegen": "0.81.5",
+    "@react-native/gradle-plugin": "^0.85.2",
     "@react-navigation/native": "^6.0.0",
     "@react-navigation/stack": "^6.0.0",
+    "@urql/core": "^6.0.1",
+    "ajv": "^8.18.0",
     "axios": "^1.6.0",
     "expo": "^54.0.31",
     "expo-blur": "~15.0.8",
     "expo-build-properties": "~1.0.10",
-    "expo-constants": "~18.0.13",
+    "expo-constants": "18.0.13",
     "expo-dev-client": "~6.0.20",
     "expo-device": "~8.0.10",
     "expo-linear-gradient": "~15.0.8",
+    "expo-modules-core": "^55.0.23",
     "expo-status-bar": "~3.0.9",
     "react": "19.1.0",
     "react-native": "0.81.5",
@@ -36,12 +41,25 @@
     "react-native-screens": "~4.16.0",
     "react-native-svg": "15.12.1",
     "react-native-vector-icons": "^10.0.0",
-    "react-navigation": "^4.4.4"
+    "react-navigation": "^4.4.4",
+    "semver": "^7.7.4",
+    "tar": "^7.5.13"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
+    "@expo/cli": "^55.0.24",
     "babel-preset-expo": "~54.0.9",
     "expo-module-scripts": "^3.0.0"
+  },
+  "expo": {
+    "autolinking": {
+      "android": {
+        "buildFromSource": [
+          "expo-device",
+          "expo-linear-gradient"
+        ]
+      }
+    }
   },
   "private": true
 }
