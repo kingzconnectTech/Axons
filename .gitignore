@@ -13,3 +13,5 @@ frontend/ios/
 *firebase-adminsdk*.json
 google-services.json
 firebase-service-account.json
+node_modules
+node_modules
