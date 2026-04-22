@@ -100,6 +100,7 @@ class IQSessionManager:
             self.default_session = iq_option_class(email, password)
             check, reason = self.default_session.connect()
             if not check:
+                print(f"[IQSessionManager] Shared account connection failed: {reason}")
                 self.default_session = None
                 raise IQOptionUnavailableError(
                     f"IQ Option shared account connection failed: {reason}"

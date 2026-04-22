@@ -14,43 +14,40 @@ class NotificationService:
 
     def _initialize_firebase(self):
         try:
-            # Look for service account path in env or default location
-            # Users should place the json file in backend/ or set the env var
+            # 1. Try loading from environment variable string (preferred for Render/Heroku)
+            service_account_info = os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON")
+            if service_account_info:
+                try:
+                    import json
+                    info = json.loads(service_account_info)
+                    cred = credentials.Certificate(info)
+                    self._do_init(cred, "environment variable")
+                    return
+                except Exception as e:
+                    print(f"[NotificationService] Error parsing FIREBASE_SERVICE_ACCOUNT_JSON: {e}")
+
+            # 2. Look for service account path in env or default location
             cred_path = os.environ.get("FIREBASE_CREDENTIALS_PATH", "firebase-service-account.json")
             
             if os.path.exists(cred_path):
                 try:
                     cred = credentials.Certificate(cred_path)
-                    # Check if app is already initialized to avoid ValueError
-                    try:
-                        firebase_admin.get_app()
-                    except ValueError:
-                        firebase_admin.initialize_app(cred)
-                    
-                    self.initialized = True
-                    self.init_error = None
-                    print(f"[NotificationService] Firebase Admin initialized successfully using {cred_path}. Version: {firebase_admin.__version__}")
+                    self._do_init(cred, f"path {cred_path}")
                 except Exception as e:
                      self.init_error = f"Critical Firebase Init Error: {str(e)}"
                      print(f"[NotificationService] {self.init_error}")
             else:
-                # Try to find it in the parent directory as a fallback (common in dev)
+                # 3. Try fallback in parent directory
                 parent_cred = os.path.join(os.path.dirname(os.getcwd()), cred_path)
                 if os.path.exists(parent_cred):
                      try:
                         cred = credentials.Certificate(parent_cred)
-                        try:
-                            firebase_admin.get_app()
-                        except ValueError:
-                            firebase_admin.initialize_app(cred)
-                        self.initialized = True
-                        self.init_error = None
-                        print(f"[NotificationService] Firebase Admin initialized using fallback path: {parent_cred}. Version: {firebase_admin.__version__}")
+                        self._do_init(cred, f"fallback path {parent_cred}")
                      except Exception as e:
                         self.init_error = f"Critical Firebase Init Error (Fallback): {str(e)}"
                         print(f"[NotificationService] {self.init_error}")
                 else:
-                    self.init_error = f"Service account key NOT FOUND at {cred_path} or {parent_cred}. Please place 'firebase-service-account.json' in backend/."
+                    self.init_error = f"Service account key NOT FOUND. Please set FIREBASE_SERVICE_ACCOUNT_JSON env var or place 'firebase-service-account.json' in backend/."
                     print(f"[NotificationService] {self.init_error}")
                     # List files in current dir to help debug
                     print(f"[NotificationService] Current Directory: {os.getcwd()}")
@@ -58,6 +55,19 @@ class NotificationService:
         except Exception as e:
             self.init_error = f"Failed to initialize Firebase: {str(e)}"
             logging.error(f"[NotificationService] {self.init_error}")
+
+    def _do_init(self, cred, source_desc):
+        try:
+            try:
+                firebase_admin.get_app()
+            except ValueError:
+                firebase_admin.initialize_app(cred)
+            self.initialized = True
+            self.init_error = None
+            print(f"[NotificationService] Firebase Admin initialized successfully using {source_desc}. Version: {firebase_admin.__version__}")
+        except Exception as e:
+            self.init_error = f"Firebase init failed via {source_desc}: {str(e)}"
+            print(f"[NotificationService] {self.init_error}")
 
     @classmethod
     def get_instance(cls):

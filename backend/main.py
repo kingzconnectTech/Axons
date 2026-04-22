@@ -17,7 +17,12 @@ def should_start_local_worker():
     explicit = os.environ.get("ENABLE_LOCAL_WORKER")
     if explicit is not None:
         return explicit.strip().lower() in {"1", "true", "yes", "on"}
-    return os.environ.get("RENDER") != "true"
+    # On Render, start by default unless explicitly disabled, 
+    # but only if we ARE on Render.
+    if os.environ.get("RENDER") == "true":
+        # Check if we want it off by default on Render to save resources
+        return explicit is not None # If it's None, it will return False
+    return True
 
 @app.on_event("startup")
 def startup_event():
