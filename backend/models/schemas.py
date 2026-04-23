@@ -59,6 +59,7 @@ class TradeStatus(BaseModel):
     consecutive_losses: int
     balance: float = 0.0
     currency: Optional[str] = None
+    error: Optional[str] = None  # Set when login or trade execution fails
 
 class TokenUpdate(BaseModel):
     email: str

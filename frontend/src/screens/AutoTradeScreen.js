@@ -42,6 +42,7 @@ export default function AutoTradeScreen() {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
   const [savedCurrency, setSavedCurrency] = useState(null);
+  const [errorMessage, setErrorMessage] = useState(null);
 
   // Modal visibility states
   const [pairModalVisible, setPairModalVisible] = useState(false);
@@ -149,12 +150,14 @@ export default function AutoTradeScreen() {
   // Sync with global bot stats (from polling)
   useEffect(() => {
     if (botStats) {
-      // Only update if we are viewing the same email or if the bot is running for this user
-      // Note: botStats comes from BotContext which uses the globally active email.
       setStatus(botStats);
       if (botStats.currency && botStats.currency !== 'USD') {
         AsyncStorage.setItem('user_currency', botStats.currency);
         setSavedCurrency(botStats.currency);
+      }
+      // Surface credential / connection errors from the worker
+      if (botStats.error) {
+        setErrorMessage(botStats.error);
       }
     }
   }, [botStats]);
@@ -197,6 +200,7 @@ export default function AutoTradeScreen() {
 
   const executeStartTrade = async () => {
     setLoading(true);
+    setErrorMessage(null); // Clear any previous error
     try {
       // Save credentials for persistence
       await AsyncStorage.setItem('user_email', email);
@@ -229,13 +233,25 @@ export default function AutoTradeScreen() {
       });
       fetchStatus();
     } catch (error) {
-      alert('Failed to start: ' + (error.response?.data?.detail || error.message));
+      const detail = error.response?.data?.detail;
+      const msg = typeof detail === 'string' ? detail : (detail?.detail || error.message);
+      setErrorMessage(msg || 'Failed to start auto trade. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleStart = () => {
+    // Front-end validation before hitting the API
+    if (!email.trim()) {
+      setErrorMessage('Please enter your IQ Option email address.');
+      return;
+    }
+    if (!password.trim()) {
+      setErrorMessage('Please enter your IQ Option password.');
+      return;
+    }
+    setErrorMessage(null);
     if (interstitial.isLoaded) {
       setPendingStart(true);
       interstitial.show();
@@ -483,6 +499,15 @@ export default function AutoTradeScreen() {
             </AnimatedBorderButton>
           )}
         </View>
+
+        {/* Error Banner */}
+        {errorMessage ? (
+          <View style={[styles.errorBanner, { backgroundColor: theme.dark ? 'rgba(255,82,82,0.15)' : 'rgba(186,26,26,0.08)', borderColor: theme.colors.error }]}>
+            <MaterialCommunityIcons name="alert-circle" size={20} color={theme.colors.error} style={{ marginRight: 8 }} />
+            <Text style={{ color: theme.colors.error, flex: 1, fontWeight: '600', fontSize: 13 }}>{errorMessage}</Text>
+          </View>
+        ) : null}
+
       </View>
 
       {/* Modals */}
@@ -638,5 +663,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
-  }
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginTop: 4,
+    marginBottom: 8,
+  },
 });

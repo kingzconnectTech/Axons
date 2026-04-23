@@ -1,23 +1,42 @@
 import time
 import traceback
 import random
-from services.iq_service import iq_manager
 from services.strategy_service import StrategyService, resample_to_n_minutes
+
+def _get_iq_class():
+    """
+    Import IQ_Option directly — bypassing the shared IQSessionManager
+    singleton so this worker is 100% isolated from the market-data
+    account configured via environment variables.
+    """
+    from iqoptionapi.stable_api import IQ_Option
+    return IQ_Option
 
 def run_trade_session(config, shared_stats, stop_event):
     """
     Worker function to run in a separate process.
+    Always logs in with config.email / config.password (the user's own
+    IQ Option account entered in the app), NEVER the shared env credentials.
     """
     try:
-        print(f"[Worker] Starting trade session for {config.email}")
-        
-        # Direct connection to ensure process isolation (Bypassing IQSessionManager Singleton)
-        print(f"[Worker] Connecting to IQ Option for {config.email}...")
-        iq_option_class = iq_manager.require_dependency()
-        iq = iq_option_class(config.email, config.password)
+        print(f"[Worker] Starting trade session. Logging in as: {config.email}")
+
+        IQ_Option = _get_iq_class()
+        iq = IQ_Option(config.email, config.password)
         check, reason = iq.connect()
         if not check:
-             raise Exception(f"Failed to connect: {reason}")
+            # Translate the raw API reason into a human-readable message
+            reason_str = str(reason).lower() if reason else ""
+            if "wrongcredentials" in reason_str or "wrong" in reason_str or "invalid" in reason_str:
+                user_message = "Wrong email or password. Please check your IQ Option credentials."
+            elif "network" in reason_str or "connection" in reason_str or "timeout" in reason_str:
+                user_message = "Connection failed. Check your internet connection and try again."
+            else:
+                user_message = f"Login failed: {reason}. Check your credentials and try again."
+            shared_stats["error"] = user_message
+            shared_stats["active"] = False
+            stop_event.set()
+            raise Exception(user_message)
         
         iq.change_balance(config.account_type)
         
@@ -248,7 +267,10 @@ def run_trade_session(config, shared_stats, stop_event):
     except Exception as e:
         print(f"[Worker] Error in trade session for {config.email}: {e}")
         traceback.print_exc()
+        # Write the error to shared_stats so the frontend polling can surface it
         try:
+            error_msg = str(e)
+            shared_stats["error"] = error_msg
             shared_stats["active"] = False
         except Exception:
             pass

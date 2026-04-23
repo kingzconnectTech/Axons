@@ -2,21 +2,29 @@ from fastapi import APIRouter, HTTPException
 from models.schemas import AutoTradeConfig, TradeStatus, TokenUpdate
 from services.queue_service import queue_service
 from services.status_store import status_store
-from services.iq_service import IQOptionUnavailableError, iq_manager
 
 router = APIRouter()
 
 @router.post("/start")
 def start_autotrade(config: AutoTradeConfig):
+    # Validate user supplied their own IQ Option credentials
+    if not config.email or not config.password:
+        raise HTTPException(status_code=400, detail="IQ Option email and password are required.")
+
+    # Check the iqoptionapi library is available before queuing
     try:
-        iq_manager.require_dependency()
-        queue_service.enqueue_start(config.dict())
-        return {"status": "queued"}
-    except IQOptionUnavailableError as e:
+        from iqoptionapi.stable_api import IQ_Option  # noqa: F401
+    except ImportError as exc:
         raise HTTPException(
             status_code=503,
-            detail=iq_manager.unavailable_detail(str(e)),
-        ) from e
+            detail={"detail": "IQ Option library is unavailable on this server.", "error": str(exc)},
+        ) from exc
+
+    try:
+        # Clear any previous error so the frontend shows a fresh state
+        status_store.set_status(config.email, {"error": None, "active": False})
+        queue_service.enqueue_start(config.dict())
+        return {"status": "queued"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -26,7 +34,7 @@ def stop_autotrade(email: str):
         # Immediately force status to inactive so the UI reflects stopped state,
         # even if the WorkerDaemon is not running (e.g. ENABLE_LOCAL_WORKER not set).
         print(f"[AutoTrade] Force-stopping session for {email}")
-        status_store.set_status(email, {"active": False})
+        status_store.set_status(email, {"active": False, "error": None})
         # Also enqueue stop so the worker process cleans up gracefully if running.
         queue_service.enqueue_stop(email)
         return {"status": "stopped"}
@@ -55,7 +63,8 @@ def get_status(email: str):
             profit=0.0,
             consecutive_losses=0,
             balance=0.0,
-            currency=None
+            currency=None,
+            error=None
         )
     return TradeStatus(
         active=bool(item.get("active", False)),
@@ -65,5 +74,6 @@ def get_status(email: str):
         profit=float(item.get("profit", 0.0)),
         consecutive_losses=int(item.get("consecutive_losses", 0)),
         balance=float(item.get("balance", 0.0)),
-        currency=item.get("currency")
+        currency=item.get("currency"),
+        error=item.get("error")      # Credential / connection errors from the worker
     )
