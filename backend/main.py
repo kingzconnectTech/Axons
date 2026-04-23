@@ -5,6 +5,7 @@ import os
 from dotenv import load_dotenv
 from routers import signals, autotrade, market
 from services.queue_service import queue_service
+from services.status_store import status_store
 from worker_daemon import WorkerDaemon
 import threading
 
@@ -26,19 +27,39 @@ def should_start_local_worker():
 
 @app.on_event("startup")
 def startup_event():
+    # --- Startup Diagnostics ---
+    iq_email = os.environ.get("IQ_OPTION_EMAIL")
+    iq_pass = os.environ.get("IQ_OPTION_PASSWORD")
+    firebase_json = os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON")
+    enable_worker = os.environ.get("ENABLE_LOCAL_WORKER")
+
+    print("=" * 60)
+    print("[Startup] Axon Backend Environment Check:")
+    print(f"  IQ_OPTION_EMAIL     : {'✓ SET' if iq_email else '✗ MISSING - market/signals will return 503!'}")
+    print(f"  IQ_OPTION_PASSWORD  : {'✓ SET' if iq_pass else '✗ MISSING - market/signals will return 503!'}")
+    print(f"  FIREBASE_SERVICE_ACCOUNT_JSON: {'✓ SET' if firebase_json else '✗ MISSING - push notifications disabled'}")
+    print(f"  ENABLE_LOCAL_WORKER : {enable_worker or 'not set (worker disabled on Render by default)'}")
+    print("=" * 60)
+
     try:
         with open("startup_debug.log", "a") as f:
             f.write(f"Startup event fired. Queue local_mode: {queue_service.local_mode}\n")
+            f.write(f"IQ_OPTION_EMAIL set: {bool(iq_email)}\n")
+            f.write(f"IQ_OPTION_PASSWORD set: {bool(iq_pass)}\n")
     except:
         pass
-        
+
     if queue_service.local_mode and should_start_local_worker():
-        print("Starting local worker daemon thread...")
+        print("[Startup] Starting local worker daemon thread...")
         worker = WorkerDaemon(local_queue=queue_service.local_queue)
         t = threading.Thread(target=worker.run, daemon=True)
         t.start()
     elif queue_service.local_mode:
-        print("Skipping local worker daemon startup in hosted environment.")
+        print("[Startup] Skipping local worker daemon (hosted environment, ENABLE_LOCAL_WORKER not set).")
+
+    # Reset any stale active sessions left from a previous deployment/crash
+    print("[Startup] Resetting stale active sessions...")
+    status_store.reset_all_active()
 
 app.add_middleware(
     CORSMiddleware,

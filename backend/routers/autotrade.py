@@ -23,8 +23,13 @@ def start_autotrade(config: AutoTradeConfig):
 @router.post("/stop/{email}")
 def stop_autotrade(email: str):
     try:
+        # Immediately force status to inactive so the UI reflects stopped state,
+        # even if the WorkerDaemon is not running (e.g. ENABLE_LOCAL_WORKER not set).
+        print(f"[AutoTrade] Force-stopping session for {email}")
+        status_store.set_status(email, {"active": False})
+        # Also enqueue stop so the worker process cleans up gracefully if running.
         queue_service.enqueue_stop(email)
-        return {"status": "queued_stop"}
+        return {"status": "stopped"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
