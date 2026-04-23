@@ -164,4 +164,11 @@ class WorkerDaemon:
                     )
 
 if __name__ == "__main__":
-    WorkerDaemon().run()
+    # If starting via terminal, check if we should default to local mode
+    if not os.environ.get("AXON_QUEUE_URL") and not os.environ.get("AXON_SQS_QUEUE_URL"):
+        print("[WorkerDaemon] No SQS URL found. Defaulting to local persistent queue.")
+        # Import queue_service here to get the same local_queue config
+        from services.queue_service import queue_service
+        WorkerDaemon(local_queue=queue_service.local_queue).run()
+    else:
+        WorkerDaemon().run()

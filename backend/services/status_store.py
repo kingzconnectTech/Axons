@@ -72,7 +72,6 @@ class StatusStore:
         try:
             with self._lock:
                 abs_path = os.path.abspath(self.local_file)
-                # self._log(f"Saving to {abs_path}: {json.dumps(self.local_data)}")
                 with open(self.local_file, 'w') as f:
                     json.dump(self.local_data, f, indent=2)
         except Exception as e:
@@ -91,6 +90,7 @@ class StatusStore:
     def set_status(self, email, status_dict):
         self._log(f"set_status called for {email}: {status_dict}")
         if self.use_local:
+            self._load_local() # Force reload to catch updates from other processes
             if email not in self.local_data:
                 self.local_data[email] = {}
             self.local_data[email].update(status_dict or {})
@@ -136,13 +136,13 @@ class StatusStore:
     def get_token(self, email):
         """Get FCM token for a specific user"""
         status = self.get_status(email)
-        # Check for 'fcm_token' (used in update_token) or fallback to 'token' (legacy)
         if status:
             return status.get("fcm_token") or status.get("token")
         return None
 
     def update_token(self, email, token):
         if self.use_local:
+            self._load_local()
             if email not in self.local_data:
                 self.local_data[email] = {}
             self.local_data[email]["fcm_token"] = token
@@ -166,27 +166,21 @@ class StatusStore:
 
     def get_all_tokens(self):
         if self.use_local:
-            # Reload to ensure we have the latest tokens from other workers/updates
             self._load_local()
             tokens = {v['fcm_token'] for k, v in self.local_data.items() if 'fcm_token' in v and v['fcm_token']}
-            print(f"[StatusStore] Loaded tokens: {len(tokens)} found. Data: {self.local_data.keys()}")
+            print(f"[StatusStore] Loaded tokens: {len(tokens)} found.")
             return list(tokens)
 
         if not self.table: return []
         try:
-            response = self.table.scan(
-                ProjectionExpression="fcm_token"
-            )
+            response = self.table.scan(ProjectionExpression="fcm_token")
             items = response.get('Items', [])
-            
             while 'LastEvaluatedKey' in response:
                 response = self.table.scan(
                     ProjectionExpression="fcm_token",
                     ExclusiveStartKey=response['LastEvaluatedKey']
                 )
                 items.extend(response.get('Items', []))
-                
-            # Filter out items without fcm_token and deduplicate
             tokens = {item['fcm_token'] for item in items if 'fcm_token' in item and item['fcm_token']}
             return list(tokens)
         except ClientError as e:
