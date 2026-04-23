@@ -97,6 +97,9 @@ class WorkerDaemon:
         process = multiprocessing.Process(target=run_trade_session, args=(config, stats, stop_event))
         process.daemon = True  # Ensure process dies if main process (backend) restarts
         process.start()
+        # Immediately mark as active in the store so UI reflects the start
+        status_store.set_status(email, {"active": True, "error": None})
+        
         monitor = threading.Thread(target=self.monitor_session, args=(email, stats, stop_event, process), daemon=True)
         monitor.start()
         self._log(f"Started session for {email}. Process PID: {process.pid}")
@@ -164,4 +167,11 @@ class WorkerDaemon:
                     )
 
 if __name__ == "__main__":
-    WorkerDaemon().run()
+    # If starting via terminal, check if we should default to local mode
+    if not os.environ.get("AXON_QUEUE_URL") and not os.environ.get("AXON_SQS_QUEUE_URL"):
+        print("[WorkerDaemon] No SQS URL found. Defaulting to local persistent queue.")
+        # Import queue_service here to get the same local_queue config
+        from services.queue_service import queue_service
+        WorkerDaemon(local_queue=queue_service.local_queue).run()
+    else:
+        WorkerDaemon().run()
