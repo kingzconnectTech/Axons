@@ -163,13 +163,20 @@ export default function AutoTradeScreen() {
     interstitial.load();
   }, [interstitial.load]);
 
+  // Use a ref to prevent the effect from firing more than once per user tap.
+  const startExecutedRef = useRef(false);
   useEffect(() => {
-    if (pendingStart && interstitial.isClosed) {
+    if (pendingStart && interstitial.isClosed && !startExecutedRef.current) {
+      startExecutedRef.current = true;
       setPendingStart(false);
       executeStartTrade();
       interstitial.load();
     }
-  }, [pendingStart, interstitial.isClosed, interstitial.load]);
+    // Reset the guard whenever pendingStart goes back to false
+    if (!pendingStart) {
+      startExecutedRef.current = false;
+    }
+  }, [pendingStart, interstitial.isClosed]);
 
   
 

@@ -31,32 +31,44 @@ class WorkerDaemon:
         status_store._log(f"[WorkerDaemon] Monitor started for {email}")
         try:
             while True:
-                # Check if process died unexpectedly
+                # Check if process died (naturally or via stop_event)
                 if not process.is_alive():
-                    print(f"[WorkerDaemon] Process for {email} died unexpectedly.")
+                    print(f"[WorkerDaemon] Process for {email} has ended.")
                     data = dict(stats)
                     data["active"] = False
                     status_store.set_status(email, data)
+                    # Clean up sessions so a future 'start' command works correctly
+                    self.sessions.pop(email, None)
                     break
 
                 data = dict(stats)
-                # Use is_alive + active flag to determine true status
-                data["active"] = not stop_event.is_set()
-                # print(f"[WorkerDaemon] Updating status for {email}: {data}") 
+                # Respect both the stop_event AND the worker's own active flag.
+                # Never re-set active=True once a stop has been signalled.
+                if stop_event.is_set() or not data.get("active", True):
+                    data["active"] = False
+                    status_store.set_status(email, data)
+                    print(f"[WorkerDaemon] Stop confirmed for {email}, ending monitor.")
+                    # Clean up sessions
+                    self.sessions.pop(email, None)
+                    break
+
                 status_store.set_status(email, data)
-                
+
                 # Wait for 5 seconds OR until stop_event is set
                 if stop_event.wait(5):
                     print(f"[WorkerDaemon] Stop event set for {email}")
-                    # If stopped, perform one last update to ensure active=False
+                    # Perform one final update to guarantee active=False in the store
                     data = dict(stats)
                     data["active"] = False
                     status_store.set_status(email, data)
+                    # Clean up sessions
+                    self.sessions.pop(email, None)
                     break
         except Exception as e:
             print(f"[WorkerDaemon] Monitor exception for {email}: {e}")
             import traceback
             traceback.print_exc()
+            self.sessions.pop(email, None)
 
     def start_session(self, config_dict):
         email = config_dict["email"]
@@ -88,10 +100,13 @@ class WorkerDaemon:
 
     def stop_session(self, email):
         if email in self.sessions:
+            print(f"[WorkerDaemon] Stopping session for {email}")
             self.sessions[email]["stop_event"].set()
+            # Do NOT delete from self.sessions here — the monitor_session thread
+            # will clean up once the process has fully terminated, preventing a
+            # race where a late 'start' task sees a dead process and relaunches.
         else:
-            # Ghost session handling: If we receive a stop request but have no session,
-            # force update DB to inactive to clear any stale state.
+            # Ghost session: no active session tracked, force-clear the store.
             print(f"[WorkerDaemon] clear ghost session for {email}")
             status_store.set_status(email, {"active": False})
 
