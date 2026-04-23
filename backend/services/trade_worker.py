@@ -247,8 +247,14 @@ def run_trade_session(config, shared_stats, stop_event):
                             break
 
                         # Cooldown: Rest for 1 minute after trade completion
+                        # Use a per-second loop so a stop signal is honoured immediately.
                         print(f"[Worker] Resting for 60 seconds before resuming scan...")
-                        time.sleep(60)
+                        for _ in range(60):
+                            if stop_event.is_set():
+                                break
+                            time.sleep(1)
+                        if stop_event.is_set():
+                            break
                             
                         # Refresh balance
                         shared_stats["balance"] = iq.get_balance()

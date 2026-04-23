@@ -35,40 +35,6 @@ class WorkerDaemon:
                 if not process.is_alive():
                     print(f"[WorkerDaemon] Process for {email} has ended.")
                     data = dict(stats)
-                    data["active"] = False
-                    status_store.set_status(email, data)
-                    # Clean up sessions so a future 'start' command works correctly
-                    self.sessions.pop(email, None)
-                    break
-
-                data = dict(stats)
-                # Respect both the stop_event AND the worker's own active flag.
-                # Never re-set active=True once a stop has been signalled.
-                if stop_event.is_set() or not data.get("active", True):
-                    data["active"] = False
-                    status_store.set_status(email, data)
-                    print(f"[WorkerDaemon] Stop confirmed for {email}, ending monitor.")
-                    # Clean up sessions
-                    self.sessions.pop(email, None)
-                    break
-
-                status_store.set_status(email, data)
-
-                # Wait for 5 seconds OR until stop_event is set
-                if stop_event.wait(5):
-                    print(f"[WorkerDaemon] Stop event set for {email}")
-                    # Perform one final update to guarantee active=False in the store
-                    data = dict(stats)
-                    data["active"] = False
-                    status_store.set_status(email, data)
-                    # Clean up sessions
-                    self.sessions.pop(email, None)
-                    break
-        except Exception as e:
-            print(f"[WorkerDaemon] Monitor exception for {email}: {e}")
-            import traceback
-            traceback.print_exc()
-            self.sessions.pop(email, None)
 
     def start_session(self, config_dict):
         email = config_dict["email"]
