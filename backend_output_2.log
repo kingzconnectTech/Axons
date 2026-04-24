@@ -457,3 +457,233 @@ ERROR:    Application startup failed. Exiting.
 [QueueService] Running in local PERSISTENT queue mode: C:\Users\prosp\Desktop\Axon\backend\local_queue.json
 ============================================================
 [Startup] Axon Backend Environment Check:
+WARNING:  WatchFiles detected changes in 'backend\models\schemas.py'. Reloading...
+ INFO:     Started server process [15436]
+INFO:     Waiting for application startup.
+ERROR:    Traceback (most recent call last):
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\starlette\routing.py", line 694, in lifespan
+    async with self.lifespan_context(app) as maybe_state:
+               ~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\fastapi\routing.py", line 140, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\fastapi\routing.py", line 140, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\fastapi\routing.py", line 140, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\starlette\routing.py", line 571, in __aenter__
+    await self._router.startup()
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\starlette\routing.py", line 673, in startup
+    handler()
+    ~~~~~~~^^
+  File "C:\Users\prosp\Desktop\Axon\backend\main.py", line 38, in startup_event
+    print(f"  IQ_OPTION_EMAIL     : {'\u2713 SET' if iq_email else '\u2717 MISSING - market/signals will return 503!'}")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2717' in position 24: character maps to <undefined>
+
+ERROR:    Application startup failed. Exiting.
+[NotificationService] Service account key NOT FOUND. Please set FIREBASE_SERVICE_ACCOUNT_JSON env var or place 'firebase-service-account.json' in backend/.
+[NotificationService] Current Directory: C:\Users\prosp\Desktop\Axon
+[NotificationService] Files: ['.git', '.gitignore', '.python-version', 'backend', 'backend_debug.log', 'backend_output.log', 'backend_output_2.log', 'eas.json', 'frontend', 'node_modules', 'package-lock.json', 'package.json', 'README.md', 'render.yaml', 'verify_queue.py']
+[StatusStore] Using local JSON file storage at: C:\Users\prosp\Desktop\Axon\backend\local_status_store.json
+[QueueService] Running in local PERSISTENT queue mode: C:\Users\prosp\Desktop\Axon\backend\local_queue.json
+============================================================
+[Startup] Axon Backend Environment Check:
+WARNING:  WatchFiles detected changes in 'backend\services\trade_worker.py'. Reloading...
+ INFO:     Started server process [19324]
+INFO:     Waiting for application startup.
+ERROR:    Traceback (most recent call last):
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\starlette\routing.py", line 694, in lifespan
+    async with self.lifespan_context(app) as maybe_state:
+               ~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\fastapi\routing.py", line 140, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\fastapi\routing.py", line 140, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\fastapi\routing.py", line 140, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\starlette\routing.py", line 571, in __aenter__
+    await self._router.startup()
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\starlette\routing.py", line 673, in startup
+    handler()
+    ~~~~~~~^^
+  File "C:\Users\prosp\Desktop\Axon\backend\main.py", line 38, in startup_event
+    print(f"  IQ_OPTION_EMAIL     : {'\u2713 SET' if iq_email else '\u2717 MISSING - market/signals will return 503!'}")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2717' in position 24: character maps to <undefined>
+
+ERROR:    Application startup failed. Exiting.
+[NotificationService] Service account key NOT FOUND. Please set FIREBASE_SERVICE_ACCOUNT_JSON env var or place 'firebase-service-account.json' in backend/.
+[NotificationService] Current Directory: C:\Users\prosp\Desktop\Axon
+[NotificationService] Files: ['.git', '.gitignore', '.python-version', 'backend', 'backend_debug.log', 'backend_output.log', 'backend_output_2.log', 'eas.json', 'frontend', 'node_modules', 'package-lock.json', 'package.json', 'README.md', 'render.yaml', 'verify_queue.py']
+[StatusStore] Using local JSON file storage at: C:\Users\prosp\Desktop\Axon\backend\local_status_store.json
+[QueueService] Running in local PERSISTENT queue mode: C:\Users\prosp\Desktop\Axon\backend\local_queue.json
+============================================================
+[Startup] Axon Backend Environment Check:
+WARNING:  WatchFiles detected changes in 'backend\services\trade_worker.py'. Reloading...
+ INFO:     Started server process [2948]
+INFO:     Waiting for application startup.
+ERROR:    Traceback (most recent call last):
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\starlette\routing.py", line 694, in lifespan
+    async with self.lifespan_context(app) as maybe_state:
+               ~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\fastapi\routing.py", line 140, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\fastapi\routing.py", line 140, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\fastapi\routing.py", line 140, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\starlette\routing.py", line 571, in __aenter__
+    await self._router.startup()
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\starlette\routing.py", line 673, in startup
+    handler()
+    ~~~~~~~^^
+  File "C:\Users\prosp\Desktop\Axon\backend\main.py", line 38, in startup_event
+    print(f"  IQ_OPTION_EMAIL     : {'\u2713 SET' if iq_email else '\u2717 MISSING - market/signals will return 503!'}")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2717' in position 24: character maps to <undefined>
+
+ERROR:    Application startup failed. Exiting.
+[NotificationService] Service account key NOT FOUND. Please set FIREBASE_SERVICE_ACCOUNT_JSON env var or place 'firebase-service-account.json' in backend/.
+[NotificationService] Current Directory: C:\Users\prosp\Desktop\Axon
+[NotificationService] Files: ['.git', '.gitignore', '.python-version', 'backend', 'backend_debug.log', 'backend_output.log', 'backend_output_2.log', 'eas.json', 'frontend', 'node_modules', 'package-lock.json', 'package.json', 'README.md', 'render.yaml', 'verify_queue.py']
+[StatusStore] Using local JSON file storage at: C:\Users\prosp\Desktop\Axon\backend\local_status_store.json
+[QueueService] Running in local PERSISTENT queue mode: C:\Users\prosp\Desktop\Axon\backend\local_queue.json
+============================================================
+[Startup] Axon Backend Environment Check:
+WARNING:  WatchFiles detected changes in 'backend\routers\autotrade.py'. Reloading...
+ INFO:     Started server process [10904]
+INFO:     Waiting for application startup.
+ERROR:    Traceback (most recent call last):
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\starlette\routing.py", line 694, in lifespan
+    async with self.lifespan_context(app) as maybe_state:
+               ~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\fastapi\routing.py", line 140, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\fastapi\routing.py", line 140, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\fastapi\routing.py", line 140, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\starlette\routing.py", line 571, in __aenter__
+    await self._router.startup()
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\starlette\routing.py", line 673, in startup
+    handler()
+    ~~~~~~~^^
+  File "C:\Users\prosp\Desktop\Axon\backend\main.py", line 38, in startup_event
+    print(f"  IQ_OPTION_EMAIL     : {'\u2713 SET' if iq_email else '\u2717 MISSING - market/signals will return 503!'}")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2717' in position 24: character maps to <undefined>
+
+ERROR:    Application startup failed. Exiting.
+[NotificationService] Service account key NOT FOUND. Please set FIREBASE_SERVICE_ACCOUNT_JSON env var or place 'firebase-service-account.json' in backend/.
+[NotificationService] Current Directory: C:\Users\prosp\Desktop\Axon
+[NotificationService] Files: ['.git', '.gitignore', '.python-version', 'backend', 'backend_debug.log', 'backend_output.log', 'backend_output_2.log', 'eas.json', 'frontend', 'node_modules', 'package-lock.json', 'package.json', 'README.md', 'render.yaml', 'verify_queue.py']
+[StatusStore] Using local JSON file storage at: C:\Users\prosp\Desktop\Axon\backend\local_status_store.json
+[QueueService] Running in local PERSISTENT queue mode: C:\Users\prosp\Desktop\Axon\backend\local_queue.json
+============================================================
+[Startup] Axon Backend Environment Check:
+WARNING:  WatchFiles detected changes in 'backend\services\trade_worker.py'. Reloading...
+ INFO:     Started server process [19096]
+INFO:     Waiting for application startup.
+ERROR:    Traceback (most recent call last):
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\starlette\routing.py", line 694, in lifespan
+    async with self.lifespan_context(app) as maybe_state:
+               ~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\fastapi\routing.py", line 140, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\fastapi\routing.py", line 140, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\fastapi\routing.py", line 140, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\starlette\routing.py", line 571, in __aenter__
+    await self._router.startup()
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\site-packages\starlette\routing.py", line 673, in startup
+    handler()
+    ~~~~~~~^^
+  File "C:\Users\prosp\Desktop\Axon\backend\main.py", line 38, in startup_event
+    print(f"  IQ_OPTION_EMAIL     : {'\u2713 SET' if iq_email else '\u2717 MISSING - market/signals will return 503!'}")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\prosp\AppData\Local\Programs\Python\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2717' in position 24: character maps to <undefined>
+
+ERROR:    Application startup failed. Exiting.
+[NotificationService] Service account key NOT FOUND. Please set FIREBASE_SERVICE_ACCOUNT_JSON env var or place 'firebase-service-account.json' in backend/.
+[NotificationService] Current Directory: C:\Users\prosp\Desktop\Axon
+[NotificationService] Files: ['.git', '.gitignore', '.python-version', 'backend', 'backend_debug.log', 'backend_output.log', 'backend_output_2.log', 'eas.json', 'frontend', 'node_modules', 'package-lock.json', 'package.json', 'README.md', 'render.yaml', 'verify_queue.py']
+[StatusStore] Using local JSON file storage at: C:\Users\prosp\Desktop\Axon\backend\local_status_store.json
+[QueueService] Running in local PERSISTENT queue mode: C:\Users\prosp\Desktop\Axon\backend\local_queue.json
+============================================================
+[Startup] Axon Backend Environment Check:
