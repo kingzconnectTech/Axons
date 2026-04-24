@@ -92,7 +92,12 @@ class WorkerDaemon:
         monitor = threading.Thread(target=self.monitor_session, args=(email, stats, stop_event, worker_process), daemon=True)
         monitor.start()
         
-        self.sessions[email] = {"thread": worker_process, "stop_event": stop_event, "stats": stats}
+        self.sessions[email] = {
+            "thread": worker_process, 
+            "stop_event": stop_event, 
+            "stats": stats,
+            "manager": manager # MUST keep manager alive or the proxy dicts will break!
+        }
         self._log(f"Started session process for {email}")
 
     def _log(self, msg):
