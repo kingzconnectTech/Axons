@@ -47,7 +47,7 @@ def run_trade_session(config, shared_stats, stop_event):
             shared_stats["currency"] = currency
             balance = iq.get_balance()
             shared_stats["balance"] = balance
-            print(f"[Worker: {email}] Connected successfully. Current Balance: {balance} {currency}")
+            print(f"[Worker: {email}] Connected successfully. Account Type: {config.account_type} | Balance: {balance} {currency}")
         except Exception as e:
             print(f"[Worker: {email}] Connected, but failed to load account info: {e}")
 
