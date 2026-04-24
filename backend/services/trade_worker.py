@@ -14,15 +14,16 @@ def _get_iq_class():
 
 def run_trade_session(config, shared_stats, stop_event):
     """
-    Worker function to run in a separate process.
+    Worker function to run in a separate thread.
     Always logs in with config.email / config.password (the user's own
     IQ Option account entered in the app), NEVER the shared env credentials.
     """
+    email = config.email
     try:
-        print(f"[Worker] Starting trade session. Logging in as: {config.email}")
+        print(f"[Worker: {email}] Starting trade session.")
 
         IQ_Option = _get_iq_class()
-        iq = IQ_Option(config.email, config.password)
+        iq = IQ_Option(email, config.password)
         check, reason = iq.connect()
         if not check:
             # Translate the raw API reason into a human-readable message
@@ -40,26 +41,26 @@ def run_trade_session(config, shared_stats, stop_event):
         
         iq.change_balance(config.account_type)
         
-        # Get Currency
+        # Get Currency & Balance
         try:
             currency = iq.get_currency()
             shared_stats["currency"] = currency
-            print(f"[Worker] Currency for {config.email}: {currency}")
+            balance = iq.get_balance()
+            shared_stats["balance"] = balance
+            print(f"[Worker: {email}] Connected successfully. Current Balance: {balance} {currency}")
         except Exception as e:
-            print(f"[Worker] Failed to get currency: {e}")
+            print(f"[Worker: {email}] Connected, but failed to load account info: {e}")
 
-        print(f"[Worker] Connected successfully for {config.email}")
-        
         while not stop_event.is_set():
             # 1. Connection Maintenance
             if not iq.check_connect():
-                print(f"[Worker] Connection lost for {config.email}. Reconnecting...")
+                print(f"[Worker: {email}] Connection lost. Reconnecting...")
                 check, reason = iq.connect()
                 if check:
-                    print(f"[Worker] Reconnected successfully.")
+                    print(f"[Worker: {email}] Reconnected successfully.")
                     iq.change_balance(config.account_type) # Ensure correct balance type
                 else:
-                    print(f"[Worker] Reconnection failed: {reason}")
+                    print(f"[Worker: {email}] Reconnection failed: {reason}")
                     time.sleep(5)
                     continue
 
@@ -71,11 +72,11 @@ def run_trade_session(config, shared_stats, stop_event):
                 pass
 
             if shared_stats["consecutive_losses"] >= config.max_consecutive_losses:
-                print(f"[Worker] Max consecutive losses reached for {config.email}. Stopping.")
+                print(f"[Worker: {email}] Max consecutive losses reached. Stopping.")
                 break
             
             if shared_stats["total_trades"] >= config.max_trades:
-                print(f"[Worker] Max trades reached for {config.email}. Stopping.")
+                print(f"[Worker: {email}] Max trades reached. Stopping.")
                 break
 
             # Scan pairs
@@ -84,11 +85,11 @@ def run_trade_session(config, shared_stats, stop_event):
             # Support multiple pairs
             pairs_to_scan = config.pairs if hasattr(config, 'pairs') and config.pairs else ["EURUSD-OTC"]
             
-            # Randomize order to prevent bias towards the first pair (especially with early exit)
+            # Randomize order to prevent bias towards the first pair
             random.shuffle(pairs_to_scan)
             
             # Debug: Print scanning info
-            print(f"[Worker] Scanning {len(pairs_to_scan)} pairs: {pairs_to_scan} | Strategy: {config.strategy}")
+            # print(f"[Worker: {email}] Scanning {len(pairs_to_scan)} pairs...")
 
             for pair in pairs_to_scan:
                 if stop_event.is_set():
@@ -112,27 +113,17 @@ def run_trade_session(config, shared_stats, stop_event):
                             if tf in supported_tfs:
                                 candles = iq.get_candles(pair, int(tf * 60), 100, time.time())
                                 if not candles:
-                                    print(f"[Worker] No candles for {pair} {tf}m")
                                     continue
-                                last_candle = candles[-1]
-                                spread = last_candle["max"] - last_candle["min"]
-                                curr_analysis = StrategyService.analyze(pair, candles, config.strategy, spread=spread)
+                                analysis = StrategyService.analyze(pair, candles, config.strategy)
                             else:
-                                m1_count = max(180, int(tf) * 80)
-                                m1_candles = iq.get_candles(pair, 60, m1_count, time.time())
+                                m1_candles = iq.get_candles(pair, 60, max(180, int(tf) * 80), time.time())
                                 if not m1_candles:
-                                    print(f"[Worker] No M1 candles for {pair} to resample {tf}m (auto)")
                                     continue
                                 mN_candles = resample_to_n_minutes(m1_candles, int(tf))
-                                if not mN_candles or len(mN_candles) < 30:
-                                    print(f"[Worker] Not enough resampled candles for {pair} {tf}m (auto)")
-                                    continue
-                                last_candle = mN_candles[-1]
-                                spread = last_candle["max"] - last_candle["min"]
-                                curr_analysis = StrategyService.analyze(pair, mN_candles, config.strategy, spread=spread)
+                                analysis = StrategyService.analyze(pair, mN_candles, config.strategy)
                             
-                            if curr_analysis["action"] in ["CALL", "PUT"] and curr_analysis["confidence"] > best_analysis["confidence"]:
-                                best_analysis = curr_analysis
+                            if analysis["action"] in ["CALL", "PUT"] and analysis["confidence"] > best_analysis["confidence"]:
+                                best_analysis = analysis
                                 best_tf = tf
                         
                         analysis = best_analysis
@@ -142,29 +133,15 @@ def run_trade_session(config, shared_stats, stop_event):
                         if target_timeframe in supported_tfs:
                             candles = iq.get_candles(pair, int(target_timeframe * 60), 100, time.time())
                             if not candles:
-                                print(f"[Worker] No candles for {pair} {target_timeframe}m")
                                 continue
-                            last_candle = candles[-1]
-                            spread = last_candle["max"] - last_candle["min"]
-                            analysis = StrategyService.analyze(pair, candles, config.strategy, spread=spread)
+                            analysis = StrategyService.analyze(pair, candles, config.strategy)
                         else:
-                            m1_count = max(180, int(target_timeframe) * 80)
-                            m1_candles = iq.get_candles(pair, 60, m1_count, time.time())
+                            m1_candles = iq.get_candles(pair, 60, max(180, int(target_timeframe) * 80), time.time())
                             if not m1_candles:
-                                print(f"[Worker] No M1 candles for {pair} to resample {target_timeframe}m")
                                 continue
                             mN_candles = resample_to_n_minutes(m1_candles, int(target_timeframe))
-                            if not mN_candles or len(mN_candles) < 30:
-                                print(f"[Worker] Not enough resampled candles for {pair} {target_timeframe}m")
-                                continue
-                            last_candle = mN_candles[-1]
-                            spread = last_candle["max"] - last_candle["min"]
-                            analysis = StrategyService.analyze(pair, mN_candles, config.strategy, spread=spread)
-                        
-                        # Debug
-                        if analysis["action"] != "NEUTRAL":
-                            print(f"[Worker] Analysis {pair} {target_timeframe}m: {analysis}")
-
+                            analysis = StrategyService.analyze(pair, mN_candles, config.strategy)
+                    
                     # Compare with best across pairs
                     if analysis["action"] in ["CALL", "PUT"] and analysis["confidence"] > best_opportunity["confidence"]:
                         best_opportunity = {
@@ -175,13 +152,10 @@ def run_trade_session(config, shared_stats, stop_event):
                         }
                         
                         # OPTIMIZATION: Early Exit on High Confidence
-                        # If we find a very strong signal (e.g. > 90%), take it immediately to avoid delay
                         if analysis["confidence"] >= 90:
-                            print(f"[Worker] High confidence signal found on {pair}. Executing immediately.")
                             break
                             
                 except Exception as loop_e:
-                    print(f"[Worker] Error scanning pair {pair}: {loop_e}")
                     continue
 
             # Execute Trade
@@ -191,25 +165,18 @@ def run_trade_session(config, shared_stats, stop_event):
                 timeframe = best_opportunity["timeframe"]
                 confidence = best_opportunity["confidence"]
 
-                base_amount = config.amount
-                stake_amount = base_amount
-                
-                # Ensure timeframe is an integer for standard durations
+                stake_amount = config.amount
                 trade_duration = int(timeframe) if timeframe >= 1 else timeframe
                 
-                print(f"[Worker] Executing trade: {pair} {action} {trade_duration}m ({confidence}%) | Amount: {stake_amount}")
+                print(f"[Worker: {email}] Signal Found: {pair} {action} ({confidence}%). Executing Trade...")
                 
                 check, id = iq.buy(stake_amount, pair, action, trade_duration)
                 if check:
-                    print(f"[Worker] Trade placed for {config.email}: {action} (ID: {id})")
-                    
-                    # Update stats
-                    # shared_stats is a DictProxy, need to copy-modify-assign or use keys
+                    print(f"[Worker: {email}] Trade placed: {action} (ID: {id})")
                     shared_stats["total_trades"] += 1
                     
                     # Wait for expiry
                     sleep_seconds = int(timeframe * 60 + 5)
-                    print(f"[Worker] Sleeping for {sleep_seconds}s (Expiry)...")
                     for _ in range(sleep_seconds):
                         if stop_event.is_set():
                             break
@@ -217,76 +184,47 @@ def run_trade_session(config, shared_stats, stop_event):
                     
                     # Check Result
                     try:
-                        print(f"[Worker] Checking result for ID: {id}...")
                         profit = iq.check_win_v3(id)
-                        print(f"[Worker] Win result: {profit}")
-                        
-                        # Update stats
-                        # shared_stats is a DictProxy. We need to copy, modify, update.
-                        # Or modify keys directly? Manager dicts allow key modification.
-                        
-                        # We must update the proxy directly for changes to be visible
                         if profit > 0:
-                            print(f"[Worker] Trade WON: +{profit}")
+                            print(f"[Worker: {email}] Trade WON: +{profit}")
                             shared_stats["wins"] += 1
                             shared_stats["profit"] += profit
                             shared_stats["consecutive_losses"] = 0
                         else:
-                            print(f"[Worker] Trade LOST: -{stake_amount}")
+                            print(f"[Worker: {email}] Trade LOST: -{stake_amount}")
                             shared_stats["losses"] += 1
                             shared_stats["profit"] -= stake_amount
                             shared_stats["consecutive_losses"] += 1
                         
-                        # Check limits immediately after result to avoid unnecessary cooldown
-                        if shared_stats["total_trades"] >= config.max_trades:
-                            print(f"[Worker] Max trades reached ({shared_stats['total_trades']}). Stopping.")
-                            break
-
-                        if shared_stats["consecutive_losses"] >= config.max_consecutive_losses:
-                            print(f"[Worker] Max consecutive losses reached ({shared_stats['consecutive_losses']}). Stopping.")
-                            break
-
-                        # Cooldown: Rest for 1 minute after trade completion
-                        # Use a per-second loop so a stop signal is honoured immediately.
-                        print(f"[Worker] Resting for 60 seconds before resuming scan...")
+                        # Cooldown
+                        print(f"[Worker: {email}] Resting for 60 seconds...")
                         for _ in range(60):
                             if stop_event.is_set():
                                 break
                             time.sleep(1)
-                        if stop_event.is_set():
-                            break
                             
                         # Refresh balance
                         shared_stats["balance"] = iq.get_balance()
                         
                     except Exception as e:
-                        print(f"[Worker] Error checking win: {e}")
-                        traceback.print_exc()
-                        
+                        print(f"[Worker: {email}] Error checking result: {e}")
                 else:
-                    print(f"[Worker] Trade failed for {config.email}: ID={id}")
-            # else:
-            #    print(f"[Worker] No suitable opportunity found. Best: {best_opportunity['confidence']}%")
+                    print(f"[Worker: {email}] Trade execution failed: {id}")
             
             time.sleep(1)
 
     except Exception as e:
-        print(f"[Worker] Error in trade session for {config.email}: {e}")
-        traceback.print_exc()
-        # Write the error to shared_stats so the frontend polling can surface it
+        print(f"[Worker: {email}] Session error: {e}")
+        # traceback.print_exc()
         try:
-            error_msg = str(e)
-            shared_stats["error"] = error_msg
+            shared_stats["error"] = str(e)
             shared_stats["active"] = False
-        except Exception:
+        except:
             pass
-        try:
-            stop_event.set()
-        except Exception:
-            pass
+        stop_event.set()
     finally:
         try:
             shared_stats["active"] = False
-        except Exception:
+        except:
             pass
-        print(f"[Worker] Session ended for {config.email}")
+        print(f"[Worker: {email}] Session ended.")
