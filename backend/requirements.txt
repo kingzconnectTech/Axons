@@ -4,6 +4,7 @@ git+https://github.com/iqoptionapi/iqoptionapi.git@master#egg=iqoptionapi
 pydantic
 websockets
 requests
+httpx
 python-dotenv
 sqlalchemy
 boto3
