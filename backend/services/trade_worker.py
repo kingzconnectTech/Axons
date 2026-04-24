@@ -40,14 +40,15 @@ def run_trade_session(config, shared_stats, stop_event):
             raise Exception(user_message)
         
         iq.change_balance(config.account_type)
-        
+        time.sleep(2)  # Wait for WebSocket to update balance for switched account type
+
         # Get Currency & Balance
         try:
             currency = iq.get_currency()
             shared_stats["currency"] = currency
             balance = iq.get_balance()
             shared_stats["balance"] = balance
-            print(f"[Worker: {email}] Connected successfully. Account Type: {config.account_type} | Balance: {balance} {currency}")
+            print(f"[Worker: {email}] Connected successfully. Account: {config.account_type} | Balance: {balance} {currency}")
         except Exception as e:
             print(f"[Worker: {email}] Connected, but failed to load account info: {e}")
 
