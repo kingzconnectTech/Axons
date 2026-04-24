@@ -3,6 +3,35 @@ import traceback
 import random
 from services.strategy_service import StrategyService, resample_to_n_minutes
 
+# IQ Option minimum trade amounts per currency (in native currency units)
+MIN_TRADE_AMOUNTS = {
+    "USD": 1.0,
+    "EUR": 1.0,
+    "GBP": 1.0,
+    "BRL": 5.0,
+    "IDR": 10000.0,
+    "MXN": 20.0,
+    "TRY": 25.0,
+    "INR": 70.0,
+    "NGN": 500.0,
+    "ZAR": 10.0,
+    "AED": 5.0,
+    "SGD": 2.0,
+    "MYR": 5.0,
+    "PHP": 50.0,
+    "THB": 35.0,
+    "VND": 25000.0,
+    "COP": 4000.0,
+    "PEN": 5.0,
+    "CLP": 700.0,
+    "ARS": 100.0,
+}
+
+def get_min_amount(currency: str) -> float:
+    """Return the minimum trade amount for a given currency code."""
+    return MIN_TRADE_AMOUNTS.get(currency.upper() if currency else "USD", 1.0)
+
+
 def _get_iq_class():
     """
     Import IQ_Option directly — bypassing the shared IQSessionManager
@@ -46,9 +75,11 @@ def run_trade_session(config, shared_stats, stop_event):
         try:
             currency = iq.get_currency()
             shared_stats["currency"] = currency
+            min_amount = get_min_amount(currency)
+            shared_stats["min_amount"] = min_amount
             balance = iq.get_balance()
             shared_stats["balance"] = balance
-            print(f"[Worker: {email}] Connected successfully. Account: {config.account_type} | Balance: {balance} {currency}")
+            print(f"[Worker: {email}] Connected. Account: {config.account_type} | Currency: {currency} | Min: {min_amount} | Balance: {balance}")
         except Exception as e:
             print(f"[Worker: {email}] Connected, but failed to load account info: {e}")
 
@@ -167,6 +198,11 @@ def run_trade_session(config, shared_stats, stop_event):
                 confidence = best_opportunity["confidence"]
 
                 stake_amount = config.amount
+                # Enforce minimum trade amount for this currency
+                min_amt = shared_stats.get("min_amount") or get_min_amount(shared_stats.get("currency", "USD"))
+                if stake_amount < min_amt:
+                    print(f"[Worker: {email}] Amount {stake_amount} is below minimum {min_amt}. Using minimum.")
+                    stake_amount = min_amt
                 trade_duration = int(timeframe) if timeframe >= 1 else timeframe
                 
                 print(f"[Worker: {email}] Signal Found: {pair} {action} ({confidence}%). Executing Trade...")

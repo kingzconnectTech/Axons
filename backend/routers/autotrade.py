@@ -76,5 +76,6 @@ def get_status(email: str):
         consecutive_losses=int(item.get("consecutive_losses", 0)),
         balance=float(item.get("balance", 0.0)),
         currency=item.get("currency"),
-        error=item.get("error")      # Credential / connection errors from the worker
+        min_amount=float(item["min_amount"]) if item.get("min_amount") is not None else None,
+        error=item.get("error")
     )

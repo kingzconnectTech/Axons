@@ -59,6 +59,7 @@ class TradeStatus(BaseModel):
     consecutive_losses: int
     balance: float = 0.0
     currency: Optional[str] = None
+    min_amount: Optional[float] = None  # Minimum trade amount for the account currency
     error: Optional[str] = None  # Set when login or trade execution fails
 
 class TokenUpdate(BaseModel):

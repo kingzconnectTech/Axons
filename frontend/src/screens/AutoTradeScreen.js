@@ -155,6 +155,17 @@ export default function AutoTradeScreen() {
         AsyncStorage.setItem('user_currency', botStats.currency);
         setSavedCurrency(botStats.currency);
       }
+      // If the backend reports a min_amount, enforce it on the amount field
+      if (botStats.min_amount != null) {
+        const currentAmount = parseFloat(amount) || 0;
+        const minAmount = botStats.min_amount;
+        if (currentAmount < minAmount) {
+          const newAmount = minAmount.toString();
+          setAmount(newAmount);
+          AsyncStorage.setItem('default_amount', newAmount);
+          console.log(`[AutoTrade] Amount adjusted to minimum: ${newAmount} ${botStats.currency}`);
+        }
+      }
       // Surface credential / connection errors from the worker
       if (botStats.error) {
         setErrorMessage(botStats.error);
