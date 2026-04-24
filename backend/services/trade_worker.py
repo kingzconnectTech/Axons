@@ -52,7 +52,7 @@ def run_trade_session(config, shared_stats, stop_event):
     password = config.password.strip()
     
     try:
-        print(f"[Worker: {email}] Starting trade session with strategy: {config.strategy_name}")
+        print(f"[Worker: {email}] Starting trade session with strategy: {config.strategy}")
 
         IQ_Option = _get_iq_class()
         iq = IQ_Option(email, password)
@@ -131,7 +131,7 @@ def run_trade_session(config, shared_stats, stop_event):
             
             # Randomize order to prevent bias towards the first pair
             random.shuffle(pairs_to_scan)
-            print(f"[Worker: {email}] Scanning {len(pairs_to_scan)} pairs for signals (Strategy: {config.strategy_name})")
+            print(f"[Worker: {email}] Scanning {len(pairs_to_scan)} pairs for signals (Strategy: {config.strategy})")
             
             for pair in pairs_to_scan:
                 if stop_event.is_set():
