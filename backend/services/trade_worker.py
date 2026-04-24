@@ -78,7 +78,11 @@ def run_trade_session(config, shared_stats, stop_event):
             min_amount = get_min_amount(currency)
             shared_stats["min_amount"] = min_amount
             balance = iq.get_balance()
-            shared_stats["balance"] = balance
+            if balance is None:
+                print(f"[Worker: {email}] Balance is None, retrying...")
+                time.sleep(2)
+                balance = iq.get_balance()
+            shared_stats["balance"] = float(balance) if balance is not None else 0.0
             print(f"[Worker: {email}] Connected. Account: {config.account_type} | Currency: {currency} | Min: {min_amount} | Balance: {balance}")
         except Exception as e:
             print(f"[Worker: {email}] Connected, but failed to load account info: {e}")
@@ -99,7 +103,8 @@ def run_trade_session(config, shared_stats, stop_event):
             # Update shared stats (including balance)
             try:
                 current_balance = iq.get_balance()
-                shared_stats["balance"] = current_balance
+                if current_balance is not None:
+                    shared_stats["balance"] = float(current_balance)
             except Exception:
                 pass
 

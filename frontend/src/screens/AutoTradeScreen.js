@@ -316,7 +316,7 @@ export default function AutoTradeScreen() {
                   <Text variant="titleMedium" style={{ marginLeft: 12, color: theme.colors.onSurface, fontWeight: 'bold' }}>SYSTEM ACTIVE</Text>
                 </View>
                 <Surface style={{ borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, backgroundColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }}>
-                   <Text variant="labelSmall" style={{ color: theme.colors.secondary, fontWeight: 'bold' }}>{accountType} {status.balance > 0 ? `${currencySymbol}${status.balance.toFixed(2)}` : ''}</Text>
+                   <Text variant="labelSmall" style={{ color: theme.colors.secondary, fontWeight: 'bold' }}>{accountType} {status.balance != null ? `${currencySymbol}${status.balance.toFixed(2)}` : ''}</Text>
                 </Surface>
               </View>
               

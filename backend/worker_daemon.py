@@ -31,7 +31,7 @@ class WorkerDaemon:
         try:
             while True:
                 # Check if thread died
-                if not worker_process.is_alive():
+                if not worker_thread.is_alive():
                     print(f"[WorkerDaemon] Trade for {email} has ended.")
                     stats["active"] = False
                     status_store.set_status(email, dict(stats))

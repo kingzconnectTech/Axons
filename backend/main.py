@@ -35,9 +35,9 @@ def startup_event():
 
     print("=" * 60)
     print("[Startup] Axon Backend Environment Check:")
-    print(f"  IQ_OPTION_EMAIL     : {'✓ SET' if iq_email else '✗ MISSING - market/signals will return 503!'}")
-    print(f"  IQ_OPTION_PASSWORD  : {'✓ SET' if iq_pass else '✗ MISSING - market/signals will return 503!'}")
-    print(f"  FIREBASE_SERVICE_ACCOUNT_JSON: {'✓ SET' if firebase_json else '✗ MISSING - push notifications disabled'}")
+    print(f"  IQ_OPTION_EMAIL     : {'[SET]' if iq_email else '[MISSING] - market/signals will return 503!'}")
+    print(f"  IQ_OPTION_PASSWORD  : {'[SET]' if iq_pass else '[MISSING] - market/signals will return 503!'}")
+    print(f"  FIREBASE_SERVICE_ACCOUNT_JSON: {'[SET]' if firebase_json else '[MISSING] - push notifications disabled'}")
     print(f"  ENABLE_LOCAL_WORKER : {enable_worker or 'not set (worker disabled on Render by default)'}")
     print("=" * 60)
 
