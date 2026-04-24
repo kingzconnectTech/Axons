@@ -54,6 +54,7 @@ def update_token(data: TokenUpdate):
 @router.get("/status/{email}", response_model=TradeStatus)
 def get_status(email: str):
     item = status_store.get_status(email)
+    print(f"[AutoTrade] Status requested for {email}. Found: {bool(item)} | Active: {item.get('active') if item else 'N/A'}")
     if not item:
         return TradeStatus(
             active=False,

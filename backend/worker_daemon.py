@@ -1,7 +1,6 @@
 import os
 import json
 import time
-import multiprocessing
 import threading
 import boto3
 from models.schemas import AutoTradeConfig
@@ -12,7 +11,6 @@ class WorkerDaemon:
     def __init__(self, local_queue=None):
         self.region = os.environ.get("QUEUE_REGION") or os.environ.get("AWS_REGION", "us-east-1")
         self.queue_url = os.environ.get("AXON_QUEUE_URL") or os.environ.get("AXON_SQS_QUEUE_URL")
-        self.manager = multiprocessing.Manager()
         self.sessions = {}
         
         if local_queue:
@@ -26,64 +24,46 @@ class WorkerDaemon:
         else:
             raise RuntimeError("AXON_QUEUE_URL not set and no local_queue provided")
 
-    def monitor_session(self, email, stats, stop_event, process):
+    def monitor_session(self, email, stats, stop_event, worker_thread):
         print(f"[WorkerDaemon] Monitor started for {email}")
         status_store._log(f"[WorkerDaemon] Monitor started for {email}")
         try:
             while True:
-                # Check if process died (naturally or via stop_event)
-                if not process.is_alive():
-                    print(f"[WorkerDaemon] Process for {email} has ended.")
-                    data = dict(stats)
-                    data["active"] = False
-                    status_store.set_status(email, data)
-                    # Clean up sessions so a future 'start' command works correctly
+                # Check if thread died
+                if not worker_thread.is_alive():
+                    print(f"[WorkerDaemon] Trade for {email} has ended.")
+                    stats["active"] = False
+                    status_store.set_status(email, stats)
                     self.sessions.pop(email, None)
                     break
 
-                data = dict(stats)
-                # Respect both the stop_event AND the worker's own active flag.
-                # Never re-set active=True once a stop has been signalled.
-                if stop_event.is_set() or not data.get("active", True):
-                    data["active"] = False
-                    status_store.set_status(email, data)
-                    print(f"[WorkerDaemon] Stop confirmed for {email}, ending monitor.")
-                    # Clean up sessions
-                    self.sessions.pop(email, None)
-                    break
+                # Periodic stats update
+                # Include 'active' if it's not already False in the stats
+                status_store.set_status(email, stats)
 
-                # Periodic stats update — deliberately excludes 'active' so we
-                # never overwrite a active=False that /stop already wrote to the
-                # store while the stop_event is still propagating to the worker.
-                stats_update = {k: v for k, v in data.items() if k != "active"}
-                status_store.set_status(email, stats_update)
-
-                # Wait for 5 seconds OR until stop_event is set
+                # Wait for 5 seconds or until stop signal
                 if stop_event.wait(5):
                     print(f"[WorkerDaemon] Stop event set for {email}")
-                    # Perform one final update to guarantee active=False in the store
-                    data = dict(stats)
-                    data["active"] = False
-                    status_store.set_status(email, data)
-                    # Clean up sessions
+                    stats["active"] = False
+                    status_store.set_status(email, stats)
                     self.sessions.pop(email, None)
                     break
         except Exception as e:
             print(f"[WorkerDaemon] Monitor exception for {email}: {e}")
-            import traceback
-            traceback.print_exc()
             self.sessions.pop(email, None)
 
     def start_session(self, config_dict):
         email = config_dict["email"]
         if email in self.sessions:
-            proc = self.sessions[email]["process"]
-            if proc.is_alive():
+            if self.sessions[email]["thread"].is_alive():
+                print(f"[WorkerDaemon] Session alive for {email}, skipping start.")
                 return
             else:
                 del self.sessions[email]
-        stop_event = self.manager.Event()
-        stats = self.manager.dict({
+
+        stop_event = threading.Event()
+        # Use a simple dict since we are using threads
+        stats = {
             "total_trades": 0,
             "wins": 0,
             "losses": 0,
@@ -92,32 +72,32 @@ class WorkerDaemon:
             "balance": 0.0,
             "currency": None,
             "active": True
-        })
+        }
         config = AutoTradeConfig(**config_dict)
-        process = multiprocessing.Process(target=run_trade_session, args=(config, stats, stop_event))
-        process.daemon = True  # Ensure process dies if main process (backend) restarts
-        process.start()
-        # Immediately mark as active in the store so UI reflects the start
-        status_store.set_status(email, {"active": True, "error": None})
         
-        monitor = threading.Thread(target=self.monitor_session, args=(email, stats, stop_event, process), daemon=True)
+        # Start trading thread
+        worker_thread = threading.Thread(target=run_trade_session, args=(config, stats, stop_event))
+        worker_thread.daemon = True
+        worker_thread.start()
+        
+        # Mark as active immediately
+        status_store.set_status(email, stats)
+
+        # Start monitor thread
+        monitor = threading.Thread(target=self.monitor_session, args=(email, stats, stop_event, worker_thread), daemon=True)
         monitor.start()
-        self._log(f"Started session for {email}. Process PID: {process.pid}")
-        self.sessions[email] = {"process": process, "stop_event": stop_event, "stats": stats}
+        
+        self.sessions[email] = {"thread": worker_thread, "stop_event": stop_event, "stats": stats}
+        self._log(f"Started session thread for {email}")
 
     def _log(self, msg):
-        # Adding log helper that was missing but being used on line 102
         status_store._log(msg)
 
     def stop_session(self, email):
         if email in self.sessions:
             print(f"[WorkerDaemon] Stopping session for {email}")
             self.sessions[email]["stop_event"].set()
-            # Do NOT delete from self.sessions here — the monitor_session thread
-            # will clean up once the process has fully terminated, preventing a
-            # race where a late 'start' task sees a dead process and relaunches.
         else:
-            # Ghost session: no active session tracked, force-clear the store.
             print(f"[WorkerDaemon] clear ghost session for {email}")
             status_store.set_status(email, {"active": False})
 
@@ -141,8 +121,6 @@ class WorkerDaemon:
                 except Exception as e:
                     status_store._log(f"[WorkerDaemon] Error in local loop: {e}")
                     print(f"[WorkerDaemon] Error in local loop: {e}")
-                    import traceback
-                    traceback.print_exc()
                     time.sleep(1)
             else:
                 resp = self.sqs.receive_message(
@@ -167,10 +145,8 @@ class WorkerDaemon:
                     )
 
 if __name__ == "__main__":
-    # If starting via terminal, check if we should default to local mode
     if not os.environ.get("AXON_QUEUE_URL") and not os.environ.get("AXON_SQS_QUEUE_URL"):
         print("[WorkerDaemon] No SQS URL found. Defaulting to local persistent queue.")
-        # Import queue_service here to get the same local_queue config
         from services.queue_service import queue_service
         WorkerDaemon(local_queue=queue_service.local_queue).run()
     else:
