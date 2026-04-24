@@ -2,6 +2,7 @@ import os
 import json
 import time
 import threading
+import multiprocessing
 import boto3
 from models.schemas import AutoTradeConfig
 from services.trade_worker import run_trade_session
@@ -30,22 +31,22 @@ class WorkerDaemon:
         try:
             while True:
                 # Check if thread died
-                if not worker_thread.is_alive():
+                if not worker_process.is_alive():
                     print(f"[WorkerDaemon] Trade for {email} has ended.")
                     stats["active"] = False
-                    status_store.set_status(email, stats)
+                    status_store.set_status(email, dict(stats))
                     self.sessions.pop(email, None)
                     break
 
                 # Periodic stats update
                 # Include 'active' if it's not already False in the stats
-                status_store.set_status(email, stats)
+                status_store.set_status(email, dict(stats))
 
                 # Wait for 5 seconds or until stop signal
                 if stop_event.wait(5):
                     print(f"[WorkerDaemon] Stop event set for {email}")
                     stats["active"] = False
-                    status_store.set_status(email, stats)
+                    status_store.set_status(email, dict(stats))
                     self.sessions.pop(email, None)
                     break
         except Exception as e:
@@ -61,9 +62,13 @@ class WorkerDaemon:
             else:
                 del self.sessions[email]
 
-        stop_event = threading.Event()
-        # Use a simple dict since we are using threads
-        stats = {
+        # Use multiprocessing.Event to signal the separate process
+        stop_event = multiprocessing.Event()
+        
+        # We MUST use a multiprocessing.Manager().dict() so that the separate 
+        # process can update the stats and the monitor thread can read them!
+        manager = multiprocessing.Manager()
+        stats = manager.dict({
             "total_trades": 0,
             "wins": 0,
             "losses": 0,
@@ -72,23 +77,23 @@ class WorkerDaemon:
             "balance": 0.0,
             "currency": None,
             "active": True
-        }
+        })
         config = AutoTradeConfig(**config_dict)
         
-        # Start trading thread
-        worker_thread = threading.Thread(target=run_trade_session, args=(config, stats, stop_event))
-        worker_thread.daemon = True
-        worker_thread.start()
+        # Start trading process
+        worker_process = multiprocessing.Process(target=run_trade_session, args=(config, stats, stop_event))
+        worker_process.daemon = True
+        worker_process.start()
         
         # Mark as active immediately
-        status_store.set_status(email, stats)
+        status_store.set_status(email, dict(stats))
 
-        # Start monitor thread
-        monitor = threading.Thread(target=self.monitor_session, args=(email, stats, stop_event, worker_thread), daemon=True)
+        # Start monitor thread in the daemon
+        monitor = threading.Thread(target=self.monitor_session, args=(email, stats, stop_event, worker_process), daemon=True)
         monitor.start()
         
-        self.sessions[email] = {"thread": worker_thread, "stop_event": stop_event, "stats": stats}
-        self._log(f"Started session thread for {email}")
+        self.sessions[email] = {"thread": worker_process, "stop_event": stop_event, "stats": stats}
+        self._log(f"Started session process for {email}")
 
     def _log(self, msg):
         status_store._log(msg)
@@ -97,6 +102,7 @@ class WorkerDaemon:
         if email in self.sessions:
             print(f"[WorkerDaemon] Stopping session for {email}")
             self.sessions[email]["stop_event"].set()
+            # If the process hangs, we could forcibly terminate it after a timeout if we wanted
         else:
             print(f"[WorkerDaemon] clear ghost session for {email}")
             status_store.set_status(email, {"active": False})
