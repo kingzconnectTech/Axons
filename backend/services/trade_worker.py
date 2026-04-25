@@ -32,28 +32,60 @@ def get_min_amount(currency: str) -> float:
     return MIN_TRADE_AMOUNTS.get(currency.upper() if currency else "USD", 1.0)
 
 
+def _worker_log(email, msg):
+    try:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        log_file = os.path.join(base_dir, "worker_debug.log")
+        with open(log_file, "a") as f:
+            f.write(f"[{email}] {time.ctime()} {msg}\n")
+    except:
+        pass
+
+
 def _wait_for_result(iq, trade_id, email, stake_amount, stop_event):
     """
-    Poll for binary option result using get_binary_option_detail.
-    Bypasses blocking check_win_v3 which can hang.
+    Robust polling for binary option result.
+    Checks multiple API endpoints for the trade status.
     """
-    print(f"[Worker: {email}] Polling result for trade {trade_id}...")
+    _worker_log(email, f"Waiting for result of trade {trade_id} (Stake: {stake_amount})...")
     start_wait = time.time()
-    # Poll for up to 2 minutes after expected expiry
-    while time.time() - start_wait < 120:
+    
+    # Poll for up to 3 minutes
+    while time.time() - start_wait < 180:
         if stop_event.is_set():
             return None
+        
         try:
+            # Method 1: get_binary_option_detail
             details = iq.get_binary_option_detail(trade_id)
             if details and details.get("result"):
                 res = details.get("result")
-                # result: {"win": "win"/"loose"/"equal", "profit": float, ...}
-                if res.get("win") in ["win", "loose", "equal"]:
+                win_status = res.get("win")
+                if win_status in ["win", "loose", "equal"]:
+                    _worker_log(email, f"Result found via detail: {win_status}")
                     return res
-        except Exception:
-            pass
+            
+            # Method 2: get_optioninfo_v2 (check last 10 trades)
+            history = iq.get_optioninfo_v2(10)
+            if history and history.get("items"):
+                for item in history["items"]:
+                    if str(item.get("id")) == str(trade_id):
+                        # history entry usually has 'win' or 'result'
+                        # but structure varies between versions
+                        win = item.get("win")
+                        if win in ["win", "loose", "equal"]:
+                            _worker_log(email, f"Result found via history: {win}")
+                            # Normalize history item to match expected res structure
+                            return {"win": win, "profit": item.get("profit_amount", 0)}
+                            
+        except Exception as e:
+            _worker_log(email, f"Error in result polling: {e}")
+            
         time.sleep(5)
+    
+    _worker_log(email, f"Timeout waiting for trade {trade_id}")
     return None
+
 
 
 
@@ -260,6 +292,13 @@ def run_trade_session(config, shared_stats, stop_event):
                     
                     print(f"[Worker: {email}] Signal Found: {pair} {action} ({confidence}%). Executing Trade...")
                     
+                    # Capture balance before trade for fallback verification
+                    balance_before = iq.get_balance()
+                    if balance_before is None:
+                        # Try one more time
+                        time.sleep(1)
+                        balance_before = iq.get_balance() or 0.0
+
                     check, id = iq.buy(stake_amount, pair, action, trade_duration)
                     if check:
                         print(f"[Worker: {email}] Trade placed: {action} (ID: {id})")
@@ -280,22 +319,57 @@ def run_trade_session(config, shared_stats, stop_event):
                             if result:
                                 win_status = result.get("win")
                                 if win_status == "win":
-                                    profit = float(result.get("profit", 0) or 0)
-                                    print(f"[Worker: {email}] Trade WON: +{profit}")
+                                    profit_val = float(result.get("profit", 0) or 0)
+                                    # Net profit = total payout - stake
+                                    net_profit = profit_val - float(stake_amount) if profit_val > float(stake_amount) else profit_val
+                                    
+                                    print(f"[Worker: {email}] Trade WON: +{net_profit}")
+                                    _worker_log(email, f"WON! Net: {net_profit}")
                                     shared_stats["wins"] = int(shared_stats.get("wins", 0)) + 1
-                                    shared_stats["profit"] = float(shared_stats.get("profit", 0.0)) + profit
+                                    shared_stats["profit"] = float(shared_stats.get("profit", 0.0)) + net_profit
                                     shared_stats["consecutive_losses"] = 0
                                 elif win_status == "loose":
                                     loss_amount = float(stake_amount)
                                     print(f"[Worker: {email}] Trade LOST: -{loss_amount}")
+                                    _worker_log(email, f"LOST! -{loss_amount}")
                                     shared_stats["losses"] = int(shared_stats.get("losses", 0)) + 1
                                     shared_stats["profit"] = float(shared_stats.get("profit", 0.0)) - loss_amount
                                     shared_stats["consecutive_losses"] = int(shared_stats.get("consecutive_losses", 0)) + 1
                                 elif win_status == "equal":
                                     print(f"[Worker: {email}] Trade TIE (Equal).")
+                                    _worker_log(email, "TIE")
                                     shared_stats["consecutive_losses"] = 0
                             else:
-                                print(f"[Worker: {email}] Could not determine trade result for {id} after polling.")
+                                print(f"[Worker: {email}] Could not determine trade result for {id} after polling. Using balance fallback...")
+                                _worker_log(email, "Result polling failed. Checking balance fallback...")
+                                
+                                # Fallback: Check balance difference
+                                try:
+                                    balance_after = iq.get_balance()
+                                    if balance_after is not None:
+                                        # If balance_after > balance_before, we likely won
+                                        # Note: balance_after includes the return amount (stake + profit)
+                                        if balance_after > (balance_before + 0.001): # Add small epsilon
+                                            net_profit = balance_after - balance_before
+                                            print(f"[Worker: {email}] Fallback: Trade WON identified by balance increase (+{net_profit})")
+                                            _worker_log(email, f"Fallback WON! Net: {net_profit}")
+                                            shared_stats["wins"] = int(shared_stats.get("wins", 0)) + 1
+                                            shared_stats["profit"] = float(shared_stats.get("profit", 0.0)) + net_profit
+                                            shared_stats["consecutive_losses"] = 0
+                                        else:
+                                            # If balance didn't increase, it's either a loss or a tie
+                                            # In most iqoption binary cases, balance-before - stake = balance-after on loss.
+                                            loss_amount = float(stake_amount)
+                                            print(f"[Worker: {email}] Fallback: Trade likely LOST/TIE identified by no balance increase.")
+                                            _worker_log(email, "Fallback LOST/TIE")
+                                            shared_stats["losses"] = int(shared_stats.get("losses", 0)) + 1
+                                            shared_stats["profit"] = float(shared_stats.get("profit", 0.0)) - loss_amount
+                                            shared_stats["consecutive_losses"] = int(shared_stats.get("consecutive_losses", 0)) + 1
+                                except Exception as fallback_e:
+                                    _worker_log(email, f"Fallback check failed: {fallback_e}")
+                            
+                            # Update stats one more time explicitly to ensure propagation
+                            shared_stats["heartbeat"] = time.time()
                             
                             # Cooldown
                             print(f"[Worker: {email}] Resting for 10 seconds...")
