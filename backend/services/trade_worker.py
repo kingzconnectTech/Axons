@@ -32,6 +32,31 @@ def get_min_amount(currency: str) -> float:
     return MIN_TRADE_AMOUNTS.get(currency.upper() if currency else "USD", 1.0)
 
 
+def _wait_for_result(iq, trade_id, email, stake_amount, stop_event):
+    """
+    Poll for binary option result using get_binary_option_detail.
+    Bypasses blocking check_win_v3 which can hang.
+    """
+    print(f"[Worker: {email}] Polling result for trade {trade_id}...")
+    start_wait = time.time()
+    # Poll for up to 2 minutes after expected expiry
+    while time.time() - start_wait < 120:
+        if stop_event.is_set():
+            return None
+        try:
+            details = iq.get_binary_option_detail(trade_id)
+            if details and details.get("result"):
+                res = details.get("result")
+                # result: {"win": "win"/"loose"/"equal", "profit": float, ...}
+                if res.get("win") in ["win", "loose", "equal"]:
+                    return res
+        except Exception:
+            pass
+        time.sleep(5)
+    return None
+
+
+
 def _get_iq_class():
     """
     Import IQ_Option directly — bypassing the shared IQSessionManager
@@ -99,63 +124,90 @@ def run_trade_session(config, shared_stats, stop_event):
 
         last_scan_time = 0
         while not stop_event.is_set():
-            # 1. Connection Maintenance
-            if not iq.check_connect():
-                print(f"[Worker: {email}] Connection lost. Reconnecting...")
-                check, reason = iq.connect()
-                if not check:
-                    print(f"[Worker: {email}] Reconnection failed. Skipping this loop.")
-                    time.sleep(5)
-                    continue
-            # Update shared stats (including balance)
             try:
-                current_balance = iq.get_balance()
-                if current_balance is not None:
-                    shared_stats["balance"] = float(current_balance)
-            except Exception:
-                pass
+                # 1. Connection Maintenance
+                if not iq.check_connect():
+                    print(f"[Worker: {email}] Connection lost. Reconnecting...")
+                    check, reason = iq.connect()
+                    if not check:
+                        print(f"[Worker: {email}] Reconnection failed. Skipping this loop.")
+                        time.sleep(5)
+                        continue
+                # Update shared stats (including balance)
+                try:
+                    current_balance = iq.get_balance()
+                    if current_balance is not None:
+                        shared_stats["balance"] = float(current_balance)
+                except Exception:
+                    pass
 
-            if shared_stats["consecutive_losses"] >= config.max_consecutive_losses:
-                print(f"[Worker: {email}] Max consecutive losses reached. Stopping.")
-                break
-            
-            if shared_stats["total_trades"] >= config.max_trades:
-                print(f"[Worker: {email}] Max trades reached. Stopping.")
-                break
-
-            # Scan pairs
-            best_opportunity = {"pair": None, "action": "NEUTRAL", "confidence": 0, "timeframe": 0}
-            
-            # Support multiple pairs
-            pairs_to_scan = config.pairs if hasattr(config, 'pairs') and config.pairs else ["EURUSD-OTC"]
-            
-            # Randomize order to prevent bias towards the first pair
-            random.shuffle(pairs_to_scan)
-            print(f"[Worker: {email}] Scanning {len(pairs_to_scan)} pairs for signals (Strategy: {config.strategy})")
-            
-            for pair in pairs_to_scan:
-                if stop_event.is_set():
+                if shared_stats["consecutive_losses"] >= config.max_consecutive_losses:
+                    print(f"[Worker: {email}] Max consecutive losses reached. Stopping.")
                     break
                 
-                # Log which pair we are scanning
-                print(f"[Worker: {email}] Analyzing {pair}...")
-                
-                try:
-                    target_timeframe = config.timeframe
-                    
-                    analysis = {"action": "NEUTRAL", "confidence": 0}
-                    selected_tf = target_timeframe
+                if int(shared_stats["total_trades"]) >= config.max_trades:
+                    print(f"[Worker: {email}] Max trades reached. Stopping.")
+                    break
 
-                    if target_timeframe == 0:
-                        # Auto-Timeframe: Scan 1m, 2m, 3m, 4m, 5m
-                        candidate_tfs = [1, 2, 3, 4, 5]
-                        best_analysis = {"action": "NEUTRAL", "confidence": 0}
-                        best_tf = 1
+                # Scan pairs
+                best_opportunity = {"pair": None, "action": "NEUTRAL", "confidence": 0, "timeframe": 0}
+                
+                # Support multiple pairs
+                pairs_to_scan = config.pairs if hasattr(config, 'pairs') and config.pairs else ["EURUSD-OTC"]
+                
+                # Randomize order to prevent bias towards the first pair
+                random.shuffle(pairs_to_scan)
+                print(f"[Worker: {email}] Scanning {len(pairs_to_scan)} pairs for signals (Strategy: {config.strategy})")
+                
+                for pair in pairs_to_scan:
+                    if stop_event.is_set():
+                        break
+                    
+                    # Log which pair we are scanning
+                    print(f"[Worker: {email}] Analyzing {pair}...")
+                    
+                    try:
+                        target_timeframe = config.timeframe
                         
-                        for tf in candidate_tfs:
-                            if stop_event.is_set():
-                                break
+                        analysis = {"action": "NEUTRAL", "confidence": 0}
+                        selected_tf = target_timeframe
+
+                        if target_timeframe == 0:
+                            # Auto-Timeframe: Scan 1m, 2m, 3m, 4m, 5m
+                            candidate_tfs = [1, 2, 3, 4, 5]
+                            best_analysis = {"action": "NEUTRAL", "confidence": 0}
+                            best_tf = 1
                             
+                            for tf in candidate_tfs:
+                                if stop_event.is_set():
+                                    break
+                                
+                                # Use server time if available, fallback to local
+                                try:
+                                    server_time = iq.get_server_time()
+                                except:
+                                    server_time = int(time.time())
+
+                                supported_tfs = {1, 2, 5, 15, 60}
+                                if tf in supported_tfs:
+                                    candles = iq.get_candles(pair, int(tf * 60), 100, server_time)
+                                    if not candles or len(candles) < 50:
+                                        continue
+                                    analysis = StrategyService.analyze(pair, candles, config.strategy)
+                                else:
+                                    m1_candles = iq.get_candles(pair, 60, max(180, int(tf) * 80), server_time)
+                                    if not m1_candles or len(m1_candles) < 50:
+                                        continue
+                                    mN_candles = resample_to_n_minutes(m1_candles, int(tf))
+                                    analysis = StrategyService.analyze(pair, mN_candles, config.strategy)
+                                
+                                if analysis["action"] in ["CALL", "PUT"] and analysis["confidence"] > best_analysis["confidence"]:
+                                    best_analysis = analysis
+                                    best_tf = tf
+                            
+                            analysis = best_analysis
+                            selected_tf = best_tf
+                        else:
                             # Use server time if available, fallback to local
                             try:
                                 server_time = iq.get_server_time()
@@ -163,154 +215,115 @@ def run_trade_session(config, shared_stats, stop_event):
                                 server_time = int(time.time())
 
                             supported_tfs = {1, 2, 5, 15, 60}
-                            if tf in supported_tfs:
-                                candles = iq.get_candles(pair, int(tf * 60), 100, server_time)
+                            if target_timeframe in supported_tfs:
+                                candles = iq.get_candles(pair, int(target_timeframe * 60), 100, server_time)
                                 if not candles or len(candles) < 50:
                                     continue
                                 analysis = StrategyService.analyze(pair, candles, config.strategy)
                             else:
-                                m1_candles = iq.get_candles(pair, 60, max(180, int(tf) * 80), server_time)
+                                m1_candles = iq.get_candles(pair, 60, max(180, int(target_timeframe) * 80), server_time)
                                 if not m1_candles or len(m1_candles) < 50:
                                     continue
-                                mN_candles = resample_to_n_minutes(m1_candles, int(tf))
+                                mN_candles = resample_to_n_minutes(m1_candles, int(target_timeframe))
                                 analysis = StrategyService.analyze(pair, mN_candles, config.strategy)
-                            
-                            if analysis["action"] in ["CALL", "PUT"] and analysis["confidence"] > best_analysis["confidence"]:
-                                best_analysis = analysis
-                                best_tf = tf
                         
-                        analysis = best_analysis
-                        selected_tf = best_tf
-                    else:
-                        # Use server time if available, fallback to local
-                        try:
-                            server_time = iq.get_server_time()
-                        except:
-                            server_time = int(time.time())
-
-                        supported_tfs = {1, 2, 5, 15, 60}
-                        if target_timeframe in supported_tfs:
-                            candles = iq.get_candles(pair, int(target_timeframe * 60), 100, server_time)
-                            if not candles or len(candles) < 50:
-                                continue
-                            analysis = StrategyService.analyze(pair, candles, config.strategy)
-                        else:
-                            m1_candles = iq.get_candles(pair, 60, max(180, int(target_timeframe) * 80), server_time)
-                            if not m1_candles or len(m1_candles) < 50:
-                                continue
-                            mN_candles = resample_to_n_minutes(m1_candles, int(target_timeframe))
-                            analysis = StrategyService.analyze(pair, mN_candles, config.strategy)
-                    
-                    # Compare with best across pairs
-                    if analysis["action"] in ["CALL", "PUT"] and analysis["confidence"] > best_opportunity["confidence"]:
-                        best_opportunity = {
-                            "pair": pair,
-                            "action": analysis["action"],
-                            "confidence": analysis["confidence"],
-                            "timeframe": selected_tf
-                        }
-                        
-                        # OPTIMIZATION: Early Exit on High Confidence
-                        if analysis["confidence"] >= 90:
-                            break
+                        # Compare with best across pairs
+                        if analysis["action"] in ["CALL", "PUT"] and analysis["confidence"] > best_opportunity["confidence"]:
+                            best_opportunity = {
+                                "pair": pair,
+                                "action": analysis["action"],
+                                "confidence": analysis["confidence"],
+                                "timeframe": selected_tf
+                            }
                             
-                except Exception as loop_e:
-                    continue
-
-            # Execute Trade
-            if not stop_event.is_set() and best_opportunity["action"] in ["CALL", "PUT"] and best_opportunity["confidence"] > 70:
-                pair = best_opportunity["pair"]
-                action = best_opportunity["action"]
-                timeframe = best_opportunity["timeframe"]
-                confidence = best_opportunity["confidence"]
-
-                stake_amount = config.amount
-                # Enforce minimum trade amount for this currency
-                min_amt = shared_stats.get("min_amount") or get_min_amount(shared_stats.get("currency", "USD"))
-                if stake_amount < min_amt:
-                    print(f"[Worker: {email}] Amount {stake_amount} is below minimum {min_amt}. Using minimum.")
-                    stake_amount = min_amt
-                trade_duration = int(timeframe) if timeframe >= 1 else timeframe
-                
-                print(f"[Worker: {email}] Signal Found: {pair} {action} ({confidence}%). Executing Trade...")
-                
-                check, id = iq.buy(stake_amount, pair, action, trade_duration)
-                if check:
-                    print(f"[Worker: {email}] Trade placed: {action} (ID: {id})")
-                    shared_stats["total_trades"] = int(shared_stats.get("total_trades", 0)) + 1
-                    
-                    # Wait for expiry
-                    sleep_seconds = int(timeframe * 60 + 5)
-                    for _ in range(sleep_seconds):
-                        if stop_event.is_set():
-                            break
-                        time.sleep(1)
-                    
-                    # Check Result (Wait for result with retries)
-                    try:
-                        print(f"[Worker: {email}] Checking result for trade {id}...")
-                        profit = None
-                        for attempt in range(15): # Increased wait time
-                            # Try check_win_v3 first
-                            profit = iq.check_win_v3(id)
-                            if profit is not None and not isinstance(profit, bool):
+                            # OPTIMIZATION: Early Exit on High Confidence
+                            if analysis["confidence"] >= 90:
                                 break
-                            
-                            # Fallback: Check binary option detail
-                            try:
-                                details = iq.get_binary_option_detail(id)
-                                if details and details.get("result"):
-                                    # result structure varies, but often exists
-                                    res = details.get("result")
-                                    if res.get("win") == "win":
-                                        profit = float(res.get("profit", 0) or 0)
-                                    elif res.get("win") == "loose":
-                                        profit = -float(stake_amount)
-                                    break
-                            except:
-                                pass
                                 
-                            time.sleep(2)
+                    except Exception as loop_e:
+                        continue
 
-                        if profit is not None:
-                            # In some cases check_win_v3 returns total returned amount (stake + profit)
-                            # or just profit. We assume it's profit here as per standard iqoptionapi.
-                            if profit > 0:
-                                print(f"[Worker: {email}] Trade WON: +{profit}")
-                                shared_stats["wins"] = int(shared_stats.get("wins", 0)) + 1
-                                shared_stats["profit"] = float(shared_stats.get("profit", 0.0)) + float(profit)
-                                shared_stats["consecutive_losses"] = 0
-                            elif profit < 0:
-                                print(f"[Worker: {email}] Trade LOST: {profit}")
-                                shared_stats["losses"] = int(shared_stats.get("losses", 0)) + 1
-                                shared_stats["profit"] = float(shared_stats.get("profit", 0.0)) + float(profit)
-                                shared_stats["consecutive_losses"] = int(shared_stats.get("consecutive_losses", 0)) + 1
-                            else:
-                                # It returned 0, which usually means a loss or a tie
-                                print(f"[Worker: {email}] Trade result is 0 (Loss/Tie)")
-                                shared_stats["losses"] = int(shared_stats.get("losses", 0)) + 1
-                                shared_stats["profit"] = float(shared_stats.get("profit", 0.0)) - float(stake_amount)
-                                shared_stats["consecutive_losses"] = int(shared_stats.get("consecutive_losses", 0)) + 1
-                        else:
-                            print(f"[Worker: {email}] Could not determine trade result for {id} after waiting.")
+                # Execute Trade
+                if not stop_event.is_set() and best_opportunity["action"] in ["CALL", "PUT"] and best_opportunity["confidence"] > 70:
+                    pair = best_opportunity["pair"]
+                    action = best_opportunity["action"]
+                    timeframe = best_opportunity["timeframe"]
+                    confidence = best_opportunity["confidence"]
+
+                    stake_amount = config.amount
+                    # Enforce minimum trade amount for this currency
+                    min_amt = shared_stats.get("min_amount") or get_min_amount(shared_stats.get("currency", "USD"))
+                    if stake_amount < min_amt:
+                        print(f"[Worker: {email}] Amount {stake_amount} is below minimum {min_amt}. Using minimum.")
+                        stake_amount = min_amt
+                    trade_duration = int(timeframe) if timeframe >= 1 else timeframe
+                    
+                    print(f"[Worker: {email}] Signal Found: {pair} {action} ({confidence}%). Executing Trade...")
+                    
+                    check, id = iq.buy(stake_amount, pair, action, trade_duration)
+                    if check:
+                        print(f"[Worker: {email}] Trade placed: {action} (ID: {id})")
+                        shared_stats["total_trades"] = int(shared_stats["total_trades"]) + 1
                         
-                        # Cooldown
-                        print(f"[Worker: {email}] Resting for 60 seconds...")
-                        for _ in range(60):
-                            if stop_event.is_set():
-                                break
+                        # Wait for expiry
+                        sleep_seconds = int(timeframe * 60 + 5)
+                        print(f"[Worker: {email}] Waiting {sleep_seconds}s for expiry...")
+                        for _ in range(sleep_seconds):
+                            if stop_event.is_set(): break
                             time.sleep(1)
-                            
-                        # Refresh balance
-                        current_balance = iq.get_balance()
-                        if current_balance is not None:
-                            shared_stats["balance"] = float(current_balance)
+                            shared_stats["heartbeat"] = time.time() # Keep heartbeat alive during long wait
                         
-                    except Exception as e:
-                        print(f"[Worker: {email}] Error checking result: {e}")
-                else:
-                    print(f"[Worker: {email}] Trade execution failed: {id}")
+                        # Check Result
+                        try:
+                            result = _wait_for_result(iq, id, email, stake_amount, stop_event)
+                            
+                            if result:
+                                win_status = result.get("win")
+                                if win_status == "win":
+                                    profit = float(result.get("profit", 0) or 0)
+                                    print(f"[Worker: {email}] Trade WON: +{profit}")
+                                    shared_stats["wins"] = int(shared_stats.get("wins", 0)) + 1
+                                    shared_stats["profit"] = float(shared_stats.get("profit", 0.0)) + profit
+                                    shared_stats["consecutive_losses"] = 0
+                                elif win_status == "loose":
+                                    loss_amount = float(stake_amount)
+                                    print(f"[Worker: {email}] Trade LOST: -{loss_amount}")
+                                    shared_stats["losses"] = int(shared_stats.get("losses", 0)) + 1
+                                    shared_stats["profit"] = float(shared_stats.get("profit", 0.0)) - loss_amount
+                                    shared_stats["consecutive_losses"] = int(shared_stats.get("consecutive_losses", 0)) + 1
+                                elif win_status == "equal":
+                                    print(f"[Worker: {email}] Trade TIE (Equal).")
+                                    shared_stats["consecutive_losses"] = 0
+                            else:
+                                print(f"[Worker: {email}] Could not determine trade result for {id} after polling.")
+                            
+                            # Cooldown
+                            print(f"[Worker: {email}] Resting for 10 seconds...")
+                            for _ in range(10):
+                                if stop_event.is_set(): break
+                                time.sleep(1)
+                                shared_stats["heartbeat"] = time.time()
+                                
+                            # Refresh balance
+                            current_balance = iq.get_balance()
+                            if current_balance is not None:
+                                shared_stats["balance"] = float(current_balance)
+                            
+                        except Exception as e:
+                            print(f"[Worker: {email}] Error processing trade result: {e}")
+                    else:
+                        print(f"[Worker: {email}] Trade execution failed: {id}")
+                
+                # Heartbeat for monitor
+                shared_stats["heartbeat"] = time.time()
+                time.sleep(1)
+            except Exception as outer_e:
+                print(f"[Worker: {email}] Critical error in loop: {outer_e}")
+                traceback.print_exc()
+                time.sleep(5)
             
+            # Heartbeat for monitor
+            shared_stats["heartbeat"] = time.time()
             time.sleep(1)
 
     except Exception as e:

@@ -38,6 +38,19 @@ class WorkerDaemon:
                     self.sessions.pop(email, None)
                     break
 
+                # Check heartbeat (zombie process detection)
+                last_hb = stats.get("heartbeat", 0)
+                if time.time() - last_hb > 600: # 10 minutes
+                    print(f"[WorkerDaemon] Zombie process detected for {email} (no heartbeat for 10m). Terminating.")
+                    try:
+                        worker_thread.terminate()
+                    except:
+                        pass
+                    stats["active"] = False
+                    status_store.set_status(email, dict(stats))
+                    self.sessions.pop(email, None)
+                    break
+
                 # Periodic stats update
                 # Include 'active' if it's not already False in the stats
                 status_store.set_status(email, dict(stats))
@@ -76,7 +89,8 @@ class WorkerDaemon:
             "consecutive_losses": 0,
             "balance": 0.0,
             "currency": None,
-            "active": True
+            "active": True,
+            "heartbeat": time.time()
         })
         config = AutoTradeConfig(**config_dict)
         
