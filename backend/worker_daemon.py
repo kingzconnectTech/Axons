@@ -7,6 +7,7 @@ import boto3
 from models.schemas import AutoTradeConfig
 from services.trade_worker import run_trade_session
 from services.status_store import status_store
+from services.notification_service import notification_service
 
 class WorkerDaemon:
     def __init__(self, local_queue=None):
@@ -35,7 +36,6 @@ class WorkerDaemon:
                     print(f"[WorkerDaemon] Trade for {email} has ended.")
                     stats["active"] = False
                     status_store.set_status(email, dict(stats))
-                    self.sessions.pop(email, None)
                     break
 
                 # Check heartbeat (zombie process detection)
@@ -48,11 +48,9 @@ class WorkerDaemon:
                         pass
                     stats["active"] = False
                     status_store.set_status(email, dict(stats))
-                    self.sessions.pop(email, None)
                     break
 
                 # Periodic stats update
-                # Include 'active' if it's not already False in the stats
                 status_store.set_status(email, dict(stats))
 
                 # Wait for 5 seconds or until stop signal
@@ -60,8 +58,12 @@ class WorkerDaemon:
                     print(f"[WorkerDaemon] Stop event set for {email}")
                     stats["active"] = False
                     status_store.set_status(email, dict(stats))
-                    self.sessions.pop(email, None)
                     break
+            
+            # Send notification after loops break (session ended)
+            self._send_finish_notification(email, stats)
+            self.sessions.pop(email, None)
+
         except Exception as e:
             print(f"[WorkerDaemon] Monitor exception for {email}: {e}")
             self.sessions.pop(email, None)
@@ -113,6 +115,32 @@ class WorkerDaemon:
             "manager": manager # MUST keep manager alive or the proxy dicts will break!
         }
         self._log(f"Started session process for {email}")
+
+    def _send_finish_notification(self, email, stats):
+        try:
+            token = status_store.get_token(email)
+            if not token:
+                print(f"[WorkerDaemon] No FCM token found for {email}, skipping notification.")
+                return
+
+            # Ensure we are using fresh values from the manager dict
+            total = stats.get("total_trades", 0)
+            wins = stats.get("wins", 0)
+            losses = stats.get("losses", 0)
+            profit = stats.get("profit", 0.0)
+
+            title = "Auto Trade Finished"
+            body = (
+                f"TOTAL: {total}\n"
+                f"WINS: {wins}\n"
+                f"LOSSES: {losses}\n"
+                f"PROFIT: {profit:.2f}"
+            )
+            
+            notification_service.send_multicast([token], title, body)
+            print(f"[WorkerDaemon] Finish notification sent to {email}")
+        except Exception as e:
+            print(f"[WorkerDaemon] Error sending finish notification: {e}")
 
     def _log(self, msg):
         status_store._log(msg)
