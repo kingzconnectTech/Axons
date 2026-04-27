@@ -3,6 +3,17 @@ import json
 import time
 import threading
 import multiprocessing
+
+# ----------------- CRITICAL FIX -----------------
+# Force multiprocessing to use 'spawn' instead of 'fork' (the default on Linux/Render).
+# This guarantees that the background worker process does not inherit the memory,
+# imported modules, or global state (like IQOption session singletons) from the parent.
+try:
+    multiprocessing.set_start_method("spawn", force=True)
+except RuntimeError:
+    pass
+# ------------------------------------------------
+
 import boto3
 from models.schemas import AutoTradeConfig
 from services.trade_worker import run_trade_session
