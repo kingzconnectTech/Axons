@@ -276,7 +276,7 @@ def run_trade_session(config, shared_stats, stop_event):
                         continue
 
                 # Execute Trade
-                if not stop_event.is_set() and best_opportunity["action"] in ["CALL", "PUT"] and best_opportunity["confidence"] > 70:
+                if not stop_event.is_set() and best_opportunity["action"] in ["CALL", "PUT"] and best_opportunity["confidence"] >= 85:
                     pair = best_opportunity["pair"]
                     action = best_opportunity["action"]
                     timeframe = best_opportunity["timeframe"]
