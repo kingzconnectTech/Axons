@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Dimensions, TouchableOpacity, Modal } from 'react-native';
+import { View, ScrollView, StyleSheet, Dimensions, TouchableOpacity, Modal, Linking } from 'react-native';
 import { Text, Surface, useTheme, Button } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -9,7 +9,7 @@ import { LineChart } from 'react-native-chart-kit';
 
 import ParticlesBackground from '../components/ParticlesBackground';
 import AdBanner from '../components/AdBanner';
-import { API_URLS } from '../config';
+import { API_URLS, IQ_OPTION_REFERRAL_LINK } from '../config';
 import { useBot } from '../context/BotContext';
 
 const { width } = Dimensions.get('window');
@@ -230,6 +230,21 @@ export default function HomeScreen({ navigation }) {
             <View style={{ width: 16 }} />
             <QuickActionCard title="Flash" icon="flash" route="Quick" color="#FF9800" />
         </View>
+      </View>
+
+      {/* IQ Option Referral */}
+      <View style={styles.section}>
+        <Surface style={[styles.priceCard, { backgroundColor: theme.colors.surface, width: '100%', marginRight: 0 }]} elevation={2}>
+          <Button 
+            mode="contained"
+            onPress={() => Linking.openURL(IQ_OPTION_REFERRAL_LINK)}
+            icon="cash-multiple"
+            style={{ borderRadius: 12 }}
+            contentStyle={{ height: 50 }}
+          >
+            Start Trading with IQ Option
+          </Button>
+        </Surface>
       </View>
 
       {/* Chart Section */}

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Animated, Dimensions, TouchableOpacity, Modal } from 'react-native';
+import { View, StyleSheet, ScrollView, Animated, Dimensions, TouchableOpacity, Modal, Linking } from 'react-native';
 import { Button, Text, TextInput, Chip, ActivityIndicator, useTheme, Surface, Snackbar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
 import { useInterstitialAd, TestIds } from '../utils/SafeMobileAds';
-import { API_URLS } from '../config';
+import { API_URLS, AD_UNIT_IDS, IQ_OPTION_REFERRAL_LINK } from '../config';
 import { useBot } from '../context/BotContext';
 import ParticlesBackground from '../components/ParticlesBackground';
 import SelectionModal from '../components/SelectionModal';
@@ -39,7 +39,7 @@ export default function SignalsScreen() {
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
-  const INTERSTITIAL_UNIT_ID = __DEV__ ? TestIds.INTERSTITIAL : 'ca-app-pub-3940256099942544/1033173712';
+  const INTERSTITIAL_UNIT_ID = __DEV__ ? TestIds.INTERSTITIAL : AD_UNIT_IDS.INTERSTITIAL;
   const interstitial = useInterstitialAd(INTERSTITIAL_UNIT_ID, {
     requestNonPersonalizedAdsOnly: true,
   });
@@ -377,6 +377,25 @@ export default function SignalsScreen() {
               )}
               
             </View>
+          </LinearGradient>
+        </Surface>
+
+        {/* IQ Option Referral */}
+        <Surface style={styles.card} elevation={4}>
+          <LinearGradient
+            colors={theme.dark ? ['#252D40', '#1F2636'] : ['#FFFFFF', '#F5F7FA']}
+            style={styles.cardGradient}
+          >
+            <Button 
+              mode="contained"
+              onPress={() => Linking.openURL(IQ_OPTION_REFERRAL_LINK)}
+              icon="cash-multiple"
+              style={{ borderRadius: 16 }}
+              contentStyle={{ height: 56 }}
+              labelStyle={{ fontSize: 16, fontWeight: 'bold' }}
+            >
+              Start Trading with IQ Option
+            </Button>
           </LinearGradient>
         </Surface>
 

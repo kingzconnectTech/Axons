@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ThemeContext } from '../context/ThemeContext';
+import { IQ_OPTION_REFERRAL_LINK } from '../config';
 
 export default function SettingsScreen({ navigation }) {
   const theme = useTheme();
@@ -159,6 +160,16 @@ export default function SettingsScreen({ navigation }) {
             icon="email-outline"
           >
             Contact Us
+          </Button>
+          <Button 
+            mode="text" 
+            onPress={() => Linking.openURL(IQ_OPTION_REFERRAL_LINK)} 
+            style={styles.linkButton}
+            contentStyle={{ justifyContent: 'flex-start' }}
+            textColor={theme.colors.secondary}
+            icon="cash-multiple"
+          >
+            Start Trading with IQ Option
           </Button>
         </Surface>
 

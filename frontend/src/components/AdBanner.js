@@ -2,8 +2,9 @@ import React, { useRef, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { BannerAd, BannerAdSize, TestIds } from '../utils/SafeMobileAds';
 import Constants from 'expo-constants';
+import { AD_UNIT_IDS } from '../config';
 
-const adUnitId = __DEV__ ? TestIds.ADAPTIVE_BANNER : 'ca-app-pub-3940256099942544/9214589741';
+const adUnitId = __DEV__ ? TestIds.ADAPTIVE_BANNER : AD_UNIT_IDS.BANNER;
 
 export default function AdBanner() {
   const bannerRef = useRef(null);
