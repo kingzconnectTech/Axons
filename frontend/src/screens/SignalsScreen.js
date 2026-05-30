@@ -64,26 +64,6 @@ export default function SignalsScreen() {
         value: 'RSI + Support & Resistance Reversal', 
         label: 'RSI + Support & Resistance Reversal',
         description: 'Combines RSI overbought/oversold conditions with key support/resistance levels. (Active: 24/7 Market Hours)' 
-    },
-    { 
-        value: 'RSI EMA Pullback Fast', 
-        label: 'RSI EMA Pullback Fast',
-        description: 'No Delay, No Repaint. Uses EMA 20/50 cross + Pullback + RSI confirmation. (M1 Expiry)' 
-    },
-    { 
-        value: 'RSI Extreme Reversal Fast', 
-        label: 'RSI Extreme Reversal Fast',
-        description: 'Single-Candle Reversal: RSI < 28/72 + Wick Rejection. (M1 Expiry)' 
-    },
-    { 
-        value: 'Engulfing Momentum Fast', 
-        label: 'Engulfing Momentum Fast',
-        description: '2-Candle Pattern: Enters immediately after strong engulfing candle. (M2 Expiry)' 
-    },
-    { 
-        value: 'Bollinger Snap Fast', 
-        label: 'Bollinger Snap Fast',
-        description: 'Over-extension Reversion: Price snaps back from outer bands. (M1-M2 Expiry)' 
     }
   ];
   const timeframes = [1, 2, 3, 4, 5, 15];

@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Vibration, LayoutAnimation, Platform, UIManager, Animated } from 'react-native';
-import { Text, Surface, useTheme, Button, ActivityIndicator, IconButton, Chip } from 'react-native-paper';
+import { Text, Surface, useTheme, Button, ActivityIndicator, IconButton, Chip, TextInput } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
-import { API_URLS } from '../config';
+import { API_URLS, IQ_OPTION_REFERRAL_LINK } from '../config';
 import ParticlesBackground from '../components/ParticlesBackground';
 import SelectionModal from '../components/SelectionModal';
 import AdBanner from '../components/AdBanner';
@@ -23,7 +23,9 @@ export default function QuickScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [selectedPairs, setSelectedPairs] = useState(['EURUSD-OTC']);
-  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedStrategy, setSelectedStrategy] = useState('RSI + Support & Resistance Reversal');
+  const [pairModalVisible, setPairModalVisible] = useState(false);
+  const [strategyModalVisible, setStrategyModalVisible] = useState(false);
   const [scanAnim] = useState(new Animated.Value(0));
   const scanLoop = useRef(null);
 
@@ -41,6 +43,14 @@ export default function QuickScreen({ navigation }) {
     { label: 'EUR/JPY', value: 'EURJPY' },
     { label: 'GBP/JPY', value: 'GBPJPY' },
     { label: 'USD/CAD', value: 'USDCAD' },
+  ];
+
+  const strategies = [
+    { 
+        value: 'RSI + Support & Resistance Reversal', 
+        label: 'RSI + Support & Resistance Reversal',
+        description: 'Combines RSI overbought/oversold conditions with key support/resistance levels. (Active: 24/7 Market Hours)' 
+    },
   ];
 
   const popularPairs = [

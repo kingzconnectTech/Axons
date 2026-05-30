@@ -5,7 +5,7 @@ import numpy as np
 
 # --- Candle Indexing Constants ---
 FORMING = -1  # Forming candle (DO NOT USE FOR SIGNALS)
-CONFIRM = -2  # Last closed candle (SIGNAL CANDLE)
+CONFIRM = -2  # Last Closed Candle (SIGNAL CANDLE)
 SETUP = -3    # Setup / Indecision candle
 # ---------------------------------
 
@@ -31,17 +31,13 @@ PAIR_PROFILE = {
     }
 }
 
-
-
 LAST_SIGNAL = {}
 COOLDOWN_SECONDS = 180
 
 
-
-
 def calculate_rsi(prices, period=14):
     if len(prices) < period:
-        return 50 # Default neutral if not enough data
+        return 50  # Default neutral if not enough data
     delta = pd.Series(prices).diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
@@ -50,10 +46,12 @@ def calculate_rsi(prices, period=14):
     rsi = 100 - (100 / (1 + rs))
     return rsi.iloc[CONFIRM] if not rsi.empty else 50
 
+
 def calculate_sma(prices, period=14):
     if len(prices) < period:
         return prices[FORMING]
     return pd.Series(prices).rolling(window=period).mean().iloc[CONFIRM]
+
 
 def calculate_bollinger_bands(prices, period=20, std_dev=2):
     if len(prices) < period:
@@ -66,16 +64,18 @@ def calculate_bollinger_bands(prices, period=20, std_dev=2):
     upper = sma + (std * std_dev)
     lower = sma - (std * std_dev)
     
-    return upper, sma, lower # sma is middle band
+    return upper, sma, lower  # sma is middle band
+
 
 def calculate_ema(prices, period=50):
     if len(prices) < period:
         return prices[FORMING]
     return pd.Series(prices).ewm(span=period, adjust=False).mean().iloc[CONFIRM]
 
+
 def calculate_atr(candles, period=14):
     if len(candles) < period + 1:
-        return 0.0001 # Avoid division by zero
+        return 0.0001  # Avoid division by zero
     
     highs = pd.Series([c['max'] for c in candles])
     lows = pd.Series([c['min'] for c in candles])
@@ -93,6 +93,7 @@ def calculate_atr(candles, period=14):
     atr = tr.rolling(window=period).mean().iloc[CONFIRM]
     
     return atr if not pd.isna(atr) else 0.0001
+
 
 def calculate_atr_series(candles, period=14):
     """Returns the full ATR series for MA calculation"""
@@ -112,6 +113,7 @@ def calculate_atr_series(candles, period=14):
     atr_series = tr.rolling(window=period).mean()
     return atr_series
 
+
 def calculate_rsi_series(prices, period=14):
     if len(prices) < period:
         return pd.Series([50] * len(prices))
@@ -122,6 +124,7 @@ def calculate_rsi_series(prices, period=14):
     rs = gain / loss
     rsi = 100 - (100 / (1 + rs))
     return rsi.fillna(50)
+
 
 def get_candle_features(candle):
     """
@@ -152,6 +155,7 @@ def get_candle_features(candle):
         "low": l
     }
 
+
 def is_near_zone(price, zones, buffer_percent=0.001):
     """
     Checks if price is within buffer_percent of any level in zones.
@@ -160,6 +164,7 @@ def is_near_zone(price, zones, buffer_percent=0.001):
         if abs(price - level) <= (price * buffer_percent):
             return True
     return False
+
 
 def identify_zones(candles, window=50):
     """
@@ -185,12 +190,14 @@ def identify_zones(candles, window=50):
             
     return support_zones, resistance_zones
 
+
 def cluster_levels(levels, atr, tolerance=0.5):
     clusters = []
     for lvl in sorted(levels):
         if not clusters or abs(lvl - clusters[-1]) > atr * tolerance:
             clusters.append(lvl)
     return clusters
+
 
 def resample_to_n_minutes(m1_candles, n_minutes):
     """
@@ -224,6 +231,7 @@ def resample_to_n_minutes(m1_candles, n_minutes):
         
     return mn_candles
 
+
 def resample_to_m5(m1_candles):
     """
     Resamples M1 candles to M5 candles.
@@ -232,305 +240,116 @@ def resample_to_m5(m1_candles):
 
 
 class StrategyService:
+    MINIMUM_CONFIDENCE = 90
+
     @staticmethod
     def analyze(pair, candles, strategy_name, spread=None):
         if not candles or len(candles) < 20:
             return {"action": "NEUTRAL", "confidence": 0}
 
-        if strategy_name == "Quick 2M Strategy":
-            # RECALIBRATED: Now uses Trend Following (EMA50) + RSI
-            # The previous "2 Candle" logic was too naive (95% loss rate).
+        if strategy_name == "RSI + Support & Resistance Reversal" or strategy_name == "Quick 2M Strategy":
             close_prices = [c["close"] for c in candles]
-            if len(close_prices) < 50:
-                 return {"action": "NEUTRAL", "confidence": 0}
+            cfg = PAIR_PROFILE.get(pair, PAIR_PROFILE["default"])
 
-            ema50 = calculate_ema(close_prices, 50)
-            rsi = calculate_rsi(close_prices, 14)
-            conf = get_candle_features(candles[CONFIRM])
+            # ---------------------------------------------------------------------
+            # STRATEGY: RSI + Support & Resistance Reversal (M1 Binary)
+            # ---------------------------------------------------------------------
+             
+            # 1. Indicators
+            # Use confirmed RSI to avoid repainting
+            rsi_series = calculate_rsi_series(close_prices, 14)
+            rsi = rsi_series.iloc[CONFIRM]
 
-            # Filter: Doji / Weak candles
-            if conf['body_ratio'] < 0.3:
+            sr_rsi_buy = cfg.get("sr_rsi_buy", 45)
+            sr_rsi_sell = cfg.get("sr_rsi_sell", 55)
+            sr_rsi_strong_buy = cfg.get("sr_rsi_strong_buy", 35)
+            sr_rsi_extreme_buy = cfg.get("sr_rsi_extreme_buy", 30)
+            sr_rsi_strong_sell = cfg.get("sr_rsi_strong_sell", 65)
+            sr_rsi_extreme_sell = cfg.get("sr_rsi_extreme_sell", 70)
+
+            atr_series = calculate_atr_series(candles, 14)
+            current_atr = atr_series.iloc[CONFIRM]
+            if current_atr <= 0:
                 return {"action": "NEUTRAL", "confidence": 0}
-
-            # CALL SCENARIO
-            # 1. Trend is UP (Close > EMA50)
-            # 2. RSI is Bullish (52 < RSI < 75)
-            # 3. Last Candle is Green
-            if conf['close'] > ema50 and 52 < rsi < 75 and conf['is_bullish']:
-                return {
-                    "action": "CALL",
-                    "confidence": 88,
-                    "reason": "Flash Trend: EMA50 + RSI Buy"
-                }
-
-            # PUT SCENARIO
-            # 1. Trend is DOWN (Close < EMA50)
-            # 2. RSI is Bearish (25 < RSI < 48)
-            # 3. Last Candle is Red
-            if conf['close'] < ema50 and 25 < rsi < 48 and not conf['is_bullish']:
-                return {
-                    "action": "PUT",
-                    "confidence": 88,
-                    "reason": "Flash Trend: EMA50 + RSI Sell"
-                }
-                
-            return {"action": "NEUTRAL", "confidence": 0}
-
-        if strategy_name == "RSI EMA Pullback Fast":
-            close_prices = [c["close"] for c in candles]
-
-            ema20 = calculate_ema(close_prices, 20)
-            ema50 = calculate_ema(close_prices, 50)
-            rsi = calculate_rsi(close_prices, 14)
-
-            conf = get_candle_features(candles[CONFIRM])
-
-            # ----- CALL -----
-            if ema20 > ema50:
-                if abs(conf['close'] - ema20) <= (conf['total_range'] * 0.3):
-                    if 40 <= rsi <= 55:
-                        if conf['is_bullish'] and conf['body_ratio'] >= 0.4:
-                            return {
-                                "action": "CALL",
-                                "confidence": 82,
-                                "reason": "EMA Pullback Buy"
-                            }
-
-            # ----- PUT -----
-            if ema20 < ema50:
-                if abs(conf['close'] - ema20) <= (conf['total_range'] * 0.3):
-                    if 45 <= rsi <= 60:
-                        if not conf['is_bullish'] and conf['body_ratio'] >= 0.4:
-                            return {
-                                "action": "PUT",
-                                "confidence": 82,
-                                "reason": "EMA Pullback Sell"
-                            }
-
-            return {"action": "NEUTRAL", "confidence": 0}
-
-        if strategy_name == "RSI Extreme Reversal Fast":
-            close_prices = [c["close"] for c in candles]
-            rsi = calculate_rsi(close_prices, 14)
-            conf = get_candle_features(candles[CONFIRM])
-
-            wick_down = conf['low'] < min(conf['open'], conf['close'])
-            wick_up = conf['high'] > max(conf['open'], conf['close'])
-
-            if rsi <= 28 and conf['is_bullish'] and wick_down and conf['body_ratio'] >= 0.35:
-                return {"action": "CALL", "confidence": 80}
-
-            if rsi >= 72 and not conf['is_bullish'] and wick_up and conf['body_ratio'] >= 0.35:
-                return {"action": "PUT", "confidence": 80}
-
-            return {"action": "NEUTRAL", "confidence": 0}
-
-        if strategy_name == "Engulfing Momentum Fast":
-            prev = get_candle_features(candles[SETUP])
-            conf = get_candle_features(candles[CONFIRM])
-
-            # CALL
-            if not prev['is_bullish'] and conf['is_bullish']:
-                if conf['open'] < prev['close'] and conf['close'] > prev['open']:
-                    if conf['body_ratio'] >= 0.5:
-                        return {"action": "CALL", "confidence": 83}
-
-            # PUT
-            if prev['is_bullish'] and not conf['is_bullish']:
-                if conf['open'] > prev['close'] and conf['close'] < prev['open']:
-                    if conf['body_ratio'] >= 0.5:
-                        return {"action": "PUT", "confidence": 83}
-
-            return {"action": "NEUTRAL", "confidence": 0}
-
-        if strategy_name == "Bollinger Snap Fast":
-            close_prices = [c["close"] for c in candles]
-            upper, mid, lower = calculate_bollinger_bands(close_prices)
-
-            # Check forming candle (current live price) for faster reaction
-            curr = get_candle_features(candles[FORMING]) 
-            curr_price = curr['close']
-
-            # If current price breaks band aggressively, signal immediately
-            # CALL: Price snaps below lower band
-            if curr_price < lower.iloc[FORMING] and curr['is_bullish']: 
-                # Basic snap check: it dipped below and is now green (snapping back)
-                return {"action": "CALL", "confidence": 85, "reason": "Bollinger Snap (Live)"}
-
-            # PUT: Price snaps above upper band
-            if curr_price > upper.iloc[FORMING] and not curr['is_bullish']:
-                return {"action": "PUT", "confidence": 85, "reason": "Bollinger Snap (Live)"}
-
-            # Fallback to confirmed candle logic (standard)
-            conf = get_candle_features(candles[CONFIRM])
-            close_price = conf['close']
-
-            if close_price < lower.iloc[CONFIRM] and conf['is_bullish'] and conf['body_ratio'] >= 0.4:
-                return {"action": "CALL", "confidence": 81}
-
-            if close_price > upper.iloc[CONFIRM] and not conf['is_bullish'] and conf['body_ratio'] >= 0.4:
-                return {"action": "PUT", "confidence": 81}
-
-            return {"action": "NEUTRAL", "confidence": 0}
-
-        if strategy_name == "RSI Directional Every Minute":
-            close_prices = [c["close"] for c in candles]
-            # Need at least 50 candles for EMA50
-            if len(close_prices) < 50:
-                 return {"action": "NEUTRAL", "confidence": 0}
-
-            ema50 = calculate_ema(close_prices, 50)
-            rsi = calculate_rsi(close_prices, 14)
-            conf = get_candle_features(candles[CONFIRM])
-
-            # Filter: Doji / Weak candles
-            if conf['body_ratio'] < 0.3:
-                return {"action": "NEUTRAL", "confidence": 0}
-
-            # CALL SCENARIO
-            # 1. Trend is UP (Close > EMA50)
-            # 2. RSI is Bullish (52 < RSI < 75) - shifted slightly above 50 to confirm momentum
-            # 3. Last Candle is Green
-            if conf['close'] > ema50 and 52 < rsi < 75 and conf['is_bullish']:
-                return {
-                    "action": "CALL",
-                    "confidence": 88,
-                    "reason": "Trend Follow: EMA50 + RSI > 52"
-                }
-
-            # PUT SCENARIO
-            # 1. Trend is DOWN (Close < EMA50)
-            # 2. RSI is Bearish (25 < RSI < 48) - shifted slightly below 50 to confirm momentum
-            # 3. Last Candle is Red
-            if conf['close'] < ema50 and 25 < rsi < 48 and not conf['is_bullish']:
-                return {
-                    "action": "PUT",
-                    "confidence": 88,
-                    "reason": "Trend Follow: EMA50 + RSI < 48"
-                }
-
-            return {"action": "NEUTRAL", "confidence": 0}
-
-        target_strategy = "RSI + Support & Resistance Reversal"
-        if strategy_name != target_strategy:
-             return {"action": "NEUTRAL", "confidence": 0}
-
-        close_prices = [c["close"] for c in candles]
-        cfg = PAIR_PROFILE.get(pair, PAIR_PROFILE["default"])
-
-        # ---------------------------------------------------------------------
-        # STRATEGY: RSI + Support & Resistance Reversal (M1 Binary)
-        # ---------------------------------------------------------------------
-         
-        # 1. Indicators
-        # Use confirmed RSI to avoid repainting
-        rsi_series = calculate_rsi_series(close_prices, 14)
-        rsi = rsi_series.iloc[CONFIRM]
-
-        sr_rsi_buy = cfg.get("sr_rsi_buy", 45)
-        sr_rsi_sell = cfg.get("sr_rsi_sell", 55)
-        sr_rsi_strong_buy = cfg.get("sr_rsi_strong_buy", 35)
-        sr_rsi_extreme_buy = cfg.get("sr_rsi_extreme_buy", 30)
-        sr_rsi_strong_sell = cfg.get("sr_rsi_strong_sell", 65)
-        sr_rsi_extreme_sell = cfg.get("sr_rsi_extreme_sell", 70)
-
-        atr_series = calculate_atr_series(candles, 14)
-        current_atr = atr_series.iloc[CONFIRM]
-        if current_atr <= 0:
-            return {"action": "NEUTRAL", "confidence": 0}
-        
-        lookback = cfg.get("sr_lookback", 60)
-        support_zones, resistance_zones = identify_zones(candles[-lookback:])
-        support_zones = cluster_levels(support_zones, current_atr)
-        resistance_zones = cluster_levels(resistance_zones, current_atr)
-        
-        # 3. Candles
-        # We use the standard indexing convention:
-        # CONFIRM (-2) = Last Closed Candle (Signal Candle)
-        # SETUP (-3) = Indecision Candle (Setup Candle)
-        
-        conf_candle = get_candle_features(candles[CONFIRM])
-        indec_candle = get_candle_features(candles[SETUP])
-        
-        action = "NEUTRAL"
-        confidence = 0
-        
-        # --- BUY CONDITIONS ---
-        # 1. Price enters strong support zone (Indecision candle or Confirmation candle touched it)
-        # Using Indecision Low or Confirmation Low
-        touched_support = is_near_zone(indec_candle['low'], support_zones) or \
-                          is_near_zone(conf_candle['low'], support_zones)
-        
-        if touched_support:
-            if rsi <= sr_rsi_buy:
-                if indec_candle['body_ratio'] <= 0.45:
-                    if conf_candle['is_bullish'] and \
-                       conf_candle['body_ratio'] >= 0.40 and \
-                       conf_candle['close'] > indec_candle['midpoint']:
-                        
-                        action = "CALL"
-                        if rsi <= sr_rsi_strong_buy and indec_candle['body_ratio'] <= 0.30 and conf_candle['body_ratio'] >= 0.50:
-                            confidence = 88
-                        else:
-                            confidence = 78
-                        if rsi <= sr_rsi_extreme_buy:
-                            confidence += 4
-                        if conf_candle['close'] > indec_candle['high']:
-                            confidence += 4
-
-        # --- SELL CONDITIONS ---
-        # 1. Price enters strong resistance zone
-        touched_resistance = is_near_zone(indec_candle['high'], resistance_zones) or \
-                             is_near_zone(conf_candle['high'], resistance_zones)
-                             
-        if touched_resistance:
-            if rsi >= sr_rsi_sell:
-                if indec_candle['body_ratio'] <= 0.45:
-                    if not conf_candle['is_bullish'] and \
-                       conf_candle['body_ratio'] >= 0.40 and \
-                       conf_candle['close'] < indec_candle['midpoint']:
-                        
-                        action = "PUT"
-                        if rsi >= sr_rsi_strong_sell and indec_candle['body_ratio'] <= 0.30 and conf_candle['body_ratio'] >= 0.50:
-                            confidence = 88
-                        else:
-                            confidence = 78
-                        if rsi >= sr_rsi_extreme_sell:
-                            confidence += 4
-                        if conf_candle['close'] < indec_candle['low']:
-                            confidence += 4
-
-        # --- FILTERS ---
-        # 1. Trend Filter (Reject if RSI stuck in overbought/oversold for multiple candles)
-        # Check last 3 candles RSI (using closed data)
-        # i=1 -> [:-1] (CONFIRM), i=2 -> [:-2] (SETUP), i=3 -> [:-3] (SETUP-1)
-        recent_rsis = [
-            rsi_series.iloc[CONFIRM],
-            rsi_series.iloc[SETUP],
-            rsi_series.iloc[SETUP - 1],
-        ]
-        # If all are >= 65 (strong uptrend), risk for PUT
-        # If all are <= 35 (strong downtrend), risk for CALL
-        
-        if action == "PUT" and all(r >= 65 for r in recent_rsis):
-             pass 
-
-        m5_candles = resample_to_m5(candles)
-        if len(m5_candles) >= 14:
-            m5_close = [c['close'] for c in m5_candles]
-            m5_rsi = calculate_rsi(m5_close, 14)
             
-            if not (35 <= m5_rsi <= 65):
-                 confidence -= 10
-            else:
-                 confidence += 3
+            lookback = cfg.get("sr_lookback", 60)
+            support_zones, resistance_zones = identify_zones(candles[-lookback:])
+            support_zones = cluster_levels(support_zones, current_atr)
+            resistance_zones = cluster_levels(resistance_zones, current_atr)
+            
+            # 3. Candles
+            # We use the standard indexing convention:
+            # CONFIRM (-2) = Last Closed Candle (Signal Candle)
+            # SETUP (-3) = Indecision Candle (Setup Candle)
+            
+            conf_candle = get_candle_features(candles[CONFIRM])
+            indec_candle = get_candle_features(candles[SETUP])
+            
+            action = "NEUTRAL"
+            confidence = 0
+            
+            # --- BUY CONDITIONS ---
+            touched_support = is_near_zone(indec_candle['low'], support_zones) or \
+                              is_near_zone(conf_candle['low'], support_zones)
+            
+            if touched_support:
+                if rsi <= sr_rsi_buy:
+                    if indec_candle['body_ratio'] <= 0.45:
+                        if conf_candle['is_bullish'] and \
+                           conf_candle['body_ratio'] >= 0.40 and \
+                           conf_candle['close'] > indec_candle['midpoint']:
+                            
+                            action = "CALL"
+                            if rsi <= sr_rsi_strong_buy and indec_candle['body_ratio'] <= 0.30 and conf_candle['body_ratio'] >= 0.50:
+                                confidence = 92
+                            if rsi <= sr_rsi_extreme_buy:
+                                confidence += 4
+                            if conf_candle['close'] > indec_candle['high']:
+                                confidence += 4
 
-        clamped_confidence = max(confidence, 0)
-        result = {
-            "action": action,
-            "confidence": min(clamped_confidence, 100),
-        }
-        return StrategyService._apply_cooldown(pair, target_strategy, result)
+            # --- SELL CONDITIONS ---
+            touched_resistance = is_near_zone(indec_candle['high'], resistance_zones) or \
+                                 is_near_zone(conf_candle['high'], resistance_zones)
+                                 
+            if touched_resistance:
+                if rsi >= sr_rsi_sell:
+                    if indec_candle['body_ratio'] <= 0.45:
+                        if not conf_candle['is_bullish'] and \
+                           conf_candle['body_ratio'] >= 0.40 and \
+                           conf_candle['close'] < indec_candle['midpoint']:
+                            
+                            action = "PUT"
+                            if rsi >= sr_rsi_strong_sell and indec_candle['body_ratio'] <= 0.30 and conf_candle['body_ratio'] >= 0.50:
+                                confidence = 92
+                            if rsi >= sr_rsi_extreme_sell:
+                                confidence += 4
+                            if conf_candle['close'] < indec_candle['low']:
+                                confidence += 4
+
+            # --- FILTERS ---
+            m5_candles = resample_to_m5(candles)
+            if len(m5_candles) >= 14:
+                m5_close = [c['close'] for c in m5_candles]
+                m5_rsi = calculate_rsi(m5_close, 14)
+                
+                if not (35 <= m5_rsi <= 65):
+                     confidence -= 10
+                else:
+                     confidence += 3
+
+            clamped_confidence = max(confidence, 0)
+            # Ensure we only return signals that meet the minimum confidence
+            if clamped_confidence < StrategyService.MINIMUM_CONFIDENCE:
+                return {"action": "NEUTRAL", "confidence": 0}
+                
+            result = {
+                "action": action,
+                "confidence": min(clamped_confidence, 100),
+            }
+            return StrategyService._apply_cooldown(pair, strategy_name, result)
+
+        # Return neutral for other strategies that don't meet confidence threshold
+        return {"action": "NEUTRAL", "confidence": 0}
 
     @staticmethod
     def _apply_cooldown(pair, strategy_name, result):
@@ -545,4 +364,3 @@ class StrategyService:
         confidence = result.get("confidence", 0)
         result["confidence"] = max(0, min(confidence, 100))
         return result
-
