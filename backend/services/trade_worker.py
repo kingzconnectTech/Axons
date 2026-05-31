@@ -1,7 +1,10 @@
 import time
 import traceback
 import random
+import uuid
 from services.strategy_service import StrategyService, resample_to_n_minutes
+from services.notification_service import notification_service
+from services.status_store import status_store
 
 # IQ Option minimum trade amounts per currency (in native currency units)
 MIN_TRADE_AMOUNTS = {
@@ -275,27 +278,102 @@ def run_trade_session(config, shared_stats, stop_event):
                     except Exception as loop_e:
                         continue
 
+                # Wait for any existing pending trade to be resolved first
+                existing_pending = status_store.get_pending_trade(email)
+                if existing_pending:
+                    print(f"[Worker: {email}] Pending trade exists, waiting...")
+                    time.sleep(1)
+                    continue
+
                 # Execute Trade
-                if not stop_event.is_set() and best_opportunity["action"] in ["CALL", "PUT"] and best_opportunity["confidence"] >= 85:
+                if not stop_event.is_set() and best_opportunity["action"] in ["CALL", "PUT"] and best_opportunity["confidence"] >= 90:
                     pair = best_opportunity["pair"]
                     action = best_opportunity["action"]
                     timeframe = best_opportunity["timeframe"]
                     confidence = best_opportunity["confidence"]
 
                     stake_amount = config.amount
-                    # Enforce minimum trade amount for this currency
                     min_amt = shared_stats.get("min_amount") or get_min_amount(shared_stats.get("currency", "USD"))
                     if stake_amount < min_amt:
                         print(f"[Worker: {email}] Amount {stake_amount} is below minimum {min_amt}. Using minimum.")
                         stake_amount = min_amt
                     trade_duration = int(timeframe) if timeframe >= 1 else timeframe
-                    
-                    print(f"[Worker: {email}] Signal Found: {pair} {action} ({confidence}%). Executing Trade...")
+
+                    # Create pending trade
+                    trade_id = str(uuid.uuid4())
+                    pending_trade_data = {
+                        "id": trade_id,
+                        "pair": pair,
+                        "action": action,
+                        "confidence": confidence,
+                        "timeframe": timeframe,
+                        "amount": stake_amount,
+                        "duration": trade_duration,
+                        "confirmed": False,
+                        "cancelled": False,
+                        "timestamp": time.time()
+                    }
+                    status_store.set_pending_trade(email, pending_trade_data)
+
+                    # Send push notification
+                    fcm_token = status_store.get_token(email)
+                    if fcm_token:
+                        print(f"[Worker: {email}] Sending trade confirmation notification...")
+                        notification_service.send_multicast(
+                            tokens=[fcm_token],
+                            title=f"Trade Confirmation Required: {pair}",
+                            body=f"{action} Signal! Confidence: {confidence}%. Tap to confirm or cancel.",
+                            data={
+                                "type": "trade_confirmation",
+                                "trade_id": trade_id,
+                                "pair": pair,
+                                "action": action,
+                                "confidence": str(confidence),
+                                "timeframe": str(timeframe),
+                                "amount": str(stake_amount),
+                                "duration": str(trade_duration),
+                                "timestamp": str(time.time())
+                            }
+                        )
+
+                    # Wait for user confirmation (timeout after 30 seconds)
+                    print(f"[Worker: {email}] Waiting for trade confirmation (30s timeout)...")
+                    start_wait = time.time()
+                    confirmed = False
+                    cancelled = False
+                    while (time.time() - start_wait) < 30 and not stop_event.is_set():
+                        pending = status_store.get_pending_trade(email)
+                        if pending:
+                            if pending.get("confirmed"):
+                                confirmed = True
+                                break
+                            if pending.get("cancelled"):
+                                cancelled = True
+                                break
+                        time.sleep(0.5)
+                        shared_stats["heartbeat"] = time.time()
+
+                    if stop_event.is_set():
+                        status_store.clear_pending_trade(email)
+                        continue
+
+                    if cancelled:
+                        print(f"[Worker: {email}] Trade cancelled by user.")
+                        status_store.clear_pending_trade(email)
+                        continue
+
+                    if not confirmed:
+                        print(f"[Worker: {email}] Trade confirmation timeout. Cancelling.")
+                        status_store.clear_pending_trade(email)
+                        continue
+
+                    # Proceed with trade execution
+                    print(f"[Worker: {email}] Trade confirmed! Executing...")
+                    status_store.clear_pending_trade(email)
                     
                     # Capture balance before trade for fallback verification
                     balance_before = iq.get_balance()
                     if balance_before is None:
-                        # Try one more time
                         time.sleep(1)
                         balance_before = iq.get_balance() or 0.0
 
@@ -310,7 +388,7 @@ def run_trade_session(config, shared_stats, stop_event):
                         for _ in range(sleep_seconds):
                             if stop_event.is_set(): break
                             time.sleep(1)
-                            shared_stats["heartbeat"] = time.time() # Keep heartbeat alive during long wait
+                            shared_stats["heartbeat"] = time.time()
                         
                         # Check Result
                         try:
@@ -320,9 +398,7 @@ def run_trade_session(config, shared_stats, stop_event):
                                 win_status = result.get("win")
                                 if win_status == "win":
                                     profit_val = float(result.get("profit", 0) or 0)
-                                    # Net profit = total payout - stake
                                     net_profit = profit_val - float(stake_amount) if profit_val > float(stake_amount) else profit_val
-                                    
                                     print(f"[Worker: {email}] Trade WON: +{net_profit}")
                                     _worker_log(email, f"WON! Net: {net_profit}")
                                     shared_stats["wins"] = int(shared_stats.get("wins", 0)) + 1
@@ -343,13 +419,10 @@ def run_trade_session(config, shared_stats, stop_event):
                                 print(f"[Worker: {email}] Could not determine trade result for {id} after polling. Using balance fallback...")
                                 _worker_log(email, "Result polling failed. Checking balance fallback...")
                                 
-                                # Fallback: Check balance difference
                                 try:
                                     balance_after = iq.get_balance()
                                     if balance_after is not None:
-                                        # If balance_after > balance_before, we likely won
-                                        # Note: balance_after includes the return amount (stake + profit)
-                                        if balance_after > (balance_before + 0.001): # Add small epsilon
+                                        if balance_after > (balance_before + 0.001):
                                             net_profit = balance_after - balance_before
                                             print(f"[Worker: {email}] Fallback: Trade WON identified by balance increase (+{net_profit})")
                                             _worker_log(email, f"Fallback WON! Net: {net_profit}")
@@ -357,8 +430,6 @@ def run_trade_session(config, shared_stats, stop_event):
                                             shared_stats["profit"] = float(shared_stats.get("profit", 0.0)) + net_profit
                                             shared_stats["consecutive_losses"] = 0
                                         else:
-                                            # If balance didn't increase, it's either a loss or a tie
-                                            # In most iqoption binary cases, balance-before - stake = balance-after on loss.
                                             loss_amount = float(stake_amount)
                                             print(f"[Worker: {email}] Fallback: Trade likely LOST/TIE identified by no balance increase.")
                                             _worker_log(email, "Fallback LOST/TIE")
@@ -368,17 +439,14 @@ def run_trade_session(config, shared_stats, stop_event):
                                 except Exception as fallback_e:
                                     _worker_log(email, f"Fallback check failed: {fallback_e}")
                             
-                            # Update stats one more time explicitly to ensure propagation
                             shared_stats["heartbeat"] = time.time()
                             
-                            # Cooldown
                             print(f"[Worker: {email}] Resting for 10 seconds...")
                             for _ in range(10):
                                 if stop_event.is_set(): break
                                 time.sleep(1)
                                 shared_stats["heartbeat"] = time.time()
                                 
-                            # Refresh balance
                             current_balance = iq.get_balance()
                             if current_balance is not None:
                                 shared_stats["balance"] = float(current_balance)

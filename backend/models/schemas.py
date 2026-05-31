@@ -65,3 +65,8 @@ class TradeStatus(BaseModel):
 class TokenUpdate(BaseModel):
     email: str
     token: str
+
+class TradeConfirmation(BaseModel):
+    email: str
+    trade_id: str
+    confirm: bool  # True to confirm, False to cancel

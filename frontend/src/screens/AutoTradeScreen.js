@@ -5,9 +5,10 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URLS } from '../config';
+import { API_URLS, AD_UNIT_IDS } from '../config';
 import ParticlesBackground from '../components/ParticlesBackground';
 import SelectionModal from '../components/SelectionModal';
+import AdBanner from '../components/AdBanner';
 import { useBot } from '../context/BotContext';
 import { useInterstitialAd, TestIds } from '../utils/SafeMobileAds';
 import AnimatedBorderButton from '../components/AnimatedBorderButton';
@@ -28,11 +29,7 @@ export default function AutoTradeScreen() {
   const otcPairs = ['EURUSD-OTC', 'GBPUSD-OTC', 'EURJPY-OTC', 'AUDCAD-OTC'];
   const [strategy, setStrategy] = useState('RSI + Support & Resistance Reversal');
   const strategies = [
-    'RSI + Support & Resistance Reversal',
-    'RSI EMA Pullback Fast',
-    'RSI Extreme Reversal Fast',
-    'Engulfing Momentum Fast',
-    'Bollinger Snap Fast'
+    'RSI + Support & Resistance Reversal'
   ];
   const [stopLoss, setStopLoss] = useState('10');
   const [takeProfit, setTakeProfit] = useState('20');
@@ -43,13 +40,15 @@ export default function AutoTradeScreen() {
   const [loading, setLoading] = useState(false);
   const [savedCurrency, setSavedCurrency] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
+  const [pendingTrade, setPendingTrade] = useState(null);
+  const [tradeConfirmationModalVisible, setTradeConfirmationModalVisible] = useState(false);
 
   // Modal visibility states
   const [pairModalVisible, setPairModalVisible] = useState(false);
   const [strategyModalVisible, setStrategyModalVisible] = useState(false);
   const [timeframeModalVisible, setTimeframeModalVisible] = useState(false);
 
-  const INTERSTITIAL_UNIT_ID = __DEV__ ? TestIds.INTERSTITIAL : 'ca-app-pub-3940256099942544/1033173712';
+  const INTERSTITIAL_UNIT_ID = __DEV__ ? TestIds.INTERSTITIAL : AD_UNIT_IDS.INTERSTITIAL;
   const interstitial = useInterstitialAd(INTERSTITIAL_UNIT_ID, {
     requestNonPersonalizedAdsOnly: true,
   });
@@ -177,6 +176,15 @@ export default function AutoTradeScreen() {
     interstitial.load();
   }, [interstitial.load]);
 
+  // Poll for pending trades
+  useEffect(() => {
+    if (!email) return;
+    const interval = setInterval(() => {
+      fetchPendingTrade();
+    }, 1000); // Poll every second
+    return () => clearInterval(interval);
+  }, [email]);
+
   // Use a ref to prevent the effect from firing more than once per user tap.
   const startExecutedRef = useRef(false);
   useEffect(() => {
@@ -206,6 +214,33 @@ export default function AutoTradeScreen() {
       refreshGlobalStatus();
     } catch (error) {
       console.log("Status fetch error", error);
+    }
+  };
+
+  const fetchPendingTrade = async () => {
+    if (!email) return;
+    try {
+      const response = await axios.get(`${API_URL}/pending-trade/${email}`);
+      const pending = response.data.pending_trade;
+      setPendingTrade(pending);
+      setTradeConfirmationModalVisible(!!pending);
+    } catch (error) {
+      console.log("Pending trade fetch error", error);
+    }
+  };
+
+  const confirmTrade = async (confirm) => {
+    if (!pendingTrade || !email) return;
+    try {
+      await axios.post(`${API_URL}/confirm-trade`, {
+        email,
+        trade_id: pendingTrade.id,
+        confirm,
+      });
+      setPendingTrade(null);
+      setTradeConfirmationModalVisible(false);
+    } catch (error) {
+      console.log("Confirm trade error", error);
     }
   };
 
@@ -521,6 +556,57 @@ export default function AutoTradeScreen() {
 
       </View>
 
+      {/* Trade Confirmation Modal */}
+      {tradeConfirmationModalVisible && pendingTrade && (
+        <View style={[StyleSheet.absoluteFill, styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.7)' }]}>
+          <Surface style={styles.confirmationModal}>
+            <Text variant="headlineSmall" style={{ marginBottom: 16, textAlign: 'center', fontWeight: 'bold' }}>
+              Trade Confirmation Required
+            </Text>
+            <View style={{ marginBottom: 16 }}>
+              <Text variant="bodyLarge" style={{ marginBottom: 8 }}>
+                <MaterialCommunityIcons name="currency-usd" size={20} style={{ marginRight: 8 }} />
+                Pair: {pendingTrade.pair}
+              </Text>
+              <Text variant="bodyLarge" style={{ marginBottom: 8 }}>
+                <MaterialCommunityIcons name="arrow-up-bold" size={20} style={{ marginRight: 8 }} />
+                Action: {pendingTrade.action}
+              </Text>
+              <Text variant="bodyLarge" style={{ marginBottom: 8 }}>
+                <MaterialCommunityIcons name="chart-box" size={20} style={{ marginRight: 8 }} />
+                Confidence: {pendingTrade.confidence}%
+              </Text>
+              <Text variant="bodyLarge" style={{ marginBottom: 8 }}>
+                <MaterialCommunityIcons name="clock-outline" size={20} style={{ marginRight: 8 }} />
+                Timeframe: {pendingTrade.timeframe} min
+              </Text>
+              <Text variant="bodyLarge" style={{ marginBottom: 8 }}>
+                <MaterialCommunityIcons name="cash" size={20} style={{ marginRight: 8 }} />
+                Amount: {pendingTrade.amount} {status?.currency || 'USD'}
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <Button
+                mode="contained"
+                onPress={() => confirmTrade(false)}
+                style={{ flex: 1, backgroundColor: theme.colors.error }}
+                labelStyle={{ color: '#fff' }}
+              >
+                Cancel
+              </Button>
+              <Button
+                mode="contained"
+                onPress={() => confirmTrade(true)}
+                style={{ flex: 1, backgroundColor: theme.colors.primary }}
+                labelStyle={{ color: '#fff' }}
+              >
+                Enter Trade
+              </Button>
+            </View>
+          </Surface>
+        </View>
+      )}
+
       {/* Modals */}
       <SelectionModal
         visible={pairModalVisible}
@@ -550,6 +636,8 @@ export default function AutoTradeScreen() {
         onSelect={setTimeframe}
         icon="clock-outline"
       />
+
+      <AdBanner />
     </ScrollView>
   );
 }
@@ -649,6 +737,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textTransform: 'uppercase',
     letterSpacing: 1,
+  },
+  modalOverlay: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  confirmationModal: {
+    width: '90%',
+    padding: 24,
+    borderRadius: 24,
   },
   chip: {
     borderRadius: 12,

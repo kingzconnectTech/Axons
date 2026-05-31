@@ -187,4 +187,57 @@ class StatusStore:
             print(f"[StatusStore] Error scanning tokens: {e}")
             return []
 
+    def set_pending_trade(self, email, trade_data):
+        """Set a pending trade confirmation (includes all trade details)"""
+        self._log(f"set_pending_trade called for {email}: {trade_data}")
+        if self.use_local:
+            self._load_local()
+            if email not in self.local_data:
+                self.local_data[email] = {}
+            self.local_data[email]["pending_trade"] = trade_data
+            self.local_data[email]["updated_at"] = int(time.time())
+            self._save_local()
+            return
+        if not self.table: return
+        try:
+            self.table.update_item(
+                Key={self.partition_key: email},
+                UpdateExpression="set pending_trade = :pt, updated_at = :u",
+                ExpressionAttributeValues={
+                    ":pt": self._to_dynamodb_compatible(trade_data),
+                    ":u": int(time.time())
+                }
+            )
+        except ClientError as e:
+            print(f"[StatusStore] Error setting pending trade for {email}: {e}")
+
+    def get_pending_trade(self, email):
+        """Get pending trade confirmation"""
+        status = self.get_status(email)
+        if status:
+            return status.get("pending_trade")
+        return None
+
+    def clear_pending_trade(self, email):
+        """Clear pending trade confirmation"""
+        self._log(f"clear_pending_trade called for {email}")
+        if self.use_local:
+            self._load_local()
+            if email in self.local_data and "pending_trade" in self.local_data[email]:
+                del self.local_data[email]["pending_trade"]
+                self.local_data[email]["updated_at"] = int(time.time())
+                self._save_local()
+            return
+        if not self.table: return
+        try:
+            self.table.update_item(
+                Key={self.partition_key: email},
+                UpdateExpression="remove pending_trade set updated_at = :u",
+                ExpressionAttributeValues={
+                    ":u": int(time.time())
+                }
+            )
+        except ClientError as e:
+            print(f"[StatusStore] Error clearing pending trade for {email}: {e}")
+
 status_store = StatusStore()
